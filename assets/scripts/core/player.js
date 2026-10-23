@@ -3779,6 +3779,37 @@ if (this.p.isFlying || this.p.isUfo) {
     return bestSurface;
   }
 
+  _findFlipTeleportSurface(playerWorldX) {
+    const nearbyObjects = this._gameLayer.getNearbySectionObjects(playerWorldX);
+    let bestTarget = null;
+    let bestDistance = Infinity;
+    const playerSize = this.p.isMini ? 18 : 30;
+    const supportTolerance = playerSize + 12;
+
+    for (const obj of nearbyObjects) {
+      if (!obj || (obj.type !== solidType && obj.type !== "solid")) continue;
+
+      const bounds = this._getSpiderSearchBounds(obj);
+      const xPad = Math.max(9, playerSize - 5);
+      if (playerWorldX + xPad <= bounds.left || playerWorldX - xPad >= bounds.right) continue;
+
+      // Normal gravity is supported by the block's lower world-Y edge;
+      // flipped gravity is supported by its upper world-Y edge.
+      const supportSurface = this.p.gravityFlipped ? bounds.lower : bounds.upper;
+      const supportedPlayerY = supportSurface + (this.p.gravityFlipped ? -playerSize : playerSize);
+      const supportDistance = Math.abs(this.p.y - supportedPlayerY);
+      if (supportDistance > supportTolerance || supportDistance >= bestDistance) continue;
+
+      const gravityFlipped = !this.p.gravityFlipped;
+      const targetSurface = gravityFlipped ? bounds.lower : bounds.upper;
+      const targetY = targetSurface + (gravityFlipped ? -playerSize : playerSize);
+      bestTarget = { surfaceY: targetSurface, y: targetY, gravityFlipped };
+      bestDistance = supportDistance;
+    }
+
+    return bestTarget;
+  }
+
   _updateSpiderJump(dt) {
     if (!this.rotateActionActive) {
       this.updateGroundRotation(dt);
@@ -3869,9 +3900,53 @@ if (this.p.isFlying || this.p.isUfo) {
     }
   }
   _updateFlipJump(dt) {
-    // Flip mode uses the same opposite-surface calculation as Spider, but
-    // keeps the normal cube and is a separate portal-driven gamemode.
-    this._updateSpiderJump(dt);
+    if (!this.rotateActionActive) {
+      this.updateGroundRotation(dt);
+    }
+
+    const canFlip = this.p.canJump || this.p.onGround || this.p.onCeiling;
+    if (this.p.upKeyPressed && canFlip) {
+      this.p.upKeyPressed = false;
+      this.p.queuedHold = false;
+
+      const playerWorldX = this._scene?._playerWorldX ?? centerX;
+      const target = this._findFlipTeleportSurface(playerWorldX);
+      if (target && Number.isFinite(target.y)) {
+        const oldY = this.p.y;
+        this.p.y = target.y;
+        this.p.lastY = target.y;
+        this.p.lastGroundPosY = target.y;
+        this.flipGravity(target.gravityFlipped, 1.0);
+        this.p.onGround = !target.gravityFlipped;
+        this.p.onCeiling = target.gravityFlipped;
+        this.p.canJump = true;
+        this.p.yVelocity = 0;
+        this.p.isJumping = false;
+        this._spawnSpiderTeleportEffects(oldY, target.y);
+      } else {
+        this.p.yVelocity = 0;
+        this.p.canJump = false;
+        this.p.onGround = false;
+        this.p.onCeiling = false;
+      }
+
+      this.p._spiderTeleportAnimTimer = 0;
+      this._spiderAnimTimer = (this._spiderAnimTimer || 0) + 0.12;
+      if (!this._scene?._editorPlaytestActive) {
+        this.p._spiderFlashDuration = 0.5;
+        this.p._spiderFlashTimer = 0.5;
+      }
+      this.runRotateAction();
+      return;
+    }
+
+    if (this.playerIsFalling()) this.p.canJump = false;
+    this.p.yVelocity -= p * 0.6 * this.flipMod() * dt;
+    if (this.p.gravityFlipped) {
+      this.p.yVelocity = Math.min(this.p.yVelocity, 30);
+    } else {
+      this.p.yVelocity = Math.max(this.p.yVelocity, -30);
+    }
   }
   _isPortalCollisionType(colType) {
     const typeStr = String(colType || "");

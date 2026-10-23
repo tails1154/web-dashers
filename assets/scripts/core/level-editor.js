@@ -3954,7 +3954,7 @@ class LevelEditor {
     const sw = screenWidth;
     const sh = screenHeight;
     const panelW = 520;
-    const panelH = 420;
+    const panelH = 500;
 
     const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2650);
     this._editorStartOptionsPopup = root;
@@ -4041,9 +4041,9 @@ class LevelEditor {
         makeToggle(opt.label, opt.key, -130 + i * 80);
     });
 
-    const songOffsetButton = this.add.nineslice(135, 105, "GJ_button01", null, 230, 50, 18, 18, 18, 18)
+    const songOffsetButton = this.add.nineslice(135, 165, "GJ_button01", null, 230, 50, 18, 18, 18, 18)
         .setInteractive();
-    const songOffsetText = this.add.bitmapText(135, 103, "bigFont", "", 22).setOrigin(0.5);
+    const songOffsetText = this.add.bitmapText(135, 163, "bigFont", "", 22).setOrigin(0.5);
     inner.add([songOffsetButton, songOffsetText]);
 
     const refreshSongOffsetButton = () => {
@@ -8932,6 +8932,8 @@ LevelEditor.methodNames = [
   "_getEditorArtValue",
   "_setEditorArtValueDraft",
   "_getCurrentEditorLevelRecord",
+  "_getEditorSongStartOffset",
+  "_setEditorSongStartOffset",
   "_setEditorSongDraft",
   "_addSafeFrameImage",
   "_getColourPickerFrameData",
