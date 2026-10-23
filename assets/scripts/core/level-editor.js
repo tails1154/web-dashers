@@ -3409,6 +3409,12 @@ class LevelEditor {
     const { levels, idx } = this._getCurrentEditorLevelRecord();
     const value = Number(seconds);
     const offset = Number.isFinite(value) ? Math.max(-30, Math.min(30, value)) : 0;
+
+    // Store the offset in the level settings string as well as the local
+    // record. AudioManager reads kA13 from the serialized level settings.
+    this._setEditorStartValueDraft("kA13", offset);
+    this._setEditorStartValueDraft("gdSongStartOffset", offset);
+
     if (idx !== -1) {
       levels[idx].songStartOffset = offset;
       localStorage.setItem("created_levels", JSON.stringify(levels));
@@ -4034,6 +4040,32 @@ class LevelEditor {
     optionDefs.forEach((opt, i) => {
         makeToggle(opt.label, opt.key, -130 + i * 80);
     });
+
+    const songOffsetButton = this.add.nineslice(135, 105, "GJ_button01", null, 230, 50, 18, 18, 18, 18)
+        .setInteractive();
+    const songOffsetText = this.add.bitmapText(135, 103, "bigFont", "", 22).setOrigin(0.5);
+    inner.add([songOffsetButton, songOffsetText]);
+
+    const refreshSongOffsetButton = () => {
+        const offset = this._getEditorSongStartOffset();
+        songOffsetText.setText(`Song Offset: ${offset}s`);
+    };
+
+    this._makeCompositeBouncyButton(songOffsetButton, [songOffsetButton, songOffsetText], 1, () => {
+        const currentOffset = this._getEditorSongStartOffset();
+        const entered = window.prompt("Song offset in seconds:", String(currentOffset));
+        if (entered === null) return;
+
+        const parsed = Number(String(entered).trim());
+        if (!Number.isFinite(parsed)) {
+            window.alert("Enter a valid number of seconds.");
+            return;
+        }
+
+        this._setEditorSongStartOffset(parsed);
+        refreshSongOffsetButton();
+    }, () => true);
+    refreshSongOffsetButton();
 
     this._makeEditorOkButton(inner, 0, (panelH / 2) - 48, "OK", () => this._closeEditorStartOptionsPopup());
   }
