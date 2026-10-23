@@ -16,6 +16,7 @@ class PlayerState {
     this.isWave = false;
     this.isUfo = false;
     this.isSpider = false;
+    this.isFlip = false;
     this.isBird = false;
     this.isDart = false;
     this.isRobot = false;
@@ -1949,6 +1950,7 @@ if (this.p.isFlying || this.p.isUfo) {
       return;
     }
     this.exitSpiderMode();
+    this.exitFlipMode();
     this.exitRobotMode();
     this.exitBallMode();
     this.exitWaveMode();
@@ -2027,6 +2029,7 @@ if (this.p.isFlying || this.p.isUfo) {
       return;
     }
     this.exitSpiderMode();
+    this.exitFlipMode();
     this.exitRobotMode();
     this.exitWaveMode();
     this.p.isBall = true;
@@ -2074,6 +2077,7 @@ if (this.p.isFlying || this.p.isUfo) {
       return;
     }
     this.exitSpiderMode();
+    this.exitFlipMode();
     this.exitRobotMode();
     this.exitShipMode();
     this.exitBallMode();
@@ -2129,6 +2133,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.exitRobotMode();
     this.exitBallMode();
     this.exitWaveMode();
+    this.exitFlipMode();
     const savedPortalYVelocity = Number.isFinite(portalYVelocity) ? portalYVelocity : null;
     this.p.isSpider = true;
     if (!enteredFromPortal) this.p.yVelocity = 0;
@@ -2180,6 +2185,42 @@ if (this.p.isFlying || this.p.isUfo) {
     this.setCubeVisible(true);
     this._setGamemodeFlyBounds(false, 0);
   }
+  enterFlipMode(portal = null) {
+    if (this.p.isFlip) return;
+    const enteredFromPortal = !!portal;
+    this.exitShipMode();
+    this.exitRobotMode();
+    this.exitBallMode();
+    this.exitWaveMode();
+    this.exitSpiderMode();
+    this.exitUfoMode();
+    this.p.isFlip = true;
+    if (!enteredFromPortal) this.p.yVelocity = 0;
+    this.p.onGround = !enteredFromPortal;
+    this.p.onCeiling = !enteredFromPortal && !!this.p.gravityFlipped;
+    this.p.canJump = !enteredFromPortal;
+    this.p.isJumping = false;
+    this.stopRotation();
+    this._rotation = 0;
+    this.setCubeVisible(true);
+    this.setBallVisible(false);
+    this.setShipVisible(false);
+    this.setWaveVisible(false);
+    this.setSpiderVisible(false);
+    this._setGamemodeFlyBounds(false, 0);
+  }
+  exitFlipMode() {
+    if (!this.p.isFlip) return;
+    this.p.isFlip = false;
+    this.p.yVelocity = 0;
+    this.p.onGround = false;
+    this.p.onCeiling = false;
+    this.p.canJump = false;
+    this.p.isJumping = false;
+    this.stopRotation();
+    this._rotation = 0;
+    this.setCubeVisible(true);
+  }
   enterRobotMode(portal = null) {
     if (this.p.isRobot) return;
     const enteredFromPortal = !!portal;
@@ -2188,6 +2229,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.exitBallMode();
     this.exitWaveMode();
     this.exitSpiderMode();
+    this.exitFlipMode();
     this.exitUfoMode();
     const savedPortalYVelocity = Number.isFinite(portalYVelocity) ? portalYVelocity : null;
     this.p.isRobot = true;
@@ -2231,6 +2273,7 @@ if (this.p.isFlying || this.p.isUfo) {
   enterUfoMode(_portal = null, fromCheckpoint = false) {
     if (this.p.isUfo) return;
     this.exitSpiderMode();
+    this.exitFlipMode();
     this.exitRobotMode();
     this.exitBallMode();
     this.exitWaveMode();
@@ -3327,6 +3370,8 @@ if (this.p.isFlying || this.p.isUfo) {
       this._updateUfoJump(_0x3d1c6f);
     } else if (this.p.isSpider) {
       this._updateSpiderJump(_0x3d1c6f);
+    } else if (this.p.isFlip) {
+      this._updateFlipJump(_0x3d1c6f);
     } else if (this.p.isRobot) {
       this._updateRobotJump(_0x3d1c6f);
     } else if (this.p.upKeyDown && this.p.canJump) {
@@ -3823,6 +3868,11 @@ if (this.p.isFlying || this.p.isUfo) {
       }
     }
   }
+  _updateFlipJump(dt) {
+    // Flip mode uses the same opposite-surface calculation as Spider, but
+    // keeps the normal cube and is a separate portal-driven gamemode.
+    this._updateSpiderJump(dt);
+  }
   _isPortalCollisionType(colType) {
     const typeStr = String(colType || "");
     return typeStr.startsWith("portal_") || typeStr === speedType || typeStr === "speed";
@@ -4161,6 +4211,12 @@ if (this.p.isFlying || this.p.isUfo) {
             this.exitSpiderMode();
             if (Number.isFinite(_portalSpiderYVelocity)) this.p.yVelocity = _portalSpiderYVelocity;
             this.enterSpiderMode(gameObj);
+          }
+        } else if (_colType === "portal_flip") {
+          if (!this._isObjectActivated(gameObj)) {
+            this._setObjectActivated(gameObj, true);
+            this._playPortalShine(gameObj, 2);
+            this.enterFlipMode(gameObj);
           }
         } else if (_colType === "portal_glider") {
           if (!this._isObjectActivated(gameObj)) {

@@ -195,6 +195,18 @@ window.AccountAPI = {
     return data.comment;
   },
 
+  async deleteLevelComment(id, commentId) {
+    const user = await this.ensureAuthenticated();
+    if (!user) throw new Error('Login required to delete comments');
+    const res = await fetch(`${window._gdProxyUrl}?action=comments&id=${encodeURIComponent(id)}`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', comment_id: String(commentId || '') }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not delete comment');
+    return data;
+  },
+
   async getDailyLevel() {
     const res = await fetch(`${window._gdProxyUrl}?action=daily`, { credentials: 'include' });
     const data = await res.json();

@@ -1914,12 +1914,18 @@ class LevelEditor {
             }
         }
         // High/sparse IDs are not reached by the numeric count above.
-        // Keep the 5x speed portal explicitly available in the portal tab.
+        // Keep generated speed portals explicitly available in the speed tab.
         if (activeCatDef?.types?.includes("speed")) {
             for (const speedId of [1334, 5000, 5001, 5002, 5003, 5004, 5050]) {
                 if (itemsForGrid.some(item => item.id === speedId)) continue;
                 const speedObject = getObjectFromId(speedId);
                 if (speedObject) itemsForGrid.push({ type: "object", id: speedId, frame: speedObject.frame });
+            }
+        }
+        if (activeCatDef?.types?.includes("portal")) {
+            const flipPortal = getObjectFromId(5060);
+            if (flipPortal && !itemsForGrid.some(item => item.id === 5060)) {
+                itemsForGrid.push({ type: "object", id: 5060, frame: flipPortal.frame });
             }
         }
     } else if (this._editorTab === "edit") {

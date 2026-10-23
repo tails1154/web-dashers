@@ -1279,6 +1279,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const form = shade.querySelector("form");
         const list = shade.querySelector("[data-comments-list]");
         const error = shade.querySelector("[data-error]");
+        let comments = [];
         const keyboardGuard = event => {
           if (shade.contains(event.target)) event.stopPropagation();
         };
@@ -1293,17 +1294,38 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           list.innerHTML = comments.length ? comments.slice().reverse().map(comment => {
             const author = String(comment.username || "Unknown").replace(/[&<>\"']/g, "");
             const body = String(comment.text || "").replace(/[&<>\"']/g, "");
-            return `<div style="padding:8px 2px;border-bottom:1px solid #333"><b style="color:#ffd84d">${author}</b><div style="margin-top:4px;white-space:pre-wrap;word-break:break-word">${body}</div></div>`;
+            const ownsComment = window.AccountAPI?.currentUser &&
+              String(comment.user_id) === String(window.AccountAPI.currentUser.id);
+            const deleteButton = ownsComment
+              ? `<button type="button" data-delete-comment="${String(comment.id || "")}" style="float:right;padding:3px 7px;border:0;border-radius:5px;background:#a33;color:#fff;font-size:12px;cursor:pointer">Delete</button>`
+              : "";
+            return `<div style="padding:8px 2px;border-bottom:1px solid #333;overflow:auto"><b style="color:#ffd84d">${author}</b>${deleteButton}<div style="margin-top:4px;white-space:pre-wrap;word-break:break-word">${body}</div></div>`;
           }).join("") : '<div style="padding:28px 4px;text-align:center;color:#aaa">No comments yet.</div>';
         };
-        try { list.innerHTML = '<div style="padding:28px 4px;text-align:center;color:#aaa">Loading comments…</div>'; render(await window.AccountAPI.getLevelComments(lvl.id)); }
+        try { list.innerHTML = '<div style="padding:28px 4px;text-align:center;color:#aaa">Loading comments…</div>'; comments = await window.AccountAPI.getLevelComments(lvl.id); render(comments); }
         catch (errorValue) { error.textContent = errorValue.message || "Could not load comments"; }
+        list.addEventListener("click", async event => {
+          const deleteButton = event.target.closest("[data-delete-comment]");
+          if (!deleteButton) return;
+          const commentId = deleteButton.dataset.deleteComment;
+          if (!commentId || !window.confirm("Delete this comment?")) return;
+          deleteButton.disabled = true;
+          try {
+            await window.AccountAPI.deleteLevelComment(lvl.id, commentId);
+            comments = comments.filter(comment => String(comment.id) !== String(commentId));
+            render(comments);
+            error.textContent = "";
+          } catch (errorValue) {
+            deleteButton.disabled = false;
+            error.textContent = errorValue.message || "Could not delete comment";
+          }
+        });
         form.addEventListener("submit", async event => {
           event.preventDefault();
           const text = String(new FormData(form).get("text") || "").trim();
           if (!text) { error.textContent = "Write something first."; return; }
           form.querySelectorAll("button").forEach(button => { button.disabled = true; });
-          try { await window.AccountAPI.addLevelComment(lvl.id, text); form.reset(); render(await window.AccountAPI.getLevelComments(lvl.id)); error.textContent = ""; }
+          try { await window.AccountAPI.addLevelComment(lvl.id, text); form.reset(); comments = await window.AccountAPI.getLevelComments(lvl.id); render(comments); error.textContent = ""; }
           catch (errorValue) { error.textContent = errorValue.message || "Could not post comment"; }
           finally { form.querySelectorAll("button").forEach(button => { button.disabled = false; }); }
         });
@@ -9164,6 +9186,7 @@ _applyMirrorEffect() {
     if (state.isWave) return "wave";
     if (state.isRobot) return "robot";
     if (state.isSpider) return "spider";
+    if (state.isFlip) return "flip";
     return "cube";
   }
   _getGamemodePortalMode(portalType) {
@@ -9182,6 +9205,8 @@ _applyMirrorEffect() {
         return "robot";
       case "portal_spider":
         return "spider";
+      case "portal_flip":
+        return "flip";
       case "portal_glider":
         return "glider";
       default:
@@ -9192,7 +9217,7 @@ _applyMirrorEffect() {
     if (!player || !state) return;
     const currentMode = this._getDualModeId(state);
     if (currentMode === mode) {
-      player.setCubeVisible(mode === "cube" || mode === "ufo");
+      player.setCubeVisible(mode === "cube" || mode === "ufo" || mode === "flip");
       player.setShipVisible(mode === "ship");
       player.setBallVisible(mode === "ball");
       player.setWaveVisible(mode === "wave");
@@ -9231,6 +9256,9 @@ _applyMirrorEffect() {
       case "spider":
         player.enterSpiderMode({ y: saved.y, portalY: saved.y });
         break;
+      case "flip":
+        player.enterFlipMode({ y: saved.y, portalY: saved.y });
+        break;
       case "glider":
         player.enterGliderMode();
         break;
@@ -9241,12 +9269,14 @@ _applyMirrorEffect() {
         player.exitWaveMode();
         player.exitRobotMode();
         player.exitSpiderMode();
+        player.exitFlipMode();
         state.isFlying = false;
         state.isBall = false;
         state.isUfo = false;
         state.isWave = false;
         state.isRobot = false;
         state.isSpider = false;
+        state.isFlip = false;
         player.setShipVisible(false);
         player.setBallVisible(false);
         player.setWaveVisible(false);

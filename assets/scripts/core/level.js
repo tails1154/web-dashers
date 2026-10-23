@@ -389,6 +389,7 @@ if (!allObjects[745]) {
     "gridW": 1.1333333253860474,
     "spritesheet": "GJ_GameSheet02-uhd",
     "type": "portal",
+    "sub": "robot",
     "z": 10,
     "portalParticle": true,
     "portalParticleColor": 0xffff00
@@ -404,9 +405,26 @@ if (!allObjects[1331]) {
     "gridW": 1.1333333253860474,
     "spritesheet": "GJ_GameSheet02-uhd",
     "type": "portal",
+    "sub": "spider",
     "z": 10,
     "portalParticle": true,
     "portalParticleColor": 0x00ffff
+  };
+}
+if (!allObjects[5060]) {
+  allObjects[5060] = {
+    "can_color": false,
+    "default_base_color_channel": 0,
+    "frame": "flip-portal-front.png",
+    "glow_frame": "flip-portal-front.png",
+    "gridH": 2.5166666507720947,
+    "gridW": 0.7916666865348816,
+    "spritesheet": "GJ_GameSheet02-uhd",
+    "type": "portal",
+    "sub": "flip",
+    "z": 10,
+    "portalParticle": true,
+    "portalParticleColor": 0xff8a00
   };
 }
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
@@ -2517,6 +2535,7 @@ window.LevelObject = class LevelObject {
         111: "ufo",
         745: "robot",
         1331: "spider",
+        5060: "flip",
         747: "teleport",
         286: "dual_on",
         287: "dual_off"
@@ -2535,6 +2554,7 @@ window.LevelObject = class LevelObject {
         ufo: portalUfoType,
         robot: "portal_robot",
         spider: "portal_spider",
+        flip: "portal_flip",
         glider: "portal_glider",
         teleport: "portal_teleport",
         mirrora: "portal_mirror_on",
