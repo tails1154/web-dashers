@@ -1423,6 +1423,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
       const likeBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_rateDiffBtn_001.png")
         .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
+      likeBtn.setTint(lvl.liked ? 0xffe45c : 0xffffff);
       this._makeBouncyButton(likeBtn, sideBtnScale, async () => {
         const isModerator = window.AccountAPI?.currentUser?.username === "tails1154";
         if (isModerator) {
