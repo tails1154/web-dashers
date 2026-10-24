@@ -10986,17 +10986,52 @@ _applyMirrorEffect() {
         const label = this.add.bitmapText(sw / 2, y, "goldFont", `${gauntlet.name}  ${progress}/${gauntlet.levels.length}`, 27).setOrigin(0.5);
         root.add([panel, label]);
         this._makeCompositeBouncyButton(panel, [panel, label], 1, () => {
-          const nextIndex = this._getNextGauntletLevelIndex(gauntlet);
-          if (nextIndex < 0) {
-            window.alert("You completed this gauntlet!");
-            return;
-          }
-          window._activeGauntlet = { id: String(gauntlet.id), levelIndex: nextIndex };
-          closeMenu();
-          this._playSelectedOnlineLevel(gauntlet.levels[nextIndex]);
+          root.destroy(true);
+          this._gauntletsOverlay = null;
+          this._openGauntletLevelsMenu(gauntlet);
         });
       });
     }).catch(error => status.setText(error.message || "Could not load Gauntlets").setVisible(true));
+  }
+
+  _openGauntletLevelsMenu(gauntlet) {
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(950);
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.99).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 42, "goldFont", String(gauntlet.name || "GAUNTLET"), 38).setOrigin(0.5);
+    const back = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
+      .setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, title, back]);
+    const close = () => {
+      root.destroy(true);
+      this._openGauntletsMenu();
+    };
+    this._makeBouncyButton(back, 1, close);
+    const completed = (() => {
+      try { return new Set(JSON.parse(localStorage.getItem(`gd_gauntlet_${gauntlet.id}`) || "[]")); }
+      catch (_) { return new Set(); }
+    })();
+    const nextIndex = this._getNextGauntletLevelIndex(gauntlet);
+    (gauntlet.levels || []).forEach((level, index) => {
+      const isComplete = completed.has(String(level.id));
+      const isUnlocked = isComplete || index === nextIndex;
+      const y = 118 + index * 82;
+      const panel = this.add.nineslice(sw / 2, y, "GJ_button01", null, 650, 64, 24, 24, 24, 24)
+        .setInteractive();
+      const label = this.add.bitmapText(sw / 2, y, "goldFont", `${index + 1}. ${String(level.name || `Level ${level.id}`)}  ${isComplete ? "✓" : isUnlocked ? "PLAY" : "LOCKED"}`, 23).setOrigin(0.5);
+      if (!isUnlocked) {
+        panel.setTint(0x666666);
+        label.setTint(0x999999);
+      }
+      root.add([panel, label]);
+      this._makeCompositeBouncyButton(panel, [panel, label], 1, () => {
+        if (!isUnlocked) return;
+        window._activeGauntlet = { id: String(gauntlet.id), levelIndex: index };
+        root.destroy(true);
+        this._playSelectedOnlineLevel(level);
+      }, () => isUnlocked);
+    });
   }
 
   async _openGauntletSubmenu(levelId, parentShade) {
