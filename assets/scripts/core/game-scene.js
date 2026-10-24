@@ -11204,7 +11204,16 @@ _applyMirrorEffect() {
       const shade = document.createElement("div");
       shade.dataset.wdQuests = "1";
       shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
-      const items = (data.quests || []).map(quest => `<li style=\"margin:12px 0;color:#fff\"><b>${String(quest.text || "Quest").replace(/[&<>\"']/g, "")}</b><span style=\"float:right;color:#d98cff\">+${Number(quest.reward) || 0} diamonds</span></li>`).join("");
+      const questDate = new Date().toISOString().slice(0, 10);
+      let claimedQuests = {};
+      try { claimedQuests = JSON.parse(localStorage.getItem("wd_quest_claims") || "{}"); } catch (_) {}
+      if (!claimedQuests || typeof claimedQuests !== "object") claimedQuests = {};
+      const items = (data.quests || []).map(quest => {
+        const completed = Boolean(claimedQuests[`${questDate}:${quest.id}`]);
+        const textStyle = completed ? "text-decoration:line-through;color:#8f9aaa" : "color:#fff";
+        const badge = completed ? "<span style=\"float:right;color:#88ffbb;font-weight:bold\">COMPLETED</span>" : `<span style=\"float:right;color:#d98cff\">+${Number(quest.reward) || 0} diamonds</span>`;
+        return `<li style=\"margin:12px 0;${textStyle}\"><b>${String(quest.text || "Quest").replace(/[&<>\"']/g, "")}</b>${badge}</li>`;
+      }).join("");
       shade.innerHTML = `<div style="width:min(520px,calc(100vw - 32px));padding:24px;border:3px solid #8de8ff;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 8px;text-align:center;color:#8de8ff">DAILY QUESTS</h2><p style="text-align:center;color:#bbb;margin:0 0 16px">Complete these in clean Normal Mode.</p><ul style="padding-left:22px">${items || "<li>No quests available.</li>"}</ul><button type="button" data-close style="display:block;margin:20px auto 0;padding:11px 24px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">Close</button></div>`;
       document.body.appendChild(shade);
       const close = () => shade.remove();
