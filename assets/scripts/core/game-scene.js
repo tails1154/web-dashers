@@ -1403,6 +1403,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
         this._makeBouncyButton(moderatorBtn, sideBtnScale, () => {
           openModeratorMenuNext = true;
+          likeBtn._pressed = true;
           likeBtn.emit("pointerup");
         });
       }
@@ -1504,13 +1505,16 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         shade.addEventListener("click", event => { if (event.target === shade) close(); });
         const choose = async liked => {
           const error = shade.querySelector("[data-error]");
-          if (!!lvl.liked === liked) { close(); return; }
+          const alreadySelected = liked ? !!lvl.liked : !!lvl.disliked;
+          if (alreadySelected) { close(); return; }
           shade.querySelectorAll("button").forEach(button => { button.disabled = true; });
           try {
-            const result = await window.AccountAPI.toggleLevelLike(lvl.id);
+            const result = await window.AccountAPI.setLevelRating(lvl.id, liked ? "like" : "dislike");
             if (result) {
               lvl.likes = Number(result.likes) || 0;
               lvl.liked = !!result.liked;
+              lvl.dislikes = Number(result.dislikes) || 0;
+              lvl.disliked = !!result.disliked;
               lvl._liked = lvl.liked;
               window._selectedLevelData = lvl;
               likeBtn.setTint(lvl.liked ? 0xffe45c : 0xffffff);

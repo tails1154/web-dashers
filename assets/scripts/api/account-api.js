@@ -291,6 +291,18 @@ window.AccountAPI = {
     return data;
   },
 
+  async setLevelRating(levelId, rating) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required to rate levels');
+    const selected = rating === 'dislike' ? 'dislike' : 'like';
+    const res = await fetch(`${window._gdProxyUrl}?action=like`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: String(levelId || ''), rating: selected })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not update rating');
+    return data;
+  },
+
   async getQuests() {
     const res = await fetch(`${window._gdProxyUrl}?action=quests`, { credentials: 'include' });
     const data = await res.json();
