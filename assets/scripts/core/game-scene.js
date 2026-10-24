@@ -9877,13 +9877,21 @@ _applyMirrorEffect() {
       }
       window.AccountAPI?.getQuests?.().then(async questData => {
         const levelHasStars = Number(window._selectedLevelData?.stars || window._selectedLevelData?.star_reward || 0) > 0;
+        const questDate = new Date().toISOString().slice(0, 10);
+        let claimedQuests = {};
+        try { claimedQuests = JSON.parse(localStorage.getItem("wd_quest_claims") || "{}"); } catch (_) {}
+        if (!claimedQuests || typeof claimedQuests !== "object") claimedQuests = {};
         for (const quest of (questData?.quests || [])) {
           const qualifies = quest.kind === "beat_any" ||
             (quest.kind === "beat_star" && levelHasStars) ||
             (quest.kind === "rebeat_main" && /^level_\d+$/.test(String(levelId)) && wasAlreadyCompleted);
           if (!qualifies) continue;
+          const claimKey = `${questDate}:${quest.id}`;
+          if (claimedQuests[claimKey]) continue;
           try {
             const reward = await window.AccountAPI.claimQuest(quest.id);
+            claimedQuests[claimKey] = Date.now();
+            localStorage.setItem("wd_quest_claims", JSON.stringify(claimedQuests));
             if (reward && Number.isFinite(Number(reward.diamonds))) localStorage.setItem("wd_diamonds", String(reward.diamonds));
             if (reward && !reward.already_claimed) {
               await this._showEndScreenRewardModal("QUEST COMPLETE", `+${reward.awarded} diamonds`);
