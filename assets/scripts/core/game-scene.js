@@ -11073,7 +11073,8 @@ _applyMirrorEffect() {
     }
     panel.querySelector("[data-create]").addEventListener("submit", async event => {
       event.preventDefault();
-      const form = new FormData(event.currentTarget);
+      const formElement = event.currentTarget;
+      const form = new FormData(formElement);
       const name = String(form.get("name") || "").trim();
       const ids = String(form.get("ids") || "").split(",").map(value => value.trim()).filter(Boolean);
       const button = event.currentTarget.querySelector("button[type=submit]");
@@ -11082,8 +11083,8 @@ _applyMirrorEffect() {
         await window.AccountAPI.setGauntlet(name, ids);
         status.style.color = "#88ffbb";
         status.textContent = `Created ${name}.`;
-        event.currentTarget.reset();
-        event.currentTarget.querySelector("[name=ids]").value = currentId;
+        formElement.reset();
+        formElement.querySelector("[name=ids]").value = currentId;
       } catch (error) {
         status.textContent = error.message || "Could not create gauntlet";
       } finally {
