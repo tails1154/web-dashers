@@ -445,7 +445,25 @@ allObjects[5050] = {
   default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
   speedValue: SpeedPortal.FIFTY_TIMES
 };
-const _speedPortalIds = [200, 201, 202, 203, 1334, ..._extraSpeedPortalIds, 5050];
+allObjects[5051] = {
+  can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png",
+  gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
+  default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
+  speedValue: SpeedPortal.QUARTER_TIMES
+};
+allObjects[5052] = {
+  can_color: false, frame: "speed001-portal.png", glow_frame: "speed001-portal.png",
+  gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
+  default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
+  speedValue: SpeedPortal.HUNDREDTH_TIMES
+};
+allObjects[5053] = {
+  can_color: false, frame: "speed1-flipped-portal.png", glow_frame: "speed1-flipped-portal.png",
+  gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
+  default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
+  speedValue: SpeedPortal.ONE_TIMES
+};
+const _speedPortalIds = [200, 201, 202, 203, 1334, ..._extraSpeedPortalIds, 5050, 5051, 5052, 5053];
 for (const _spId of _speedPortalIds) {
   if (!allObjects[_spId] || allObjects[_spId].type !== "speed") {
     allObjects[_spId] = Object.assign({
@@ -473,6 +491,8 @@ GD_SPEED_PIXELS_PER_SECOND.EIGHT_TIMES = 1800.0;
 GD_SPEED_PIXELS_PER_SECOND.NINE_TIMES = 1960.0;
 GD_SPEED_PIXELS_PER_SECOND.TEN_TIMES = 2120.0;
 GD_SPEED_PIXELS_PER_SECOND.FIFTY_TIMES = 10000.0;
+GD_SPEED_PIXELS_PER_SECOND.QUARTER_TIMES = 155.79;
+GD_SPEED_PIXELS_PER_SECOND.HUNDREDTH_TIMES = 6.2316;
 
 function getSpeedPixelsPerSecondFromKey(speedKey) {
   const speedValues = [
@@ -481,7 +501,9 @@ function getSpeedPixelsPerSecondFromKey(speedKey) {
     GD_SPEED_PIXELS_PER_SECOND.TWO_TIMES,
     GD_SPEED_PIXELS_PER_SECOND.THREE_TIMES,
     GD_SPEED_PIXELS_PER_SECOND.FOUR_TIMES,
-    GD_SPEED_PIXELS_PER_SECOND.FIVE_TIMES
+    GD_SPEED_PIXELS_PER_SECOND.FIVE_TIMES,
+    GD_SPEED_PIXELS_PER_SECOND.QUARTER_TIMES,
+    GD_SPEED_PIXELS_PER_SECOND.HUNDREDTH_TIMES
   ];
   const parsed = parseInt(speedKey ?? 0, 10);
   return speedValues[parsed] ?? GD_SPEED_PIXELS_PER_SECOND.ONE_TIMES;
@@ -499,7 +521,10 @@ function getSpeedPixelsPerSecondForPortalId(id) {
     5002: GD_SPEED_PIXELS_PER_SECOND.EIGHT_TIMES,
     5003: GD_SPEED_PIXELS_PER_SECOND.NINE_TIMES,
     5004: GD_SPEED_PIXELS_PER_SECOND.TEN_TIMES,
-    5050: GD_SPEED_PIXELS_PER_SECOND.FIFTY_TIMES
+    5050: GD_SPEED_PIXELS_PER_SECOND.FIFTY_TIMES,
+    5051: GD_SPEED_PIXELS_PER_SECOND.QUARTER_TIMES,
+    5052: GD_SPEED_PIXELS_PER_SECOND.HUNDREDTH_TIMES,
+    5053: GD_SPEED_PIXELS_PER_SECOND.ONE_TIMES
   };
   return speedMap[parseInt(id ?? 0, 10)] ?? null;
 }
@@ -516,7 +541,10 @@ function getSpeedPortalValueForId(id) {
     5002: SpeedPortal.EIGHT_TIMES,
     5003: SpeedPortal.NINE_TIMES,
     5004: SpeedPortal.TEN_TIMES,
-    5050: SpeedPortal.FIFTY_TIMES
+    5050: SpeedPortal.FIFTY_TIMES,
+    5051: SpeedPortal.QUARTER_TIMES,
+    5052: SpeedPortal.HUNDREDTH_TIMES,
+    5053: SpeedPortal.ONE_TIMES
   };
   return speedMap[parseInt(id ?? 0, 10)] ?? null;
 }
@@ -2660,7 +2688,10 @@ window.LevelObject = class LevelObject {
         5002: SpeedPortal.EIGHT_TIMES,
         5003: SpeedPortal.NINE_TIMES,
         5004: SpeedPortal.TEN_TIMES,
-        5050: SpeedPortal.FIFTY_TIMES
+        5050: SpeedPortal.FIFTY_TIMES,
+        5051: SpeedPortal.QUARTER_TIMES,
+        5052: SpeedPortal.HUNDREDTH_TIMES,
+        5053: SpeedPortal.ONE_TIMES
       };
 
       speedObj.speedValue = speedMap[levelObj.id] ?? SpeedPortal.ONE_TIMES;

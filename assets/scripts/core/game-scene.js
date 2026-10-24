@@ -7640,6 +7640,12 @@ _buildSettingsPopup() {
       playerSpeed = SpeedPortal.FOUR_TIMES;
     } else if (speedKey == 5) {
       playerSpeed = SpeedPortal.FIVE_TIMES;
+    } else if (speedKey == 6) {
+      playerSpeed = SpeedPortal.QUARTER_TIMES;
+    } else if (speedKey == 7) {
+      playerSpeed = SpeedPortal.HUNDREDTH_TIMES;
+    } else if (speedKey == 8) {
+      playerSpeed = SpeedPortal.ONE_TIMES;
     }
     this._state.y = 30;
     this._state.onGround = true;
@@ -7985,6 +7991,12 @@ _buildSettingsPopup() {
       playerSpeed = SpeedPortal.FOUR_TIMES;
     } else if (speedKey == 5) {
       playerSpeed = SpeedPortal.FIVE_TIMES;
+    } else if (speedKey == 6) {
+      playerSpeed = SpeedPortal.QUARTER_TIMES;
+    } else if (speedKey == 7) {
+      playerSpeed = SpeedPortal.HUNDREDTH_TIMES;
+    } else if (speedKey == 8) {
+      playerSpeed = SpeedPortal.ONE_TIMES;
     }
     this._level.resetObjects();
     this._level._setRodframe?.(this._levelAttempts);

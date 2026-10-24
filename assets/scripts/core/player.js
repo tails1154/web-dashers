@@ -2750,7 +2750,9 @@ if (this.p.isFlying || this.p.isUfo) {
         201: "boost_02_shine_001.png",
         202: "boost_03_shine_001.png",
         203: "boost_04_shine_001.png",
-        1334: "boost_05_shine_001.png"
+        1334: "boost_05_shine_001.png",
+        5051: "boost_01_shine_001.png",
+        5052: "boost_01_shine_001.png"
       };
       const speedFrame = speedShineMap[portalCollider?.speedId] || "boost_02_shine_001.png";
       return [{ frame: speedFrame, container: this._gameLayer.topContainer }];
@@ -2993,7 +2995,9 @@ if (this.p.isFlying || this.p.isUfo) {
       [Number(portal.TWO_TIMES), 1.3],
       [Number(portal.THREE_TIMES), 1.6],
       [Number(portal.FOUR_TIMES), 1.9],
-      [Number(portal.FIVE_TIMES), 2.2]
+      [Number(portal.FIVE_TIMES), 2.2],
+      [Number(portal.QUARTER_TIMES), 0.4],
+      [Number(portal.HUNDREDTH_TIMES), 0.01]
     ] : [];
     let nearest = null;
     for (const [speed, nativeSpeed] of knownSpeeds) {

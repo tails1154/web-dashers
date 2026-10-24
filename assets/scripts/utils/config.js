@@ -104,6 +104,8 @@ function l(screenWidth) {
 }
 const u = 1 / 240;
 const SpeedPortal = {
+  QUARTER_TIMES: 2.885001,
+  HUNDREDTH_TIMES: 0.11540004,
   HALF: 9.30222544655,
   ONE_TIMES: 11.540004,
   TWO_TIMES: 14.3488938625,

@@ -976,7 +976,9 @@ class LevelEditor {
         SpeedPortal.TWO_TIMES,
         SpeedPortal.THREE_TIMES,
         SpeedPortal.FOUR_TIMES,
-        SpeedPortal.FIVE_TIMES
+        SpeedPortal.FIVE_TIMES,
+        SpeedPortal.QUARTER_TIMES,
+        SpeedPortal.HUNDREDTH_TIMES
     ];
     playerSpeed = speedValues[parseInt(pos.speed ?? 0, 10)] || SpeedPortal.ONE_TIMES;
 
@@ -1927,7 +1929,7 @@ class LevelEditor {
         // High/sparse IDs are not reached by the numeric count above.
         // Keep generated speed portals explicitly available in the speed tab.
         if (activeCatDef?.types?.includes("speed")) {
-            for (const speedId of [1334, 5000, 5001, 5002, 5003, 5004, 5050]) {
+            for (const speedId of [1334, 5000, 5001, 5002, 5003, 5004, 5050, 5051, 5052, 5053]) {
                 if (itemsForGrid.some(item => item.id === speedId)) continue;
                 const speedObject = getObjectFromId(speedId);
                 if (speedObject) itemsForGrid.push({ type: "object", id: speedId, frame: speedObject.frame });
@@ -7604,7 +7606,10 @@ class LevelEditor {
         { key: 0, label: "1x", objectId: 201 },
         { key: 2, label: "2x", objectId: 202 },
         { key: 3, label: "3x", objectId: 203 },
-        { key: 5, label: "5x", objectId: 1334 }
+        { key: 5, label: "5x", objectId: 1334 },
+        { key: 6, label: ".25x", objectId: 5051 },
+        { key: 7, label: ".01x", objectId: 5052 },
+        { key: 8, label: "1x Flip", objectId: 5053 }
     ];
 
     const modeDefs = [
@@ -8024,7 +8029,10 @@ class LevelEditor {
         { key: 0, label: "1x", objectId: 201 },
         { key: 2, label: "2x", objectId: 202 },
         { key: 3, label: "3x", objectId: 203 },
-        { key: 5, label: "5x", objectId: 1334 }
+        { key: 5, label: "5x", objectId: 1334 },
+        { key: 6, label: ".25x", objectId: 5051 },
+        { key: 7, label: ".01x", objectId: 5052 },
+        { key: 8, label: "1x Flip", objectId: 5053 }
     ];
 
     const modeDefs = [
