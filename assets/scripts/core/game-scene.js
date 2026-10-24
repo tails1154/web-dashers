@@ -9841,6 +9841,14 @@ _applyMirrorEffect() {
         window.AccountAPI?.claimDailyReward?.(dailyId, true, false).then(result => {
           if (result && Number.isFinite(Number(result.diamonds))) localStorage.setItem("wd_diamonds", String(result.diamonds));
           if (result && !result.already_claimed) {
+            let dailyClaims = [];
+            try { dailyClaims = JSON.parse(localStorage.getItem("wd_daily_claims") || "[]"); } catch (_) {}
+            if (!Array.isArray(dailyClaims)) dailyClaims = [];
+            const claimKey = `${new Date().toISOString().slice(0, 10)}:${dailyId}`;
+            if (!dailyClaims.includes(claimKey)) dailyClaims.push(claimKey);
+            localStorage.setItem("wd_daily_claims", JSON.stringify(dailyClaims.slice(-365)));
+          }
+          if (result && !result.already_claimed) {
             return this._showEndScreenRewardModal("DAILY COMPLETE", "+10 diamonds").then(() => window.AccountAPI?.syncLeaderboardStats?.());
           }
           return window.AccountAPI?.syncLeaderboardStats?.();
@@ -9879,12 +9887,33 @@ _applyMirrorEffect() {
         const levelHasStars = Number(window._selectedLevelData?.stars || window._selectedLevelData?.star_reward || 0) > 0;
         const questDate = new Date().toISOString().slice(0, 10);
         let claimedQuests = {};
+        let collectedCoins = {};
+        let dailyClaims = [];
+        let createdLevels = [];
         try { claimedQuests = JSON.parse(localStorage.getItem("wd_quest_claims") || "{}"); } catch (_) {}
+        try { collectedCoins = JSON.parse(localStorage.getItem("wd_collected_coins") || "{}"); } catch (_) {}
+        try { dailyClaims = JSON.parse(localStorage.getItem("wd_daily_claims") || "[]"); } catch (_) {}
+        try { createdLevels = JSON.parse(localStorage.getItem("created_levels") || "[]"); } catch (_) {}
         if (!claimedQuests || typeof claimedQuests !== "object") claimedQuests = {};
+        if (!collectedCoins || typeof collectedCoins !== "object") collectedCoins = {};
+        if (!Array.isArray(dailyClaims)) dailyClaims = [];
+        if (!Array.isArray(createdLevels)) createdLevels = [];
+        const totalCollectedCoins = Object.values(collectedCoins).reduce((sum, value) => sum + (Array.isArray(value) ? value.length : 0), 0);
+        const hasPracticeProgress = Object.keys(localStorage).some(key => key.startsWith("practiceBestPercent_") && Number(localStorage.getItem(key) || 0) >= 50);
+        const hasGauntletProgress = Object.keys(localStorage).some(key => {
+          if (!key.startsWith("gd_gauntlet_")) return false;
+          try { return JSON.parse(localStorage.getItem(key) || "[]").length >= 3; } catch (_) { return false; }
+        });
         for (const quest of (questData?.quests || [])) {
           const qualifies = quest.kind === "beat_any" ||
             (quest.kind === "beat_star" && levelHasStars) ||
-            (quest.kind === "rebeat_main" && /^level_\d+$/.test(String(levelId)) && wasAlreadyCompleted);
+            (quest.kind === "rebeat_main" && /^level_\d+$/.test(String(levelId)) && wasAlreadyCompleted) ||
+            (quest.kind === "beat_count" && completed >= Number(quest.target || 2)) ||
+            (quest.kind === "collect_coins" && totalCollectedCoins >= Number(quest.target || 3)) ||
+            (quest.kind === "practice_progress" && hasPracticeProgress) ||
+            (quest.kind === "create_level" && createdLevels.length >= Number(quest.target || 1)) ||
+            (quest.kind === "daily_count" && dailyClaims.length >= Number(quest.target || 2)) ||
+            (quest.kind === "gauntlet" && hasGauntletProgress);
           if (!qualifies) continue;
           const claimKey = `${questDate}:${quest.id}`;
           if (claimedQuests[claimKey]) continue;
