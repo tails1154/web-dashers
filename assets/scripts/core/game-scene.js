@@ -10904,7 +10904,16 @@ _applyMirrorEffect() {
     shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
     shade.innerHTML = `<div style="width:min(430px,calc(100vw - 32px));padding:24px;border:3px solid ${canEnter ? "#8de8ff" : "#888"};border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 12px;color:${canEnter ? "#8de8ff" : "#ddd"}">${canEnter ? "DIAMOND VAULT" : "VAULT GUARD"}</h2><p style="min-height:48px;margin:0 0 12px;font-size:18px">${message}</p><p style="color:#d98cff;margin:0 0 20px">${diamonds}/${required} diamonds</p>${canEnter ? '<input data-vault-code autocomplete="off" placeholder="Enter vault code" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font-size:17px;margin-bottom:12px"><p data-vault-error style="min-height:20px;color:#ff9b9b;margin:0 0 10px"></p><button type="button" data-enter style="padding:11px 24px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">ENTER</button>' : ''}<button type="button" data-close style="display:block;margin:12px auto 0;padding:11px 24px;border:0;border-radius:9px;background:#888;font-weight:bold;cursor:pointer">CLOSE</button></div>`;
     document.body.appendChild(shade);
-    const close = () => shade.remove();
+    // Let the input receive its normal text-editing behavior, but keep Phaser's
+    // global gameplay shortcuts from consuming those same key events.
+    const keyboardGuard = event => {
+      if (shade.contains(event.target)) event.stopPropagation();
+    };
+    ["keydown", "keyup", "keypress"].forEach(type => document.addEventListener(type, keyboardGuard));
+    const close = () => {
+      ["keydown", "keyup", "keypress"].forEach(type => document.removeEventListener(type, keyboardGuard));
+      shade.remove();
+    };
     shade.querySelector("[data-close]").addEventListener("click", close);
     shade.addEventListener("click", event => { if (event.target === shade) close(); });
     if (canEnter) {
