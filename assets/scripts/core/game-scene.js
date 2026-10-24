@@ -1482,20 +1482,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             });
           });
           shade.querySelector("[data-gauntlet]").addEventListener("click", async event => {
-            const button = event.currentTarget;
-            const error = shade.querySelector("[data-error]");
-            const name = window.prompt("Gauntlet name:");
-            const ids = window.prompt("Uploaded level IDs, comma-separated (3-5 levels):");
-            if (!name || !ids) return;
-            button.disabled = true;
-            try {
-              await window.AccountAPI.setGauntlet(name, ids.split(",").map(value => value.trim()).filter(Boolean));
-              error.style.color = "#88ffbb";
-              error.textContent = "Gauntlet saved.";
-            } catch (errorValue) {
-              error.textContent = errorValue.message || "Could not save Gauntlet";
-              button.disabled = false;
-            }
+            this._openGauntletSubmenu(lvl.id, shade);
           });
           shade.querySelector("[data-rate]").addEventListener("click", async event => {
             const button = event.currentTarget;
@@ -11010,6 +10997,88 @@ _applyMirrorEffect() {
         });
       });
     }).catch(error => status.setText(error.message || "Could not load Gauntlets").setVisible(true));
+  }
+
+  async _openGauntletSubmenu(levelId, parentShade) {
+    if (parentShade.querySelector("[data-gauntlet-submenu]")) return;
+    const currentId = String(levelId || "");
+    const panel = document.createElement("div");
+    panel.dataset.gauntletSubmenu = "1";
+    panel.style.cssText = "position:absolute;inset:0;display:grid;place-items:center;padding:20px;box-sizing:border-box;background:rgba(0,0,0,.72);z-index:2";
+    panel.innerHTML = `<div style="width:min(460px,100%);max-height:90vh;overflow:auto;padding:22px;border:3px solid #f08cff;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;color:#fff;font-family:Arial,sans-serif"><h2 style="margin:0 0 8px;text-align:center;color:#f08cff">Add to Gauntlet</h2><p style="margin:0 0 14px;text-align:center;color:#ddd">Current level <b>#${currentId}</b> is selected.</p><p data-status style="min-height:18px;margin:0 0 12px;text-align:center;color:#ff9b9b"></p><div data-existing style="display:grid;gap:8px;margin-bottom:18px"><p style="margin:0;color:#bbb">Existing gauntlets</p><p data-loading style="margin:0;color:#aaa">Loading…</p></div><form data-create style="border-top:1px solid #555;padding-top:16px"><p style="margin:0 0 8px;color:#bbb">Create a new gauntlet</p><input name="name" required maxlength="40" placeholder="Gauntlet name" style="box-sizing:border-box;width:100%;padding:10px;border-radius:8px;border:2px solid #777;font-size:16px;margin-bottom:8px"><input name="ids" required value="${currentId}" placeholder="Level IDs, comma-separated (1-5)" style="box-sizing:border-box;width:100%;padding:10px;border-radius:8px;border:2px solid #777;font-size:16px"><small style="display:block;color:#aaa;margin:6px 0 12px">The current level is preselected. Add at least two more IDs for a playable gauntlet.</small><div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" data-back style="padding:10px 16px;border:0;border-radius:8px;background:#888;font-weight:bold">Back</button><button type="submit" style="padding:10px 16px;border:0;border-radius:8px;background:#f08cff;font-weight:bold">Create</button></div></form></div>`;
+    parentShade.appendChild(panel);
+    const status = panel.querySelector("[data-status]");
+    const existing = panel.querySelector("[data-existing]");
+    const close = () => panel.remove();
+    panel.querySelector("[data-back]").addEventListener("click", close);
+    const addCurrent = async (gauntlet, button) => {
+      const ids = (gauntlet.levels || []).map(level => String(level.id));
+      if (ids.includes(currentId)) {
+        status.style.color = "#88ffbb";
+        status.textContent = "This level is already in that gauntlet.";
+        return;
+      }
+      if (ids.length >= 5) {
+        status.textContent = "That gauntlet already has five levels.";
+        return;
+      }
+      button.disabled = true;
+      try {
+        await window.AccountAPI.setGauntlet(gauntlet.name, [...ids, currentId]);
+        status.style.color = "#88ffbb";
+        status.textContent = `Added level #${currentId} to ${gauntlet.name}.`;
+        button.textContent = "Added";
+      } catch (error) {
+        status.textContent = error.message || "Could not update gauntlet";
+        button.disabled = false;
+      }
+    };
+    try {
+      const data = await window.AccountAPI.getGauntlets();
+      const gauntlets = Array.isArray(data.gauntlets) ? data.gauntlets : [];
+      panel.querySelector("[data-loading]")?.remove();
+      if (!gauntlets.length) {
+        const empty = document.createElement("p");
+        empty.textContent = "No gauntlets yet. Create one below.";
+        empty.style.color = "#aaa";
+        existing.appendChild(empty);
+      }
+      gauntlets.forEach(gauntlet => {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px;border-radius:8px;background:#202020";
+        const label = document.createElement("span");
+        label.textContent = `${gauntlet.name} (${(gauntlet.levels || []).length}/5)`;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = (gauntlet.levels || []).some(level => String(level.id) === currentId) ? "Added" : "Add current";
+        button.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#f08cff;font-weight:bold";
+        button.disabled = button.textContent === "Added";
+        button.addEventListener("click", () => addCurrent(gauntlet, button));
+        row.append(label, button);
+        existing.appendChild(row);
+      });
+    } catch (error) {
+      panel.querySelector("[data-loading]").textContent = error.message || "Could not load gauntlets";
+    }
+    panel.querySelector("[data-create]").addEventListener("submit", async event => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const name = String(form.get("name") || "").trim();
+      const ids = String(form.get("ids") || "").split(",").map(value => value.trim()).filter(Boolean);
+      const button = event.currentTarget.querySelector("button[type=submit]");
+      button.disabled = true;
+      try {
+        await window.AccountAPI.setGauntlet(name, ids);
+        status.style.color = "#88ffbb";
+        status.textContent = `Created ${name}.`;
+        event.currentTarget.reset();
+        event.currentTarget.querySelector("[name=ids]").value = currentId;
+      } catch (error) {
+        status.textContent = error.message || "Could not create gauntlet";
+      } finally {
+        button.disabled = false;
+      }
+    });
   }
 
   _getGauntletProgress(gauntlet) {
