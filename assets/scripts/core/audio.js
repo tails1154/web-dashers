@@ -84,7 +84,7 @@ class AudioManager {
     return !!this._pendingMusicLoadKey || !!this._pendingOnlineSongLoadKey || this.isplaying();
   }
   _getLevelSongStartOffset() {
-    const rawOffset = window.settingsMap?.["kA13"] ?? 0;
+    const rawOffset = window.settingsMap?.["kA13"] ?? window.currentlevel?.songStartOffset ?? 0;
     const parsedOffset = Number(rawOffset);
     return Number.isFinite(parsedOffset) ? parsedOffset : 0;
   }

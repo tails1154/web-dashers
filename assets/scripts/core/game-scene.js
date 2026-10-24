@@ -4809,7 +4809,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const arrowL = this.add.image(55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(true).setInteractive();
     const arrowR = this.add.image(sw - 55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(false).setInteractive();
     const allLevels = window.allLevels || [];
-    const visibleLevels = allLevels.filter(level => !(level && level[2] === "level_22"));
+    const visibleLevels = allLevels.filter(level => !(level && ["level_22", "level_23", "level_24", "level_25"].includes(level[2])));
     const pageCount = visibleLevels.length + 1;
     let currentPageIndex = visibleLevels.findIndex(l => l[2] === window.currentlevel[2]);
     if (currentPageIndex < 0) currentPageIndex = 0;
@@ -5044,6 +5044,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         "level_20":        "diffIcon_06_btn_001",
         "level_21":        "diffIcon_05_btn_001",
         "level_22":        "diffIcon_05_btn_001",
+      "level_24":        "diffIcon_03_btn_001",
         "level_99":        "diffIcon_10_btn_001",
         "level_100":       "diffIcon_10_btn_001",
         "level_137409445": "diffIcon_00_btn_001",
@@ -7565,6 +7566,8 @@ _buildSettingsPopup() {
       this._player.enterRobotMode();
     } else if (gamemode == 6) {
       this._player.enterSpiderMode();
+    } else if (gamemode == 8) {
+      this._player.enterFlipMode();
     }
 
     this._applyLevelStartOptions();
@@ -7928,6 +7931,8 @@ _buildSettingsPopup() {
         this._player.enterRobotMode();
       } else if (pos.gameMode == 6) {
         this._player.enterSpiderMode();
+      } else if (pos.gameMode == 8) {
+        this._player.enterFlipMode();
       }
       this._state.gravityFlipped = pos.gravityFlipped;
       this._state.isMini = pos.miniMode;
@@ -7980,6 +7985,8 @@ _buildSettingsPopup() {
         this._player.enterRobotMode();
       } else if (gamemode == 6) {
         this._player.enterSpiderMode();
+      } else if (gamemode == 8) {
+        this._player.enterFlipMode();
       }
 
       this._applyLevelStartOptions();
@@ -8011,15 +8018,10 @@ _buildSettingsPopup() {
   }
   _getStartPosMusicOffset(){
     const startPositions = this._level.getStartPositions();
-    const levelId = String(window.currentlevel?.[2] || "");
-    let configuredOffset = 0;
-    // Optional per-level start offsets are measured in seconds. They can be
-    // supplied by level data or configured at runtime with GDSetSongStartOffset.
-    configuredOffset = Number(window.currentlevel?.songStartOffset || 0) || 0;
     if (this._startPosIndex !== -1 && startPositions[this._startPosIndex]) {
-      return Math.max(0, this._getSongOffsetForWorldX(startPositions[this._startPosIndex].x) + configuredOffset);
+      return Math.max(0, this._getSongOffsetForWorldX(startPositions[this._startPosIndex].x));
     }
-    return Math.max(0, configuredOffset);
+    return 0;
   }
   _getCurrentMusicSyncOffset() {
     if (this._startPosIndex !== -1 && this._playerWorldX <= 0) {

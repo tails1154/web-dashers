@@ -993,6 +993,8 @@ class LevelEditor {
         this._player.enterRobotMode();
     } else if (gamemode == 6) {
         this._player.enterSpiderMode();
+    } else if (gamemode == 8) {
+        this._player.enterFlipMode();
     }
 
     this._state.isMini = parseInt(pos.miniMode ?? 0, 10) === 1;
@@ -1048,6 +1050,8 @@ class LevelEditor {
       this._player.enterRobotMode();
     } else if (gamemode == 6) {
       this._player.enterSpiderMode();
+    } else if (gamemode == 8) {
+      this._player.enterFlipMode();
     }
 
     const getBool = (key) => parseInt(window.settingsMap?.[key] || "0", 10) === 1;
@@ -7561,7 +7565,8 @@ class LevelEditor {
         { key: 4, label: "Wave", frame: "gj_dartBtn_off_001.png", rotateFlip: false },
         { key: 5, label: "Robot", frame: "gj_robotBtn_off_001.png", rotateFlip: false },
         { key: 6, label: "Spider", frame: "gj_spiderBtn_off_001.png", rotateFlip: false },
-        { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false }
+        { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false },
+        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false }
     ];
 
     const leftX = -165;
@@ -7980,7 +7985,8 @@ class LevelEditor {
         { key: 4, label: "Wave", frame: "gj_dartBtn_off_001.png", rotateFlip: false },
         { key: 5, label: "Robot", frame: "gj_robotBtn_off_001.png", rotateFlip: false },
         { key: 6, label: "Spider", frame: "gj_spiderBtn_off_001.png", rotateFlip: false },
-        { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false }
+        { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false },
+        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false }
     ];
 
     const makeArtDefs = (prefix, count) => {

@@ -130,6 +130,27 @@ window.allLevels = [
 	    "Dash",
 	    "level_22",
 	    ["RobTop", "MDK"]
+	],
+	[
+	    "power_trip",
+	    "Power Trip",
+	    "level_23",
+	    ["Boom Kitty", "Boom Kitty"],
+	    "PowerTrip"
+	],
+	[
+	    "the_7_seas",
+	    "The 7 Seas",
+	    "level_24",
+	    ["RobTop", "F-777"],
+	    "The7Seas"
+	],
+	[
+	    "nock_em",
+	    "Nock Em",
+	    "level_25",
+	    ["RobTop", "Bossfight"],
+	    "NockEm"
     ],/*
     [
         "every_end",
