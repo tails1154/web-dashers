@@ -328,10 +328,14 @@ class WaveTrail {
 }
 function ds(scene, x, y, frameName, depth, isVisible) {
   let atlasData = getAtlasFrame(scene, frameName);
-  if (!atlasData) {
+  let image;
+  if (atlasData) {
+    image = scene.add.image(x, y, atlasData.atlas, atlasData.frame);
+  } else if (scene?.textures?.exists?.(frameName)) {
+    image = scene.add.image(x, y, frameName);
+  } else {
     return null;
   }
-  let image = scene.add.image(x, y, atlasData.atlas, atlasData.frame);
   image.setDepth(depth);
   image.setVisible(isVisible);
   return {
