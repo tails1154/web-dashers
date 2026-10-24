@@ -940,6 +940,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           .setScrollFactor(0).setDepth(104).setScale(btnScale);
         const isSearchButton  = frame === "GJ_searchBtn_001.png";
         const isMapButton = frame === "GJ_mapBtn_001.png";
+        const isPathsButton = frame === "GJ_pathsBtn_001.png";
         const isHighscoreButton = frame === "GJ_highscoreBtn_001.png";
         const isQuestButton = frame === "GJ_challengeBtn_001.png";
         const isFeaturedButton = frame === "GJ_featuredBtn_001.png";
@@ -954,6 +955,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           // Map is intentionally unavailable until server-side map progression is ready.
           btn.postFX.addColorMatrix().grayscale(1);
           btn.setTint(0xafafaf);
+        } else if (isPathsButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openPathsScene();
+          }, () => true);
         } else if (isQuestButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => this._showQuestPanel(), () => true);
@@ -11471,6 +11478,80 @@ _applyMirrorEffect() {
     shade.innerHTML = '<div style="width:min(520px,calc(100vw - 32px));padding:28px;border:3px solid #8de8ff;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 18px;color:#8de8ff">THE GUARDIAN</h2><p style="margin:0;font-size:22px;line-height:1.45">You were never supposed to beat this...<br>You have no idea what you have done</p></div>';
     document.body.appendChild(shade);
     this.time.delayedCall(3600, () => window.location.reload());
+  }
+
+  _showPathUnlockToast(iconId, rewardName) {
+    const sw = screenWidth;
+    const toast = this.add.container(sw / 2, 92).setScrollFactor(0).setDepth(1200);
+    const bg = this.add.rectangle(0, 0, 560, 88, 0x182642, 0.98).setStrokeStyle(4, 0xffd84d, 1);
+    const icon = this.add.image(-220, 0, "GJ_GameSheetIcons", `${iconId}_001.png`).setScale(0.9);
+    const title = this.add.bitmapText(-165, -18, "goldFont", "PATH REWARD UNLOCKED!", 24).setOrigin(0, 0.5);
+    const text = this.add.bitmapText(-165, 18, "bigFont", rewardName, 22).setOrigin(0, 0.5);
+    toast.add([bg, icon, title, text]);
+    this.tweens.add({ targets: toast, y: 120, duration: 250, ease: "Back.Out" });
+    this.tweens.add({ targets: toast, alpha: 0, delay: 2800, duration: 450, onComplete: () => toast.destroy(true) });
+  }
+
+  _openPathsScene() {
+    if (this._pathsOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    this._pathsOverlay = root;
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x081329, 0.98).setOrigin(0).setInteractive();
+    const panel = this.add.rectangle(sw / 2, sh / 2 + 12, Math.min(1040, sw - 48), Math.min(590, sh - 100), 0x172642, 1).setStrokeStyle(5, 0x8de8ff, 1);
+    const title = this.add.bitmapText(sw / 2, 48, "goldFont", "PATHS", 48).setOrigin(0.5);
+    const subtitle = this.add.bitmapText(sw / 2, 86, "bigFont", "A free reward path — stars, diamonds, and coins all count as XP", 22).setOrigin(0.5).setTint(0xbfeeff);
+    const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, panel, title, subtitle, close]);
+    this._makeBouncyButton(close, 1, () => {
+      root.destroy(true);
+      this._pathsOverlay = null;
+      this._openCreatorMenu();
+    });
+
+    const stars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
+    const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
+    const coins = Math.max(0, Number(window.WDCoinEconomy?.getBalance?.() || 0));
+    const currentXP = stars + diamonds + coins;
+    const savedXP = Math.max(currentXP, parseInt(localStorage.getItem("wd_paths_xp") || "0", 10) || 0);
+    localStorage.setItem("wd_paths_xp", String(savedXP));
+    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `PATH XP: ${savedXP}   •   Stars ${stars}   Diamonds ${diamonds}   Coins ${coins}`, 25).setOrigin(0.5).setTint(0xffe45c);
+    root.add(xpLabel);
+
+    // Server-configurable paths can replace this reward list later; each entry
+    // is intentionally just a star/XP threshold and an icon reward.
+    const rewards = [
+      { xp: 5, icon: "player_02", name: "Blue Cube" },
+      { xp: 15, icon: "player_05", name: "Sharp Cube" },
+      { xp: 30, icon: "player_10", name: "Pulse Cube" },
+      { xp: 50, icon: "player_15", name: "Orbit Cube" },
+      { xp: 75, icon: "player_20", name: "Crown Cube" },
+    ];
+    const claimed = (() => { try { return JSON.parse(localStorage.getItem("wd_paths_claimed") || "{}"); } catch (_) { return {}; } })();
+    const startX = sw / 2 - ((rewards.length - 1) * 150) / 2;
+    const line = this.add.graphics().lineStyle(12, 0x48627e, 1);
+    line.lineBetween(startX, 280, startX + (rewards.length - 1) * 150, 280);
+    root.add(line);
+    rewards.forEach((reward, index) => {
+      const x = startX + index * 150;
+      const unlocked = savedXP >= reward.xp;
+      const alreadyClaimed = !!claimed[reward.icon];
+      const node = this.add.circle(x, 280, 42, unlocked ? 0xffd84d : 0x4d5e70, 1).setStrokeStyle(5, unlocked ? 0xffffff : 0x8190a0, 1);
+      const icon = this.add.image(x, 280, "GJ_GameSheetIcons", `${reward.icon}_001.png`).setScale(0.72).setAlpha(unlocked ? 1 : 0.38);
+      const xp = this.add.bitmapText(x, 345, "goldFont", `${reward.xp} XP`, 23).setOrigin(0.5);
+      const label = this.add.bitmapText(x, 378, "bigFont", unlocked ? reward.name : "LOCKED", 17).setOrigin(0.5).setTint(unlocked ? 0xffffff : 0x9aa8b8);
+      root.add([node, icon, xp, label]);
+      if (unlocked && !alreadyClaimed) {
+        if (window.WDCoinEconomy?.unlockIcon?.(reward.icon, this)) {
+          claimed[reward.icon] = true;
+          localStorage.setItem("wd_paths_claimed", JSON.stringify(claimed));
+          this._showPathUnlockToast(reward.icon, reward.name);
+        }
+      }
+    });
+    const note = this.add.bitmapText(sw / 2, sh - 82, "bigFont", "Milestones are free and permanent. Mods set the reward thresholds.", 21).setOrigin(0.5).setTint(0xbfeeff);
+    root.add(note);
   }
 
   _openMapScene() {

@@ -217,6 +217,15 @@
       if (!isLockableIcon(icon) || isDefaultIcon(icon)) return true;
       return readOwnedIcons().has(icon);
     },
+    unlockIcon(id, scene) {
+      const iconId = normalizeIcon(id);
+      if (!isLockableIcon(iconId) || isDefaultIcon(iconId) || this.ownsIcon(iconId)) return false;
+      const owned = readOwnedIcons();
+      owned.add(iconId);
+      localStorage.setItem(OWNED_ICONS_KEY, JSON.stringify([...owned]));
+      notify(scene);
+      return true;
+    },
     buyIcon(id, scene) {
       const iconId = normalizeIcon(id);
       if (!isLockableIcon(iconId) || isDefaultIcon(iconId) || this.ownsIcon(iconId)) return false;
