@@ -5392,6 +5392,8 @@ if (this.p.isFlying || this.p.isUfo) {
             } catch(e) {}
           }
         } else if (_colType === hazardType) {
+          // Phase's ghost toggle applies to hazards as well as solid blocks.
+          if (this.p.isPhase && this.p.phaseGhosted) continue;
           if (this.p.extraGamemode === "shield" && this.p.extraGamemodeTimer > 0) continue;
           if (window.noClip) {
             this.p.diedThisFrame = true; 
