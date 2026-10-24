@@ -277,10 +277,10 @@ class BootScene extends Phaser.Scene {
       this.load.image("flip-icon.png", "assets/generated/gamemode-portals/flip-icon.png?v=1");
       this.load.image("vector-portal-front.png", "assets/generated/gamemode-portals/vector-portal-front.png?v=1");
       this.load.image("phase-portal-front.png", "assets/generated/gamemode-portals/phase-portal-front.png?v=1");
-      this.load.image("shop_cube_cyan_001.png", "assets/generated/shop_cube_cyan_001.png?v=3");
-      this.load.image("shop_cube_magenta_001.png", "assets/generated/shop_cube_magenta_001.png?v=3");
-      this.load.image("shop_cube_gold_001.png", "assets/generated/shop_cube_gold_001.png?v=3");
-      this.load.image("shop_cube_emerald_001.png", "assets/generated/shop_cube_emerald_001.png?v=3");
+      this.load.image("shop_cube_cyan_001.png", "assets/generated/shop_cube_cyan_001.png?v=4");
+      this.load.image("shop_cube_magenta_001.png", "assets/generated/shop_cube_magenta_001.png?v=4");
+      this.load.image("shop_cube_gold_001.png", "assets/generated/shop_cube_gold_001.png?v=4");
+      this.load.image("shop_cube_emerald_001.png", "assets/generated/shop_cube_emerald_001.png?v=4");
       this.load.image("GJ_button01", "assets/sprites/GJ_button_01.png");
       this.load.image("GJ_button02", "assets/sprites/GJ_button_02.png");
       this.load.image("GJ_button03", "assets/sprites/GJ_button_03.png");
