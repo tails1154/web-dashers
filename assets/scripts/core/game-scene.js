@@ -734,9 +734,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._menuAchievementsBtn = this.add.image(centerX - 12, screenHeight - 90, "GJ_GameSheet03", "GJ_achBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive();
     this._expandHitArea(this._menuAchievementsBtn, 1);
     this._makeBouncyButton(this._menuAchievementsBtn, 1, () => window.GDAchievements?.showPanel(), () => this._menuActive);
-    this._menuShopBtn = this.add.image(centerX - 92, screenHeight - 90, "GJ_GameSheet03", "GJ_diamondsIcon_001.png").setScrollFactor(0).setDepth(30).setScale(0.78).setInteractive();
-    this._expandHitArea(this._menuShopBtn, 1.7);
-    this._makeBouncyButton(this._menuShopBtn, 0.78, () => this._openDiamondShop?.(), () => this._menuActive && !this._diamondShopOverlay);
     this._menuNewgroundsBtn = this.add.image(centerX + 312, screenHeight - 90, "GJ_GameSheet03", "GJ_ngBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive();
     this._expandHitArea(this._menuNewgroundsBtn, 1);
     this._makeBouncyButton(this._menuNewgroundsBtn, 1, () => {
@@ -7668,9 +7665,6 @@ _buildSettingsPopup() {
     if (this._menuAchievementsBtn) {
       this._menuAchievementsBtn.setVisible(false);
     }
-    if (this._menuShopBtn) {
-      this._menuShopBtn.setVisible(false);
-    }
     if (this._menuStatsBtn) {
       this._menuStatsBtn.setVisible(false);
     }
@@ -7684,13 +7678,6 @@ _buildSettingsPopup() {
       _dismiss(this._iconBtn, { scale: 0.01, duration: 200, ease: "Quad.In" }, () => {
         this._iconBtn.destroy();
         this._iconBtn = null;
-      });
-    }
-    if (this._menuShopBtn) {
-      this._closeDiamondShop?.();
-      _dismiss(this._menuShopBtn, { scale: 0.01, duration: 200, ease: "Quad.In" }, () => {
-        this._menuShopBtn.destroy();
-        this._menuShopBtn = null;
       });
     }
     _dismiss(this._chrSelDecor, { y: screenHeight + 100, alpha: 0, duration: 200, ease: "Quad.In" }, () => {
@@ -8043,10 +8030,6 @@ _buildSettingsPopup() {
         yoyo: true,
         repeat: -1
       });
-    }
-    if (this._menuShopBtn) {
-      this._menuShopBtn.x = _0x1e5db8 - 92;
-      this._menuShopBtn.y = screenHeight - 90;
     }
     if (this._creatorBtn) {
       this._creatorBtn.x = (screenWidth / 2) + this._playBtn.width / 2 + 100 + (this._creatorBtn.width * this._creatorBtn.scaleX) / 2;
