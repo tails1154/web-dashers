@@ -152,13 +152,7 @@ window.allLevels = [
 	    ["RobTop", "Bossfight"],
 	    "NockEm"
     ],
-	[
-	    "the_challenge_song",
-	    "DJRubRub",
-	    "level_3001",
-	    ["RobTop", "DJRubRub"],
-	    "TheChallenge"
-    ],/*
+	/*
     [
         "every_end",
 	    "Every End",

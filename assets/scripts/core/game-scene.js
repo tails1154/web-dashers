@@ -10932,12 +10932,21 @@ _applyMirrorEffect() {
         }
         close();
         window._selectedLevelData = {
-          id: "77243245", name: "The Challenge", author: "RobsVault",
+          id: "3001", name: "The Challenge", author: "RobTop",
           songName: "DJRubRub", officialSong: 0, difficulty: 3, stars: 0
         };
-        // Start the imported level immediately; the normal online-level loader
-        // provides the loading screen and transitions directly into gameplay.
-        this._playSelectedOnlineLevel(window._selectedLevelData);
+        window.currentlevel = [
+          "the_challenge_song", "The Challenge", "level_3001",
+          ["Local", "DJRubRub"], "TheChallenge"
+        ];
+        this._closeCreatorMenu(true);
+        this.load.text("level_3001", "assets/levels/3001.txt");
+        this.load.audio("the_challenge_song", "assets/music/TheChallenge.mp3");
+        this.load.once("complete", () => {
+          this.game.registry.set("autoStartGame", true);
+          this.scene.restart();
+        });
+        this.load.start();
       };
       shade.querySelector("[data-enter]").addEventListener("click", enter);
       codeInput.addEventListener("keydown", event => { if (event.key === "Enter") enter(); });
