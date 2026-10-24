@@ -9840,7 +9840,9 @@ _applyMirrorEffect() {
         const dailyId = String(window._dailyLevelId || window._selectedLevelData?.id || window.currentlevel?.[2] || "").replace(/^online_/, "");
         window.AccountAPI?.claimDailyReward?.(dailyId, true, false).then(result => {
           if (result && Number.isFinite(Number(result.diamonds))) localStorage.setItem("wd_diamonds", String(result.diamonds));
-          if (result && !result.already_claimed) window.alert("Daily Level complete! +10 diamonds");
+          if (result && !result.already_claimed) {
+            return this._showEndScreenRewardModal("DAILY COMPLETE", "+10 diamonds").then(() => window.AccountAPI?.syncLeaderboardStats?.());
+          }
           return window.AccountAPI?.syncLeaderboardStats?.();
         }).catch(error => console.warn("Daily reward was not claimed:", error));
         window._dailyLevelActive = false;
@@ -9883,7 +9885,9 @@ _applyMirrorEffect() {
           try {
             const reward = await window.AccountAPI.claimQuest(quest.id);
             if (reward && Number.isFinite(Number(reward.diamonds))) localStorage.setItem("wd_diamonds", String(reward.diamonds));
-            if (reward && !reward.already_claimed) window.alert(`Quest complete! +${reward.awarded} diamonds`);
+            if (reward && !reward.already_claimed) {
+              await this._showEndScreenRewardModal("QUEST COMPLETE", `+${reward.awarded} diamonds`);
+            }
             await window.AccountAPI.syncLeaderboardStats();
           } catch (questError) {
             console.warn("Quest reward was not claimed:", questError);
@@ -9916,6 +9920,29 @@ _applyMirrorEffect() {
       stroke: "#000000", strokeThickness: 6
     }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
     this.tweens.add({ targets: text, alpha: 0, delay: 1600, duration: 500, onComplete: () => text.destroy() });
+  }
+
+  _showEndScreenRewardModal(title, message) {
+    return new Promise(resolve => {
+      const overlay = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.72)
+        .setOrigin(0).setScrollFactor(0).setDepth(1200).setInteractive();
+      const panel = this.add.nineslice(screenWidth / 2, screenHeight / 2, "GJ_button01", null, 520, 260, 24, 24, 24, 24)
+        .setScrollFactor(0).setDepth(1201);
+      const heading = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 72, "goldFont", title, 34)
+        .setOrigin(0.5).setScrollFactor(0).setDepth(1202);
+      const reward = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 18, "bigFont", message, 30)
+        .setOrigin(0.5).setScrollFactor(0).setDepth(1202);
+      const button = this.add.nineslice(screenWidth / 2, screenHeight / 2 + 78, "GJ_button01", null, 190, 58, 20, 20, 20, 20)
+        .setScrollFactor(0).setDepth(1202).setInteractive();
+      const label = this.add.bitmapText(screenWidth / 2, screenHeight / 2 + 77, "goldFont", "CONTINUE", 24)
+        .setOrigin(0.5).setScrollFactor(0).setDepth(1203);
+      const objects = [overlay, panel, heading, reward, button, label];
+      const close = () => {
+        objects.forEach(object => object.destroy());
+        resolve();
+      };
+      this._makeCompositeBouncyButton(button, [button, label], 1, close, () => true);
+    });
   }
 
   _showStarRewardAnimation(amount) {
