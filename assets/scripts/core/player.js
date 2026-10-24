@@ -4448,6 +4448,7 @@ if (this.p.isFlying || this.p.isUfo) {
             : centeredCameraY;
         }
         this._spawnSpiderTeleportEffects(oldY, target.y);
+        this._scene?._syncDualFlipPlayer?.(this, target);
       } else {
         this.p.yVelocity = 0;
         this.p.canJump = false;

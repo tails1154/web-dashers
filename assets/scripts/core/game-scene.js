@@ -9772,6 +9772,40 @@ _applyMirrorEffect() {
     this._ensureDualFlyBounds();
     return gravitySynced;
   }
+  _syncDualFlipPlayer(sourcePlayer, sourceTarget) {
+    if (!this._isDual || !sourcePlayer || !sourceTarget || !this._player || !this._player2) return;
+    const otherPlayer = sourcePlayer === this._player ? this._player2 : this._player;
+    const otherState = sourcePlayer === this._player ? this._state2 : this._state;
+    if (!otherPlayer || !otherState || otherState.isDead || !otherState.isFlip) return;
+
+    // The primary player handles the click first. Apply the same surface search
+    // to the other dual player before its normal input step can run.
+    const otherTarget = otherPlayer._findFlipTeleportSurface?.(this._playerWorldX);
+    otherState.upKeyPressed = false;
+    otherState.queuedHold = false;
+    if (otherTarget?.dead) {
+      otherPlayer.killPlayer();
+      return;
+    }
+    if (!otherTarget || !Number.isFinite(otherTarget.y)) {
+      otherState.yVelocity = 0;
+      otherState.canJump = false;
+      otherState.onGround = false;
+      otherState.onCeiling = false;
+      return;
+    }
+    const oldY = otherState.y;
+    otherState.y = otherTarget.y;
+    otherState.lastY = otherTarget.y;
+    otherState.lastGroundPosY = otherTarget.y;
+    otherPlayer.flipGravity(otherTarget.gravityFlipped, 1.0);
+    otherState.onGround = !otherTarget.gravityFlipped;
+    otherState.onCeiling = otherTarget.gravityFlipped;
+    otherState.canJump = true;
+    otherState.yVelocity = 0;
+    otherState.isJumping = false;
+    otherPlayer._spawnSpiderTeleportEffects?.(oldY, otherTarget.y);
+  }
   _syncDualGlobalsFromSecondary(options = {}) {
     if (!this._isDual || !this._state || !this._state2 || this._state.isDead || this._state2.isDead) return false;
     let gravitySynced = false;
