@@ -873,11 +873,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setScrollFactor(0).setDepth(152).setOrigin(0, 1)
       const diamondEntryCost = 25;
       const treasureroom = this.add.image(sw - 55, 40, "GJ_GameSheet03", "GJ_lock_001.png")
-        .setScrollFactor(0).setDepth(104).setTint(0x666666).setInteractive();
+        .setScrollFactor(0).setDepth(104).setInteractive();
       this._makeBouncyButton(treasureroom, 1, () => {
         const diamonds = parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0;
         if (diamonds >= diamondEntryCost) {
-          treasureroom.clearTint();
           this._showDiamondGuard(true, diamonds, diamondEntryCost);
         } else {
           this._showDiamondGuard(false, diamonds, diamondEntryCost);
