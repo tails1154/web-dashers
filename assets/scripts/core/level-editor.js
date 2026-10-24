@@ -649,6 +649,7 @@ class LevelEditor {
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
     this._level.resetMoveTriggers();
+    this._level.resetZoomTriggers?.();
     this._level.resetVisibility();
 
     this._colorManager.reset();
@@ -1481,7 +1482,13 @@ class LevelEditor {
             this._level.checkTouchMoveTriggers(playerX, this._state2.y);
         }
     }
+    this._level.checkZoomTriggers?.(playerX);
+    this._level.checkTouchZoomTriggers?.(playerX, this._state.y);
+    if (this._isDual && !this._state2.isDead) {
+        this._level.checkTouchZoomTriggers?.(playerX, this._state2.y);
+    }
     this._level.stepMoveTriggers(deltaTime / 1000);
+    this._level.stepZoomTriggers?.(deltaTime / 1000);
     this._level.stepSpawnTriggers(deltaTime / 1000, this._colorManager);
     this._level.checkAlphaTriggers(playerX);
     this._level.stepAlphaTriggers(deltaTime / 1000);
@@ -6099,6 +6106,8 @@ class LevelEditor {
         this._openEditorMoveTriggerOptionsPopup(saveObj);
     } else if (this._isEditorSpawnTriggerId(saveObj.id)) {
         this._openEditorSpawnTriggerOptionsPopup(saveObj);
+    } else if (this._isEditorZoomTriggerId(saveObj.id)) {
+        this._openEditorZoomTriggerOptionsPopup(saveObj);
     } else if (this._isEditorStartPositionId(saveObj.id)) {
         this._openEditorStartPositionOptionsPopup(saveObj);
     } else if (this._isEditorTextObjectId(saveObj.id)) {
@@ -6116,6 +6125,46 @@ class LevelEditor {
 
   _isEditorSpawnTriggerId(id) {
     return parseInt(id ?? 0, 10) === 1268;
+  }
+
+
+  _isEditorZoomTriggerId(id) {
+    return parseInt(id ?? 0, 10) === 1913;
+  }
+
+
+  _getEditorZoomTriggerValue(saveObj) {
+    const value = parseFloat(saveObj?._raw?.[28] ?? saveObj?._raw?.["28"] ?? 1);
+    return Number.isFinite(value) ? Phaser.Math.Clamp(value, 0.1, 4) : 1;
+  }
+
+
+  _setEditorZoomTriggerValue(saveObj, value) {
+    if (!saveObj) return;
+    const zoom = Phaser.Math.Clamp(parseFloat(value) || 1, 0.1, 4);
+    saveObj._raw = saveObj._raw || {};
+    saveObj._raw[28] = String(Number(zoom.toFixed(2)));
+    saveObj._raw["28"] = saveObj._raw[28];
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    for (const trigger of this._level?._zoomTriggers || []) {
+      if (trigger?.uid === linkedId) trigger.targetZoom = zoom;
+    }
+  }
+
+
+  _openEditorZoomTriggerOptionsPopup(saveObj) {
+    const zoom = window.prompt("Zoom amount (1 = normal):", String(this._getEditorZoomTriggerValue(saveObj)));
+    if (zoom === null) return;
+    this._setEditorZoomTriggerValue(saveObj, zoom);
+    const duration = window.prompt("Duration in seconds (0 = instant):", String(parseFloat(saveObj?._raw?.[10] ?? saveObj?._raw?.["10"] ?? 0) || 0));
+    if (duration === null) return;
+    const value = Math.max(0, parseFloat(duration) || 0);
+    saveObj._raw[10] = String(Number(value.toFixed(2)));
+    saveObj._raw["10"] = saveObj._raw[10];
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    for (const trigger of this._level?._zoomTriggers || []) {
+      if (trigger?.uid === linkedId) trigger.duration = value;
+    }
   }
 
 
@@ -6152,6 +6201,7 @@ class LevelEditor {
     updateList(this._level?._rotateTriggers);
     updateList(this._level?._pulseTriggers);
     updateList(this._level?._spawnTriggers);
+    updateList(this._level?._zoomTriggers);
     this._refreshSelectedTriggerTargetLabel();
     this._level?.updateTriggerEditorVisuals?.();
   }
@@ -9000,6 +9050,9 @@ LevelEditor.methodNames = [
   "_openSelectedEditorObjectOptions",
   "_isEditorMoveTriggerId",
   "_isEditorSpawnTriggerId",
+  "_isEditorZoomTriggerId",
+  "_getEditorZoomTriggerValue",
+  "_setEditorZoomTriggerValue",
   "_parseEditorSingleGroupId",
   "_getEditorTriggerTargetGroup",
   "_setEditorTriggerTargetGroup",
@@ -9015,6 +9068,7 @@ LevelEditor.methodNames = [
   "_setEditorSpawnTriggerRandomDelay",
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
+  "_openEditorZoomTriggerOptionsPopup",
   "_isEditorColorTriggerTouchTriggered",
   "_setEditorColorTriggerTouchTriggered",
   "_isEditorTriggerSpawnTriggered",

@@ -53,10 +53,12 @@ class Collider {
     if (surfaceY === null) return false;
     return this.isSolidBelowSurface(gravityFlipped) ? worldY < surfaceY : worldY > surfaceY;
   }
-  getSlopeBackWallSide(gravityFlipped = false) {
-    let leftWall = this.slopeDir > 0;
-    if (!this.isSolidBelowSurface(gravityFlipped)) leftWall = !leftWall;
-    return leftWall ? "left" : "right";
+  getSlopeBackWallSide() {
+    // Native slopeWallLeft() is derived from the slope orientation only;
+    // gravity changes which side the player lands on, not the slope's flat
+    // vertical wall.
+    const wallIsRight = (this.slopeDir > 0) !== this.slopeFlipY;
+    return wallIsRight ? "right" : "left";
   }
 }
 const ldm_object = new Set([
@@ -451,6 +453,10 @@ for (const _spId of _speedPortalIds) {
       gridH: 1,
     }, allObjects[_spId] || {}, { type: "speed" });
   }
+  if (_spId !== 200) {
+    allObjects[_spId].gridW = 1;
+    allObjects[_spId].gridH = 3;
+  }
 }
 
 const GD_SPEED_PIXELS_PER_SECOND = {
@@ -613,6 +619,10 @@ window.LevelObject = class LevelObject {
     this._moveTriggers = [];
     this._moveTriggerIdx = 0;
     this._activeMoveTweens = [];
+    this._zoomTriggers = [];
+    this._zoomTriggerIdx = 0;
+    this._activeZoomTweens = [];
+    this._touchZoomTriggerActivated = new Set();
     this._alphaTriggers = [];
     this._alphaTriggerIdx = 0;
     this._activeAlphaTweens = [];
@@ -1863,6 +1873,20 @@ window.LevelObject = class LevelObject {
       });
     }
 
+    if (levelObj.id === 1913) {
+      const _raw = levelObj._raw || {};
+      this._zoomTriggers.push({
+        ...triggerBase,
+        x: levelObj.x * 2,
+        y: levelObj.y * 2,
+        touchTriggered: String(_raw?.[11] ?? _raw?.["11"] ?? "0") === "1",
+        duration: Math.max(0, parseFloat(_raw[10] ?? 0) || 0),
+        targetZoom: Math.max(0.1, Math.min(4, parseFloat(_raw[28] ?? 1) || 1)),
+        easingType: parseInt(_raw[30] ?? 0, 10),
+        easingRate: parseFloat(_raw[85] ?? 2)
+      });
+    }
+
     if (levelObj.id === 1007) {
       const _raw = levelObj._raw;
       this._alphaTriggers.push({
@@ -2684,6 +2708,7 @@ window.LevelObject = class LevelObject {
     this._colorTriggers.sort((a, b) => a.x - b.x);
     this._enterEffectTriggers.sort((a, b) => a.x - b.x);
     this._moveTriggers.sort((a, b) => a.x - b.x);
+    this._zoomTriggers.sort((a, b) => a.x - b.x);
     this._alphaTriggers.sort((a, b) => a.x - b.x);
     this._rotateTriggers.sort((a, b) => a.x - b.x);
     this._pulseTriggers.sort((a, b) => a.x - b.x);
@@ -3446,6 +3471,89 @@ window.LevelObject = class LevelObject {
       delay: randomizedDelay,
       elapsed: 0
     });
+  }
+
+  _getCurrentCameraZoom() {
+    const scene = this._scene;
+    if (scene?._editorPlaytestActive && Number.isFinite(scene._editorZoom)) {
+      return scene._editorZoom;
+    }
+    const zoom = scene?.cameras?.main?.zoom;
+    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  }
+
+  _applyCameraZoom(zoom) {
+    const scene = this._scene;
+    const value = Math.max(0.1, Math.min(4, Number(zoom) || 1));
+    if (scene?._editorPlaytestActive && typeof scene._setEditorZoomInstant === "function") {
+      scene._setEditorZoomInstant(value, scene._cameraX, scene._cameraY);
+      return;
+    }
+    if (scene?.cameras?.main?.setZoom) {
+      scene.cameras.main.setZoom(value);
+    }
+  }
+
+  _startZoomTriggerTween(trig) {
+    if (!trig || !this._isTriggerSaveObjectLive(trig.uid)) return;
+    this._activeZoomTweens.push({
+      trig,
+      elapsed: 0,
+      prevProgress: 0,
+      fromZoom: this._getCurrentCameraZoom()
+    });
+  }
+
+  checkZoomTriggers(playerX) {
+    while (this._zoomTriggerIdx < this._zoomTriggers.length) {
+      const trig = this._zoomTriggers[this._zoomTriggerIdx];
+      if (trig.x > playerX) break;
+      if (!trig.spawnTriggered && !trig.touchTriggered) this._startZoomTriggerTween(trig);
+      this._zoomTriggerIdx++;
+    }
+  }
+
+  checkTouchZoomTriggers(playerX, playerY) {
+    const px = Number(playerX) || 0;
+    const py = Number(playerY) || 0;
+    const playerHalfSize = (typeof playerSize === "number" ? playerSize : 20);
+    const halfHitbox = 30 + playerHalfSize;
+
+    for (const trig of this._zoomTriggers) {
+      if (!trig?.touchTriggered || trig.spawnTriggered || !this._isTriggerSaveObjectLive(trig.uid)) continue;
+      const uid = trig.uid ?? `${trig.x},${trig.y}`;
+      if (this._touchZoomTriggerActivated.has(uid)) continue;
+      if (Math.abs(px - trig.x) <= halfHitbox && Math.abs(py - (trig.y ?? 0)) <= halfHitbox) {
+        this._touchZoomTriggerActivated.add(uid);
+        this._startZoomTriggerTween(trig);
+      }
+    }
+  }
+
+  stepZoomTriggers(dt) {
+    let i = 0;
+    while (i < this._activeZoomTweens.length) {
+      const anim = this._activeZoomTweens[i];
+      const duration = anim.trig.duration;
+      anim.elapsed += Math.max(0, Number(dt) || 0);
+      const progress = duration > 0 ? Math.min(anim.elapsed / duration, 1) : 1;
+      const sample = Easing.sample(anim.trig.easingType, anim.trig.easingRate, progress);
+      const zoom = anim.fromZoom + (anim.trig.targetZoom - anim.fromZoom) * sample;
+      this._applyCameraZoom(zoom);
+      if (progress >= 1) {
+        this._applyCameraZoom(anim.trig.targetZoom);
+        this._activeZoomTweens.splice(i, 1);
+      } else {
+        i++;
+      }
+    }
+  }
+
+  resetZoomTriggers() {
+    this._zoomTriggerIdx = 0;
+    this._activeZoomTweens = [];
+    this._touchZoomTriggerActivated.clear();
+    this._applyCameraZoom(1);
   }
 
   checkSpawnTriggers(playerX) {
