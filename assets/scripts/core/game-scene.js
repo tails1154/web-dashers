@@ -11009,7 +11009,18 @@ _applyMirrorEffect() {
     parentShade.appendChild(panel);
     const status = panel.querySelector("[data-status]");
     const existing = panel.querySelector("[data-existing]");
-    const close = () => panel.remove();
+    const keyboardGuard = event => {
+      if (panel.contains(event.target)) event.stopPropagation();
+    };
+    document.addEventListener("keydown", keyboardGuard);
+    document.addEventListener("keyup", keyboardGuard);
+    document.addEventListener("keypress", keyboardGuard);
+    const close = () => {
+      document.removeEventListener("keydown", keyboardGuard);
+      document.removeEventListener("keyup", keyboardGuard);
+      document.removeEventListener("keypress", keyboardGuard);
+      panel.remove();
+    };
     panel.querySelector("[data-back]").addEventListener("click", close);
     const addCurrent = async (gauntlet, button) => {
       const ids = (gauntlet.levels || []).map(level => String(level.id));
