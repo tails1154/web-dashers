@@ -1678,11 +1678,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const loadingText = this.add.bitmapText(screenWidth / 2, screenHeight / 2, "goldFont", "Downloading Level...", 30)
         .setOrigin(0.5).setScrollFactor(0).setDepth(1001);
       try {
-        try {
-          await window.AccountAPI?.recordLevelDownload?.(lvl.id);
-        } catch (counterError) {
-          console.warn("Could not record level download:", counterError);
-        }
+        if (!window.AccountAPI?.recordLevelDownload) throw new Error("Account service unavailable");
+        await window.AccountAPI.recordLevelDownload(lvl.id);
         const res = await fetch(`${PROXY_BASE}?action=get&id=${lvl.id}`);
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const data = await res.json();
@@ -1776,7 +1773,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         return true;
       } catch (err) {
         console.warn("Failed to start online level", err);
-        loadingText.setText("Song download failed");
+        loadingText.setText(err?.message || "Download failed");
         await new Promise(resolve => setTimeout(resolve, 1200));
         if (loadingOverlay.scene) loadingOverlay.destroy();
         if (loadingText.scene) loadingText.destroy();
@@ -1794,11 +1791,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (!data || data.error || !data.level_string) return;
 
         const levelString = data.level_string;
-        try {
-          await window.AccountAPI?.recordLevelDownload?.(lvl.id);
-        } catch (counterError) {
-          console.warn("Could not record level download:", counterError);
-        }
+        if (!window.AccountAPI?.recordLevelDownload) throw new Error("Account service unavailable");
+        await window.AccountAPI.recordLevelDownload(lvl.id);
         if (!levelString) { console.warn("Duplicate level: no level data"); return; }
 
         const rawLevels = localStorage.getItem("created_levels");

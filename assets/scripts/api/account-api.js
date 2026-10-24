@@ -271,6 +271,9 @@ window.AccountAPI = {
   },
 
   async recordLevelDownload(levelId) {
+    if (!this.currentUser && !(await this.ensureAuthenticated())) {
+      throw new Error('Login required to download levels');
+    }
     const res = await fetch(`${window._gdProxyUrl}?action=download`, {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: String(levelId || '') })
