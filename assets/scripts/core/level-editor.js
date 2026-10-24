@@ -113,7 +113,7 @@ class LevelEditor {
         "goldFont",
         "Autosaving in 60 seconds",
         22
-    ).setOrigin(0.5).setScrollFactor(0).setDepth(2001).setAlpha(0.86);
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(2001).setAlpha(0).setVisible(false);
     if (this._editorAutosaveTimer?.remove) this._editorAutosaveTimer.remove(false);
     this._editorAutosaveTimer = this.time.addEvent({
         delay: 1000,
@@ -122,7 +122,12 @@ class LevelEditor {
             if (!window.isEditor) return;
             if (this._editorAutosaveSeconds > 1) {
                 this._editorAutosaveSeconds -= 1;
-                this._editorAutosaveNotice?.setText(`Autosaving in ${this._editorAutosaveSeconds} seconds`);
+                if (this._editorAutosaveSeconds <= 5) {
+                    this._editorAutosaveNotice?.setVisible(true).setAlpha(0.86)
+                        .setText(`Autosaving in ${this._editorAutosaveSeconds} seconds`);
+                } else {
+                    this._editorAutosaveNotice?.setVisible(false);
+                }
                 return;
             }
             try {
@@ -133,13 +138,13 @@ class LevelEditor {
                 this._editorAutosaveNotice?.setText("Autosaved");
                 this.time.delayedCall(1500, () => {
                     if (window.isEditor && this._editorAutosaveNotice?.active) {
-                        this._editorAutosaveNotice.setText("Autosaving in 60 seconds");
+                        this._editorAutosaveNotice.setText("Autosaving in 60 seconds").setVisible(false);
                     }
                 });
             } catch (error) {
                 console.error("Editor autosave failed", error);
                 this._editorAutosaveSeconds = 60;
-                this._editorAutosaveNotice?.setText("Autosave failed");
+                this._editorAutosaveNotice?.setVisible(true).setAlpha(0.86).setText("Autosave failed");
             }
         }
     });
