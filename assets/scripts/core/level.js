@@ -205,6 +205,7 @@ const padType = "pad";
 const ringType = "ring";
 const triggerType = "trigger";
 const speedType = "speed";
+const railType = "rail";
 const slopeType = "slope";
 const _SLOPE_DATA = {
   289:{gw:1,gh:1,angle:45,sq:false,dir:1}, 291:{gw:2,gh:1,angle:22.5,sq:false,dir:1},
@@ -442,6 +443,20 @@ if (!allObjects[5061]) {
     z: 10,
     portalParticle: true,
     portalParticleColor: 0x00ff88
+  };
+}
+if (!allObjects[5062]) {
+  allObjects[5062] = {
+    can_color: false,
+    default_base_color_channel: 0,
+    frame: "rail-track.png",
+    glow_frame: "rail-track.png",
+    gridH: 0.5,
+    gridW: 4,
+    type: "rail",
+    z: 3,
+    default_z_layer: 3,
+    default_z_order: 0
   };
 }
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
@@ -2717,6 +2732,17 @@ window.LevelObject = class LevelObject {
       this.objects.push(speedObj);
       hasCollisionEntry = true;
       this._addCollisionToSection(speedObj);
+    } else if (objectDef.type === railType) {
+      const railW = (objectDef.gridW || 4) * a;
+      const railH = (objectDef.gridH || 0.5) * a;
+      const railObj = new Collider(railType, worldX, worldY, railW, railH, levelObj.rot || 0);
+      const rawGroupId = levelObj._raw?.[51] ?? levelObj._raw?.["51"];
+      const placedGroups = String(levelObj.groups || "").split(".").map(Number).filter(n => n > 0);
+      railObj.railGroupId = parseInt(rawGroupId ?? placedGroups[0] ?? 0, 10) || 0;
+      registerCollider(railObj);
+      this.objects.push(railObj);
+      hasCollisionEntry = true;
+      this._addCollisionToSection(railObj);
     }
 
     if (!hasCollisionEntry) {

@@ -19,6 +19,8 @@ class PlayerState {
     this.isFlip = false;
     this.isVector = false;
     this.vectorDirection = 0;
+    this.isRail = false;
+    this.railGroupId = 0;
     this.isBird = false;
     this.isDart = false;
     this.isRobot = false;
@@ -468,6 +470,7 @@ class PlayerObject {
     return this._invertPlayerColors ? window.mainColor : window.secondaryColor;
   }
   _tintForLayerKind(kind) {
+    if (this._vectorTinted && (this.p?.isVector || this.p?.isRail)) return 0x00d9c6;
     if (kind === "base") return this._primaryColor();
     if (kind === "overlay" || kind === "glow") return this._secondaryColor();
     return null;
@@ -492,9 +495,9 @@ class PlayerObject {
       else if (layer.sprite.clearTint) layer.sprite.clearTint();
     };
     for (const layer of (this._allLayers || [])) applyLayer(layer);
-    if (this._playerSpriteLayer?.sprite) this._playerSpriteLayer.sprite.setTint(this._primaryColor());
-    if (this._playerGlowLayer?.sprite) this._playerGlowLayer.sprite.setTint(this._secondaryColor());
-    if (this._playerOverlayLayer?.sprite) this._playerOverlayLayer.sprite.setTint(this._secondaryColor());
+    if (this._playerSpriteLayer?.sprite) this._playerSpriteLayer.sprite.setTint(this._tintForLayerKind("base"));
+    if (this._playerGlowLayer?.sprite) this._playerGlowLayer.sprite.setTint(this._tintForLayerKind("glow"));
+    if (this._playerOverlayLayer?.sprite) this._playerOverlayLayer.sprite.setTint(this._tintForLayerKind("overlay"));
     if (this._shipSpriteLayer?.sprite) this._shipSpriteLayer.sprite.setTint(this._primaryColor());
     if (this._shipGlowLayer?.sprite) this._shipGlowLayer.sprite.setTint(this._secondaryColor());
     if (this._shipOverlayLayer?.sprite) this._shipOverlayLayer.sprite.setTint(this._secondaryColor());
@@ -519,7 +522,7 @@ class PlayerObject {
     }
     if (this._vectorTinted) {
       for (const layer of (this._playerLayers || [])) {
-        if (layer?.sprite?.setTint) layer.sprite.setTint(0x00d9c6);
+        if (layer?.sprite?.setTint) layer.sprite.setTint(this._tintForLayerKind(layer.kind || "base"));
       }
     }
   }
@@ -534,7 +537,7 @@ class PlayerObject {
   }
   _usesIndependentActivation(gameObj) {
     const type = String(gameObj?.type || "");
-    return type.startsWith("portal_") || type === speedType || type === "speed" || type === jumpRingType;
+    return type.startsWith("portal_") || type === speedType || type === "speed" || type === jumpRingType || type === "rail";
   }
   _isObjectActivated(gameObj) {
     if (!gameObj) return false;
@@ -2273,6 +2276,49 @@ if (this.p.isFlying || this.p.isUfo) {
     this.setBirdVisible(false);
     this._setGamemodeFlyBounds(false, 0);
   }
+  enterRailMode(rail = null) {
+    if (this.p.isRail) return;
+    this.exitVectorMode();
+    this.exitShipMode();
+    this.exitRobotMode();
+    this.exitBallMode();
+    this.exitWaveMode();
+    this.exitSpiderMode();
+    this.exitFlipMode();
+    this.exitUfoMode();
+    this.p.isRail = true;
+    this.p.railGroupId = parseInt(rail?.railGroupId ?? 0, 10) || 0;
+    this._railObject = rail || null;
+    this.p.yVelocity = 0;
+    this.p.onGround = true;
+    this.p.onCeiling = false;
+    this.p.canJump = true;
+    this.p.isJumping = false;
+    this._rotation = ((Number(rail?.rotationDegrees) || 0) * Math.PI) / 180;
+    this.setCubeVisible(true);
+    this.setVectorTinted(true);
+    this.setBallVisible(false);
+    this.setShipVisible(false);
+    this.setWaveVisible(false);
+    this.setSpiderVisible(false);
+    this.setRobotVisible(false);
+    this.setBirdVisible(false);
+    this._setGamemodeFlyBounds(false, 0);
+  }
+  exitRailMode() {
+    if (!this.p.isRail) return;
+    this.p.isRail = false;
+    this.p.railGroupId = 0;
+    this._railObject = null;
+    this.setVectorTinted(false);
+    this.p.yVelocity = 0;
+    this.p.onGround = false;
+    this.p.onCeiling = false;
+    this.p.canJump = false;
+    this.p.isJumping = false;
+    this._rotation = 0;
+    this.setCubeVisible(true);
+  }
   exitVectorMode() {
     if (!this.p.isVector) return;
     this.p.isVector = false;
@@ -3589,6 +3635,8 @@ if (this.p.isFlying || this.p.isUfo) {
       this._updateSpiderJump(_0x3d1c6f);
     } else if (this.p.isFlip) {
       this._updateFlipJump(_0x3d1c6f);
+    } else if (this.p.isRail) {
+      this._updateRailJump(_0x3d1c6f);
     } else if (this.p.isVector) {
       this._updateVectorJump(_0x3d1c6f);
     } else if (this.p.isRobot) {
@@ -3656,6 +3704,42 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.yVelocity -= p * 0.6 * dt * this.flipMod();
     if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, 30);
     else this.p.yVelocity = Math.max(this.p.yVelocity, -30);
+  }
+  _updateRailJump() {
+    if (this.p.upKeyPressed) {
+      this.p.upKeyPressed = false;
+      this.p.queuedHold = false;
+      this.exitRailMode();
+      this.p.canJump = false;
+      this.p.isJumping = true;
+      this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
+      return;
+    }
+    const worldX = Number(this._scene?._playerWorldX ?? 0);
+    const groupId = parseInt(this.p.railGroupId || 0, 10);
+    const groupedRails = groupId > 0
+      ? (this._gameLayer?._groupColliders?.[groupId] || []).filter(obj => obj?.type === "rail")
+      : [];
+    const configuredRails = groupId > 0
+      ? (this._gameLayer?.objects || []).filter(obj => obj?.type === "rail" && parseInt(obj.railGroupId || 0, 10) === groupId)
+      : [];
+    const groupRails = [...new Set([...groupedRails, ...configuredRails])];
+    const candidates = groupRails.length ? groupRails : (this._railObject ? [this._railObject] : []);
+    const rail = candidates
+      .filter(obj => Math.abs(Number(obj.x) - worldX) <= Math.max(80, Number(obj.w) / 2 + 40))
+      .sort((a, b) => Math.abs(a.x - worldX) - Math.abs(b.x - worldX))[0];
+    if (!rail) {
+      this.exitRailMode();
+      return;
+    }
+    const angle = (Number(rail.rotationDegrees) || 0) * Math.PI / 180;
+    this.p.y = rail.y - Math.tan(angle) * (worldX - rail.x);
+    this.p.lastY = this.p.y;
+    this.p.yVelocity = 0;
+    this.p.onGround = true;
+    this.p.canJump = true;
+    this._rotation = angle;
+    this._railObject = rail;
   }
   _vectorNearbySolids(worldX) {
     return (this._gameLayer?.getNearbySectionObjects?.(worldX) || [])
@@ -4556,12 +4640,24 @@ if (this.p.isFlying || this.p.isUfo) {
             _colType !== "portal_flip" && !isGravityPortal) {
           this.exitFlipMode();
         }
+        if (this.p.isRail &&
+            (_colType.startsWith("portal_") || _colType === speedType || _colType === "speed") &&
+            !isGravityPortal) {
+          this.exitRailMode();
+        }
         if (this.p.isVector &&
             (_colType.startsWith("portal_") || _colType === speedType || _colType === "speed") &&
             _colType !== "portal_vector" && !isGravityPortal) {
           this.exitVectorMode();
         }
-        if (_colType === "portal_teleport") {
+        if (_colType === "rail") {
+          if (!this._isObjectActivated(gameObj)) {
+            this._setObjectActivated(gameObj, true);
+            this._playPortalShine(gameObj);
+            this.enterRailMode(gameObj);
+          }
+          continue;
+        } else if (_colType === "portal_teleport") {
           if (!this._isObjectActivated(gameObj)) {
             this._setObjectActivated(gameObj, true);
             this._playPortalShine(gameObj);

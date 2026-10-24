@@ -1869,7 +1869,7 @@ class LevelEditor {
         { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin"] },
         { id: "pixel",   icon: "tab7", types: ["pixel"] },
         { id: "particle", icon: "tab8", types: ["particle"] },
-        { id: "deco",    icon: "tab4", types: ["deco"] },
+        { id: "deco",    icon: "tab4", types: ["deco", "rail"] },
         { id: "triggers",icon: "tab5", types: ["trigger"] },
     ];
 
@@ -1940,9 +1940,11 @@ class LevelEditor {
             if (flipPortal && !itemsForGrid.some(item => item.id === 5060)) {
                 itemsForGrid.push({ type: "object", id: 5060, frame: flipPortal.frame });
             }
-            const vectorPortal = getObjectFromId(5061);
-            if (vectorPortal && !itemsForGrid.some(item => item.id === 5061)) {
-                itemsForGrid.push({ type: "object", id: 5061, frame: vectorPortal.frame });
+        }
+        if (activeCatDef?.types?.includes("rail")) {
+            const railObject = getObjectFromId(5062);
+            if (railObject && !itemsForGrid.some(item => item.id === 5062)) {
+                itemsForGrid.push({ type: "object", id: 5062, frame: railObject.frame });
             }
         }
     } else if (this._editorTab === "edit") {
@@ -5189,7 +5191,7 @@ class LevelEditor {
     const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectIds[0]);
     if (!saveObj) return false;
     const objectDef = getObjectFromId(saveObj.id);
-    return !!(objectDef && objectDef.type === triggerType);
+    return !!(objectDef && (objectDef.type === triggerType || objectDef.type === "rail"));
   }
 
 
@@ -6104,7 +6106,13 @@ class LevelEditor {
     if (!saveObj) return;
 
     const objectDef = getObjectFromId(saveObj.id);
-    if (!objectDef || objectDef.type !== triggerType) return;
+    if (!objectDef) return;
+
+    if (parseInt(saveObj.id ?? 0, 10) === 5062 || objectDef.type === "rail") {
+        this._openEditorRailOptionsPopup(saveObj);
+        return;
+    }
+    if (objectDef.type !== triggerType) return;
 
     if (this._isEditorColorTriggerId(saveObj.id)) {
         this._openEditorColorTriggerOptionsPopup(saveObj);
@@ -6210,6 +6218,15 @@ class LevelEditor {
     updateList(this._level?._zoomTriggers);
     this._refreshSelectedTriggerTargetLabel();
     this._level?.updateTriggerEditorVisuals?.();
+  }
+
+
+  _openEditorRailOptionsPopup(saveObj) {
+    if (!saveObj) return;
+    const current = this._getEditorTriggerTargetGroup(saveObj);
+    const value = window.prompt("Rail Group ID (0 = this rail only):", String(current));
+    if (value === null) return;
+    this._setEditorTriggerTargetGroup(saveObj, value);
   }
 
 
@@ -7625,8 +7642,7 @@ class LevelEditor {
         { key: 5, label: "Robot", frame: "gj_robotBtn_off_001.png", rotateFlip: false },
         { key: 6, label: "Spider", frame: "gj_spiderBtn_off_001.png", rotateFlip: false },
         { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false },
-        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false },
-        { key: 9, label: "Vector", frame: "flip-icon.png", rotateFlip: false }
+        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false }
     ];
 
     const leftX = -165;
@@ -8049,8 +8065,7 @@ class LevelEditor {
         { key: 5, label: "Robot", frame: "gj_robotBtn_off_001.png", rotateFlip: false },
         { key: 6, label: "Spider", frame: "gj_spiderBtn_off_001.png", rotateFlip: false },
         { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false },
-        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false },
-        { key: 9, label: "Vector", frame: "flip-icon.png", rotateFlip: false }
+        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false }
     ];
 
     const makeArtDefs = (prefix, count) => {
