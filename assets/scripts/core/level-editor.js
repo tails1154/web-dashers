@@ -1869,7 +1869,7 @@ class LevelEditor {
         { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin"] },
         { id: "pixel",   icon: "tab7", types: ["pixel"] },
         { id: "particle", icon: "tab8", types: ["particle"] },
-        { id: "deco",    icon: "tab4", types: ["deco", "rail"] },
+        { id: "deco",    icon: "tab4", types: ["deco"] },
         { id: "triggers",icon: "tab5", types: ["trigger"] },
     ];
 
@@ -1941,10 +1941,10 @@ class LevelEditor {
                 itemsForGrid.push({ type: "object", id: 5060, frame: flipPortal.frame });
             }
         }
-        if (activeCatDef?.types?.includes("rail")) {
-            const railObject = getObjectFromId(5062);
-            if (railObject && !itemsForGrid.some(item => item.id === 5062)) {
-                itemsForGrid.push({ type: "object", id: 5062, frame: railObject.frame });
+        if (activeCatDef?.types?.includes("portal")) {
+            const phasePortal = getObjectFromId(5062);
+            if (phasePortal && !itemsForGrid.some(item => item.id === 5062)) {
+                itemsForGrid.push({ type: "object", id: 5062, frame: phasePortal.frame });
             }
         }
     } else if (this._editorTab === "edit") {
@@ -5191,7 +5191,7 @@ class LevelEditor {
     const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectIds[0]);
     if (!saveObj) return false;
     const objectDef = getObjectFromId(saveObj.id);
-    return !!(objectDef && (objectDef.type === triggerType || objectDef.type === "rail"));
+    return !!(objectDef && objectDef.type === triggerType);
   }
 
 
@@ -6108,10 +6108,6 @@ class LevelEditor {
     const objectDef = getObjectFromId(saveObj.id);
     if (!objectDef) return;
 
-    if (parseInt(saveObj.id ?? 0, 10) === 5062 || objectDef.type === "rail") {
-        this._openEditorRailOptionsPopup(saveObj);
-        return;
-    }
     if (objectDef.type !== triggerType) return;
 
     if (this._isEditorColorTriggerId(saveObj.id)) {
@@ -6218,15 +6214,6 @@ class LevelEditor {
     updateList(this._level?._zoomTriggers);
     this._refreshSelectedTriggerTargetLabel();
     this._level?.updateTriggerEditorVisuals?.();
-  }
-
-
-  _openEditorRailOptionsPopup(saveObj) {
-    if (!saveObj) return;
-    const current = this._getEditorTriggerTargetGroup(saveObj);
-    const value = window.prompt("Rail Group ID (0 = this rail only):", String(current));
-    if (value === null) return;
-    this._setEditorTriggerTargetGroup(saveObj, value);
   }
 
 

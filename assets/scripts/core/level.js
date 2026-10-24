@@ -205,7 +205,6 @@ const padType = "pad";
 const ringType = "ring";
 const triggerType = "trigger";
 const speedType = "speed";
-const railType = "rail";
 const slopeType = "slope";
 const _SLOPE_DATA = {
   289:{gw:1,gh:1,angle:45,sq:false,dir:1}, 291:{gw:2,gh:1,angle:22.5,sq:false,dir:1},
@@ -449,14 +448,16 @@ if (!allObjects[5062]) {
   allObjects[5062] = {
     can_color: false,
     default_base_color_channel: 0,
-    frame: "rail-track.png",
-    glow_frame: "rail-track.png",
-    gridH: 0.5,
-    gridW: 4,
-    type: "rail",
-    z: 3,
-    default_z_layer: 3,
-    default_z_order: 0
+    frame: "phase-portal-front.png",
+    glow_frame: "phase-portal-front.png",
+    gridH: 2.516666650534,
+    gridW: 0.791666686534,
+    spritesheet: "GJ_GameSheet02-uhd",
+    type: "portal",
+    sub: "phase",
+    z: 10,
+    portalParticle: true,
+    portalParticleColor: 0xb45cff
   };
 }
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
@@ -2619,6 +2620,7 @@ window.LevelObject = class LevelObject {
         1331: "spider",
         5060: "flip",
         5061: "vector",
+        5062: "phase",
         747: "teleport",
         286: "dual_on",
         287: "dual_off"
@@ -2639,6 +2641,7 @@ window.LevelObject = class LevelObject {
         spider: "portal_spider",
         flip: "portal_flip",
         vector: "portal_vector",
+        phase: "portal_phase",
         glider: "portal_glider",
         teleport: "portal_teleport",
         mirrora: "portal_mirror_on",
@@ -2732,17 +2735,6 @@ window.LevelObject = class LevelObject {
       this.objects.push(speedObj);
       hasCollisionEntry = true;
       this._addCollisionToSection(speedObj);
-    } else if (objectDef.type === railType) {
-      const railW = (objectDef.gridW || 4) * a;
-      const railH = (objectDef.gridH || 0.5) * a;
-      const railObj = new Collider(railType, worldX, worldY, railW, railH, levelObj.rot || 0);
-      const rawGroupId = levelObj._raw?.[51] ?? levelObj._raw?.["51"];
-      const placedGroups = String(levelObj.groups || "").split(".").map(Number).filter(n => n > 0);
-      railObj.railGroupId = parseInt(rawGroupId ?? placedGroups[0] ?? 0, 10) || 0;
-      registerCollider(railObj);
-      this.objects.push(railObj);
-      hasCollisionEntry = true;
-      this._addCollisionToSection(railObj);
     }
 
     if (!hasCollisionEntry) {
