@@ -734,7 +734,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._menuAchievementsBtn = this.add.image(centerX - 12, screenHeight - 90, "GJ_GameSheet03", "GJ_achBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive();
     this._expandHitArea(this._menuAchievementsBtn, 1);
     this._makeBouncyButton(this._menuAchievementsBtn, 1, () => window.GDAchievements?.showPanel(), () => this._menuActive);
-    this._menuShopBtn = this.add.image(centerX - 122, screenHeight - 90, "GJ_GameSheet03", "GJ_diamondsIcon_001.png").setScrollFactor(0).setDepth(30).setScale(0.78).setInteractive();
+    this._menuShopBtn = this.add.image(centerX - 92, screenHeight - 90, "GJ_GameSheet03", "GJ_diamondsIcon_001.png").setScrollFactor(0).setDepth(30).setScale(0.78).setInteractive();
     this._expandHitArea(this._menuShopBtn, 1.7);
     this._makeBouncyButton(this._menuShopBtn, 0.78, () => this._openDiamondShop?.(), () => this._menuActive && !this._diamondShopOverlay);
     this._menuNewgroundsBtn = this.add.image(centerX + 312, screenHeight - 90, "GJ_GameSheet03", "GJ_ngBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive();
@@ -3364,7 +3364,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 "player_213_001.png", "player_214_001.png", "player_215_001.png", "player_216_001.png", "player_217_001.png", "player_218_001.png", "player_219_001.png", "player_220_001.png", "player_221_001.png", "player_222_001.png",
 "player_223_001.png", "player_224_001.png", "player_225_001.png", "player_226_001.png", "player_227_001.png", "player_228_001.png", "player_229_001.png", "player_230_001.png", "player_231_001.png", "player_232_001.png",
 "player_233_001.png", "player_234_001.png", "player_235_001.png", "player_236_001.png", "player_237_001.png", "player_238_001.png", "player_239_001.png", "player_240_001.png", "player_241_001.png", "player_242_001.png",
-"player_243_001.png", "player_244_001.png", "player_245_001.png", "player_246_001.png", "player_247_001.png", "player_248_001.png"
+"player_243_001.png", "player_244_001.png", "player_245_001.png", "player_246_001.png", "player_247_001.png", "player_248_001.png",
+"shop_cube_cyan_001.png", "shop_cube_magenta_001.png", "shop_cube_gold_001.png", "shop_cube_emerald_001.png"
       ],
       ship: [
         "ship_01_001.png", "ship_02_001.png", "ship_03_001.png", "ship_04_001.png", "ship_05_001.png", "ship_06_001.png", "ship_07_001.png", "ship_08_001.png", "ship_09_001.png", "ship_10_001.png",
@@ -4110,17 +4111,25 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               origScale = iconImg._selectorBaseScale || iconImg.scaleX || 1;
             }
           } else {
-            iconImg = this.add.image(ix, iy, atlas, frame).setScrollFactor(0).setDepth(103).setTint(0xAFAFAF);
+            const isShopCube = window.WDCoinEconomy?.isDiamondShopIcon?.(frame);
+            iconImg = isShopCube
+              ? addImageToScene(this, ix, iy, frame)
+              : this.add.image(ix, iy, atlas, frame);
+            if (!iconImg) return;
+            iconImg.setScrollFactor(0).setDepth(103);
+            if (!isShopCube) iconImg.setTint(0xAFAFAF);
             origScale = Math.min(
               iconSize / (iconImg.width  || iconSize),
               iconSize / (iconImg.height || iconSize)
             ) * 0.7;
             iconImg.setScale(origScale);
-            const extraFrame = frame.replace("_001.png", "_2_001.png");
-            const extraInfo = getAtlasFrame(this, extraFrame);
-            extraImg = extraInfo
-              ? this.add.image(ix, iy, extraInfo.atlas, extraInfo.frame).setScrollFactor(0).setDepth(102).setScale(origScale)
-              : null;
+            if (!isShopCube) {
+              const extraFrame = frame.replace("_001.png", "_2_001.png");
+              const extraInfo = getAtlasFrame(this, extraFrame);
+              extraImg = extraInfo
+                ? this.add.image(ix, iy, extraInfo.atlas, extraInfo.frame).setScrollFactor(0).setDepth(102).setScale(origScale)
+                : null;
+            }
           }
           const frameId = frame.replace("_001.png", "");
           const iconLocked = window.WDCoinEconomy && !window.WDCoinEconomy.ownsIcon(frameId);
@@ -4160,6 +4169,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               if (!this._iconOverlay) return;
 
               if (window.WDCoinEconomy && !window.WDCoinEconomy.ownsIcon(capturedFrame)) {
+                if (window.WDCoinEconomy.isDiamondShopIcon?.(capturedFrame)) {
+                  window.alert("You can buy this cube in the icon shop!");
+                  return;
+                }
                 window.WDOpenIconPurchase?.(this, capturedFrame, () => {
                   _buildGrid(tab, currentPage);
                 });
@@ -4181,9 +4194,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 for (const { lp, suffix, tint } of layerMap) {
                   const layer = this._player[lp];
                   if (!layer || !layer.sprite) continue;
-                  const found = getAtlasFrame(this, `${window.currentPlayer}${suffix}`);
+                  const selectedFrame = `${window.currentPlayer}${suffix}`;
+                  const found = getAtlasFrame(this, selectedFrame);
                   if (found) {
                     layer.sprite.setTexture(found.atlas, found.frame);
+                    if (tint !== null) layer.sprite.setTint(tint);
+                  } else if (this.textures.exists(selectedFrame)) {
+                    layer.sprite.setTexture(selectedFrame);
                     if (tint !== null) layer.sprite.setTint(tint);
                   }
                 }
@@ -4371,10 +4388,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._makeBouncyButton(back, 0.8, () => this._closeDiamondShop());
       objects.push(overlay, blocker, title, subtitle, diamond, balance, back);
       const inventory = [
-        { id: "player_10", name: "PULSE CUBE", cost: 10 },
-        { id: "player_25", name: "ORBIT CUBE", cost: 25 },
-        { id: "player_50", name: "PRISM CUBE", cost: 50 },
-        { id: "player_100", name: "CROWN CUBE", cost: 100 }
+        { id: "shop_cube_cyan", frame: "shop_cube_cyan_001.png", name: "CYAN CUBE", cost: 10 },
+        { id: "shop_cube_magenta", frame: "shop_cube_magenta_001.png", name: "MAGENTA CUBE", cost: 25 },
+        { id: "shop_cube_gold", frame: "shop_cube_gold_001.png", name: "GOLD CUBE", cost: 50 },
+        { id: "shop_cube_emerald", frame: "shop_cube_emerald_001.png", name: "EMERALD CUBE", cost: 100 }
       ];
       const refresh = (entry, button, label) => {
         const owned = window.WDCoinEconomy?.ownsIcon?.(entry.id);
@@ -4387,7 +4404,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const col = index % 2, row = Math.floor(index / 2);
         const x = cx + (col ? 220 : -220), y = 205 + row * 190;
         const card = this.add.rectangle(x, y, 385, 155, 0x1c2750, 0.95).setStrokeStyle(3, 0x536da8, 1).setScrollFactor(0).setDepth(702);
-        const icon = addImageToScene(this, x - 120, y - 5, `${entry.id}_001.png`);
+        const icon = addImageToScene(this, x - 120, y - 5, entry.frame);
         if (icon) icon.setScale(1.55).setTint(Number(window.mainColor) || 0xffffff).setScrollFactor(0).setDepth(704);
         const name = this.add.text(x + 12, y - 48, entry.name, { fontFamily: "Arial Black", fontSize: "17px", color: "#ffffff" }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
         const price = this.add.text(x + 12, y - 15, "", { fontFamily: "Arial Black", fontSize: "16px", color: "#e4a7ff" }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
@@ -8023,7 +8040,7 @@ _buildSettingsPopup() {
       });
     }
     if (this._menuShopBtn) {
-      this._menuShopBtn.x = _0x1e5db8 - 122;
+      this._menuShopBtn.x = _0x1e5db8 - 92;
       this._menuShopBtn.y = screenHeight - 90;
     }
     if (this._creatorBtn) {

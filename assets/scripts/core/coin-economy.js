@@ -46,7 +46,8 @@
     return prices;
   };
   const normalizeIcon = id => String(id || "").replace(/_001\.png$/, "");
-  const isLockableIcon = id => /^(?:player|ship|player_ball|dart|bird|robot|spider)_\d+$/.test(normalizeIcon(id));
+  const isDiamondShopIcon = id => /^shop_cube_(?:cyan|magenta|gold|emerald)$/.test(normalizeIcon(id));
+  const isLockableIcon = id => /^(?:player|ship|player_ball|dart|bird|robot|spider)_\d+$/.test(normalizeIcon(id)) || isDiamondShopIcon(id);
   const isDefaultIcon = id => normalizeIcon(id) === "player_01";
   const getIconPrice = id => {
     const icon = normalizeIcon(id);
@@ -125,6 +126,7 @@
     },
     add(amount, scene) { const value = writeBalance(readBalance() + (Number(amount) || 0)); notify(scene); return value; },
     getDiamonds() { return Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0); },
+    isDiamondShopIcon,
     spendDiamonds(amount, scene) {
       amount = Math.max(0, Math.floor(Number(amount) || 0));
       const balance = this.getDiamonds();
