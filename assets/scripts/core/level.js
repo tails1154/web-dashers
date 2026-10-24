@@ -670,7 +670,6 @@ window.LevelObject = class LevelObject {
     this._orbSprites = [];
     this._coinSprites = [];
     this._sawSprites = [];
-    this._solidVisualSprites = [];
     this._glowSpriteKeys = new Set();
     this._enterEffectTriggers = [];
     this._enterEffectTriggerIdx = 0;
@@ -1442,14 +1441,6 @@ window.LevelObject = class LevelObject {
       }
     }
   }
-  _setPhaseSolidOpacity(opacity = 1) {
-    const alpha = Math.max(0, Math.min(1, Number(opacity) || 0));
-    for (const sprite of (this._solidVisualSprites || [])) {
-      if (!sprite || !sprite.active || typeof sprite.setAlpha !== "function") continue;
-      if (sprite._phaseBaseAlpha === undefined) sprite._phaseBaseAlpha = Number(sprite.alpha) || 1;
-      sprite.setAlpha(sprite._phaseBaseAlpha * alpha);
-    }
-  }
   _getGlowFrameName(frameName, objectData = null) {
     if (objectData && objectData.glow_frame && objectData.glow_frame !== "none") {
       return objectData.glow_frame;
@@ -2095,10 +2086,6 @@ window.LevelObject = class LevelObject {
     spr._eeEditorLayer2 = parseInt(levelObj.editorLayer2 ?? levelObj._raw?.[61] ?? levelObj._raw?.["61"] ?? 0, 10) || 0;
     if (!this.objectSprites[linkedObjectId]) this.objectSprites[linkedObjectId] = [];
     this.objectSprites[linkedObjectId].push(spr);
-    if (objectDef?.type === solidType) {
-      if (spr._phaseBaseAlpha === undefined) spr._phaseBaseAlpha = Number(spr.alpha) || 1;
-      this._solidVisualSprites.push(spr);
-    }
   };
 
   if (frameName) {
