@@ -1481,6 +1481,22 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               }
             });
           });
+          shade.querySelector("[data-gauntlet]").addEventListener("click", async event => {
+            const button = event.currentTarget;
+            const error = shade.querySelector("[data-error]");
+            const name = window.prompt("Gauntlet name:");
+            const ids = window.prompt("Uploaded level IDs, comma-separated (3-5 levels):");
+            if (!name || !ids) return;
+            button.disabled = true;
+            try {
+              await window.AccountAPI.setGauntlet(name, ids.split(",").map(value => value.trim()).filter(Boolean));
+              error.style.color = "#88ffbb";
+              error.textContent = "Gauntlet saved.";
+            } catch (errorValue) {
+              error.textContent = errorValue.message || "Could not save Gauntlet";
+              button.disabled = false;
+            }
+          });
           shade.querySelector("[data-rate]").addEventListener("click", async event => {
             const button = event.currentTarget;
             const error = shade.querySelector("[data-error]");
@@ -9991,21 +10007,6 @@ _applyMirrorEffect() {
               containerY.fillPath();
             }
           });
-        });
-        shade.querySelector("[data-gauntlet]").addEventListener("click", async event => {
-          const button = event.currentTarget;
-          const name = window.prompt("Gauntlet name:");
-          const ids = window.prompt("Uploaded level IDs, comma-separated (3-5 levels):");
-          if (!name || !ids) return;
-          button.disabled = true;
-          try {
-            await window.AccountAPI.setGauntlet(name, ids.split(",").map(value => value.trim()).filter(Boolean));
-            error.style.color = "#88ffbb";
-            error.textContent = "Gauntlet saved.";
-          } catch (errorValue) {
-            error.textContent = errorValue.message || "Could not save Gauntlet";
-            button.disabled = false;
-          }
         });
         if (_0x1a79fc > _0x594d69) {
           _0x594d69 = _0x1a79fc;
