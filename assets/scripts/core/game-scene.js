@@ -4113,7 +4113,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           } else {
             const isShopCube = window.WDCoinEconomy?.isDiamondShopIcon?.(frame);
             iconImg = isShopCube
-              ? addImageToScene(this, ix, iy, frame)
+              ? this.add.image(ix, iy, frame)
               : this.add.image(ix, iy, atlas, frame);
             if (!iconImg) return;
             iconImg.setScrollFactor(0).setDepth(103);
