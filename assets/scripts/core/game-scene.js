@@ -5309,6 +5309,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         "level_21":        "diffIcon_05_btn_001",
         "level_22":        "diffIcon_05_btn_001",
       "level_24":        "diffIcon_03_btn_001",
+        "level_26":        "diffIcon_04_btn_001",
         "level_99":        "diffIcon_10_btn_001",
         "level_100":       "diffIcon_10_btn_001",
         "level_137409445": "diffIcon_00_btn_001",
@@ -9963,7 +9964,7 @@ _applyMirrorEffect() {
         window._dailyLevelActive = false;
         window._dailyLevelId = null;
       }
-      const builtInStarRewards = { level_24: 4 };
+      const builtInStarRewards = { level_24: 4, level_26: 7 };
       const starReward = window._selectedLevelData?.star_reward ?? builtInStarRewards[window.currentlevel?.[2]] ?? 0;
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
       if (earnedStars) this._showStarRewardAnimation(earnedStars);
@@ -11745,7 +11746,7 @@ _applyMirrorEffect() {
       "Can't Let Go","Jumper","Time Machine","Cycles","xStep","Clutterfunk",
       "Theory of Everything","Electroman Adventures","Clubstep","Electrodynamix",
       "Hexagon Force","Blast Processing","Theory of Everything 2",
-      "Geometrical Dominator","Deadlocked","Fingerdash","Dash"
+      "Geometrical Dominator","Deadlocked","Fingerdash","Dash","Machina"
     ];
 
     const _buildLevelCell = (levelData, rowIdx) => {
@@ -12433,7 +12434,7 @@ _applyMirrorEffect() {
         "Can't Let Go","Jumper","Time Machine","Cycles","xStep","Clutterfunk",
         "Theory of Everything","Electroman Adventures","Clubstep","Electrodynamix",
         "Hexagon Force","Blast Processing","Theory of Everything 2",
-        "Geometrical Dominator","Deadlocked","Fingerdash","Dash"
+        "Geometrical Dominator","Deadlocked","Fingerdash","Dash","Machina"
       ];
       const _isOfficialSong = _officialGDSongs.includes(levelData.songName);
       const songText = this.add.bitmapText(nameX, rowCenterY + 28, "bigFont", levelData.songName || "", 28)
@@ -12727,7 +12728,7 @@ _applyMirrorEffect() {
       "Can't Let Go","Jumper","Time Machine","Cycles","xStep","Clutterfunk",
       "Theory of Everything","Electroman Adventures","Clubstep","Electrodynamix",
       "Hexagon Force","Blast Processing","Theory of Everything 2",
-      "Geometrical Dominator","Deadlocked","Fingerdash","Dash"
+      "Geometrical Dominator","Deadlocked","Fingerdash","Dash","Machina"
     ];
 
     const rowH = 180;
