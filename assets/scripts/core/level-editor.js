@@ -1940,6 +1940,10 @@ class LevelEditor {
             if (flipPortal && !itemsForGrid.some(item => item.id === 5060)) {
                 itemsForGrid.push({ type: "object", id: 5060, frame: flipPortal.frame });
             }
+            const vectorPortal = getObjectFromId(5061);
+            if (vectorPortal && !itemsForGrid.some(item => item.id === 5061)) {
+                itemsForGrid.push({ type: "object", id: 5061, frame: vectorPortal.frame });
+            }
         }
     } else if (this._editorTab === "edit") {
         const moveActions = [
@@ -7621,7 +7625,8 @@ class LevelEditor {
         { key: 5, label: "Robot", frame: "gj_robotBtn_off_001.png", rotateFlip: false },
         { key: 6, label: "Spider", frame: "gj_spiderBtn_off_001.png", rotateFlip: false },
         { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false },
-        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false }
+        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false },
+        { key: 9, label: "Vector", frame: "flip-icon.png", rotateFlip: false }
     ];
 
     const leftX = -165;
@@ -8044,7 +8049,8 @@ class LevelEditor {
         { key: 5, label: "Robot", frame: "gj_robotBtn_off_001.png", rotateFlip: false },
         { key: 6, label: "Spider", frame: "gj_spiderBtn_off_001.png", rotateFlip: false },
         { key: 7, label: "Swing", frame: "gj_swingBtn_off_001.png", rotateFlip: false },
-        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false }
+        { key: 8, label: "Flip", frame: "flip-icon.png", rotateFlip: false },
+        { key: 9, label: "Vector", frame: "flip-icon.png", rotateFlip: false }
     ];
 
     const makeArtDefs = (prefix, count) => {

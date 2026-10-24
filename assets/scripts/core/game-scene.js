@@ -7701,6 +7701,8 @@ _buildSettingsPopup() {
       this._player.enterSpiderMode();
     } else if (gamemode == 8) {
       this._player.enterFlipMode();
+    } else if (gamemode == 9) {
+      this._player.enterVectorMode();
     }
 
     this._applyLevelStartOptions();
@@ -8127,6 +8129,8 @@ _buildSettingsPopup() {
         this._player.enterSpiderMode();
       } else if (gamemode == 8) {
         this._player.enterFlipMode();
+      } else if (gamemode == 9) {
+        this._player.enterVectorMode();
       }
 
       this._applyLevelStartOptions();
@@ -9336,6 +9340,7 @@ _applyMirrorEffect() {
     if (state.isRobot) return "robot";
     if (state.isSpider) return "spider";
     if (state.isFlip) return "flip";
+    if (state.isVector) return "vector";
     return "cube";
   }
   _getGamemodePortalMode(portalType) {
@@ -9356,6 +9361,8 @@ _applyMirrorEffect() {
         return "spider";
       case "portal_flip":
         return "flip";
+      case "portal_vector":
+        return "vector";
       case "portal_glider":
         return "glider";
       default:
@@ -9366,7 +9373,7 @@ _applyMirrorEffect() {
     if (!player || !state) return;
     const currentMode = this._getDualModeId(state);
     if (currentMode === mode) {
-      player.setCubeVisible(mode === "cube" || mode === "ufo" || mode === "flip");
+      player.setCubeVisible(mode === "cube" || mode === "ufo" || mode === "flip" || mode === "vector");
       player.setShipVisible(mode === "ship");
       player.setBallVisible(mode === "ball");
       player.setWaveVisible(mode === "wave");
@@ -9408,6 +9415,9 @@ _applyMirrorEffect() {
       case "flip":
         player.enterFlipMode({ y: saved.y, portalY: saved.y });
         break;
+      case "vector":
+        player.enterVectorMode({ y: saved.y, portalY: saved.y });
+        break;
       case "glider":
         player.enterGliderMode();
         break;
@@ -9419,6 +9429,7 @@ _applyMirrorEffect() {
         player.exitRobotMode();
         player.exitSpiderMode();
         player.exitFlipMode();
+        player.exitVectorMode();
         state.isFlying = false;
         state.isBall = false;
         state.isUfo = false;
@@ -9426,6 +9437,7 @@ _applyMirrorEffect() {
         state.isRobot = false;
         state.isSpider = false;
         state.isFlip = false;
+        state.isVector = false;
         player.setShipVisible(false);
         player.setBallVisible(false);
         player.setWaveVisible(false);
