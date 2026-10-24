@@ -11519,6 +11519,13 @@ _applyMirrorEffect() {
     const yearStart = new Date(Date.UTC(weekAnchor.getUTCFullYear(), 0, 1));
     const weekNumber = Math.ceil((((weekAnchor - yearStart) / 86400000) + 1) / 7);
     const weekKey = `${weekAnchor.getUTCFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
+    const pathVersion = "2";
+    if (localStorage.getItem("wd_paths_version") !== pathVersion) {
+      localStorage.removeItem("wd_paths_week");
+      localStorage.removeItem("wd_paths_xp");
+      localStorage.removeItem("wd_paths_claimed");
+      localStorage.setItem("wd_paths_version", pathVersion);
+    }
     let pathState = (() => { try { return JSON.parse(localStorage.getItem("wd_paths_week") || "null"); } catch (_) { return null; } })();
     if (!pathState || pathState.week !== weekKey) {
       pathState = { week: weekKey, baseline: { stars, diamonds, coins }, claimed: {} };
