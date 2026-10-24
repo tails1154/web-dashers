@@ -1651,6 +1651,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       if (!lvl || !lvl.id) return false;
       const PROXY_BASE = (window._gdProxyUrl || "").replace(/\/$/, "");
       if (!PROXY_BASE) { console.warn("Play online level: no server configured"); return false; }
+      if (this._vaultAudio) { this._vaultAudio.pause(); this._vaultAudio = null; }
       const loadingOverlay = this.add.graphics().setScrollFactor(0).setDepth(1000);
       loadingOverlay.fillStyle(0x000000, 0.85);
       loadingOverlay.fillRect(0, 0, screenWidth, screenHeight);
