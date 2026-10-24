@@ -10875,9 +10875,7 @@ _applyMirrorEffect() {
     const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
       .setFlipX(true).setRotation(Math.PI).setInteractive();
     root.add([shade, title, close]);
-    let leaderboardRefreshTimer = null;
     this._makeBouncyButton(close, 1, () => {
-      if (leaderboardRefreshTimer) clearInterval(leaderboardRefreshTimer);
       root.destroy(true);
       this._leaderboardOverlay = null;
       this._openCreatorMenu();
@@ -10931,7 +10929,6 @@ _applyMirrorEffect() {
       this._makeBouncyButton(tab, 1, () => render(category));
     });
     render(activeCategory);
-    leaderboardRefreshTimer = setInterval(() => render(activeCategory), 1000);
   }
 
   async _showQuestPanel() {
