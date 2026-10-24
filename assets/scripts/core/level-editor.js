@@ -1946,6 +1946,12 @@ class LevelEditor {
             if (phasePortal && !itemsForGrid.some(item => item.id === 5062)) {
                 itemsForGrid.push({ type: "object", id: 5062, frame: phasePortal.frame });
             }
+            for (const modeId of [5063, 5064, 5065, 5066, 5067, 5068, 5069, 5070, 5071, 5072]) {
+                const modePortal = getObjectFromId(modeId);
+                if (modePortal && !itemsForGrid.some(item => item.id === modeId)) {
+                    itemsForGrid.push({ type: "object", id: modeId, frame: modePortal.frame });
+                }
+            }
         }
     } else if (this._editorTab === "edit") {
         const moveActions = [

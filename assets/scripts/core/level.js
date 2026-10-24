@@ -460,6 +460,36 @@ if (!allObjects[5062]) {
     portalParticleColor: 0xb45cff
   };
 }
+const _extraGamemodePortals = [
+  [5063, "bounce", "#ff3b30", 0xff3b30],
+  [5064, "float", "#36c5ff", 0x36c5ff],
+  [5065, "rocket", "#ff9f1c", 0xff9f1c],
+  [5066, "invert", "#f5f5f5", 0xf5f5f5],
+  [5067, "spring", "#7dff55", 0x7dff55],
+  [5068, "shield", "#3f7cff", 0x3f7cff],
+  [5069, "hover", "#ff4fd8", 0xff4fd8],
+  [5070, "smash", "#c46cff", 0xc46cff],
+  [5071, "zigzag", "#ffd23f", 0xffd23f],
+  [5072, "rewind", "#00e6a8", 0x00e6a8]
+];
+for (const [portalId, portalMode, _portalColor, portalParticleColor] of _extraGamemodePortals) {
+  if (!allObjects[portalId]) {
+    allObjects[portalId] = {
+      can_color: false,
+      default_base_color_channel: 0,
+      frame: `${portalMode}-portal-front.png`,
+      glow_frame: `${portalMode}-portal-front.png`,
+      gridH: 2.5166666507720947,
+      gridW: 0.7916666865348816,
+      spritesheet: "GJ_GameSheet02-uhd",
+      type: "portal",
+      sub: portalMode,
+      z: 10,
+      portalParticle: true,
+      portalParticleColor
+    };
+  }
+}
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
 const _extraSpeedValues = [SpeedPortal.SIX_TIMES, SpeedPortal.SEVEN_TIMES, SpeedPortal.EIGHT_TIMES, SpeedPortal.NINE_TIMES, SpeedPortal.TEN_TIMES];
 for (let i = 0; i < _extraSpeedPortalIds.length; i++) {
@@ -2621,6 +2651,16 @@ window.LevelObject = class LevelObject {
         5060: "flip",
         5061: "vector",
         5062: "phase",
+        5063: "bounce",
+        5064: "float",
+        5065: "rocket",
+        5066: "invert",
+        5067: "spring",
+        5068: "shield",
+        5069: "hover",
+        5070: "smash",
+        5071: "zigzag",
+        5072: "rewind",
         747: "teleport",
         286: "dual_on",
         287: "dual_off"
@@ -2642,6 +2682,16 @@ window.LevelObject = class LevelObject {
         flip: "portal_flip",
         vector: "portal_vector",
         phase: "portal_phase",
+        bounce: "portal_extra",
+        float: "portal_extra",
+        rocket: "portal_extra",
+        invert: "portal_extra",
+        spring: "portal_extra",
+        shield: "portal_extra",
+        hover: "portal_extra",
+        smash: "portal_extra",
+        zigzag: "portal_extra",
+        rewind: "portal_extra",
         glider: "portal_glider",
         teleport: "portal_teleport",
         mirrora: "portal_mirror_on",
@@ -2662,6 +2712,11 @@ window.LevelObject = class LevelObject {
         const collider = new Collider(portalColliderType, colliderX, colliderY, portalW, portalH, portalRot);
         collider.portalX = worldX;
         collider.portalY = worldY;
+        if (portalColliderType === "portal_extra") {
+          collider.extraGamemode = portalSub;
+          const extraPortal = _extraGamemodePortals.find((entry) => entry[1] === portalSub);
+          collider.extraModeTint = extraPortal ? extraPortal[3] : null;
+        }
         if (isTeleportPortal) {
           const yOffset = this._getTeleportPortalYOffset(levelObj);
           collider.teleportTargetX = worldX;
