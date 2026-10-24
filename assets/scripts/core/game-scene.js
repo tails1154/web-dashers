@@ -10936,11 +10936,17 @@ _applyMirrorEffect() {
       const codeInput = shade.querySelector("[data-vault-code]");
       const error = shade.querySelector("[data-vault-error]");
       const enter = () => {
+        const code = String(codeInput.value || "").trim().toLowerCase();
+        if (code === "featured") {
+          close();
+          this._openOnlineLevelsScene({ type: 6 });
+          return;
+        }
         if (challengeLocked) {
           error.textContent = "Don't";
           return;
         }
-        if (String(codeInput.value || "").trim().toLowerCase() !== "the challenge") {
+        if (code !== "the challenge") {
           error.textContent = "The guard does not recognize that code.";
           return;
         }
