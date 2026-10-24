@@ -4405,7 +4405,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const x = cx + (col ? 220 : -220), y = 205 + row * 190;
         const card = this.add.rectangle(x, y, 385, 155, 0x1c2750, 0.95).setStrokeStyle(3, 0x536da8, 1).setScrollFactor(0).setDepth(702);
         const icon = addImageToScene(this, x - 120, y - 5, entry.frame);
-        if (icon) icon.setScale(1.55).setTint(Number(window.mainColor) || 0xffffff).setScrollFactor(0).setDepth(704);
+        if (icon) {
+          const iconScale = entry.frame.startsWith("shop_cube_")
+            ? Math.min(110 / (icon.width || 110), 110 / (icon.height || 110))
+            : 1.55;
+          icon.setScale(iconScale).setTint(Number(window.mainColor) || 0xffffff).setScrollFactor(0).setDepth(704);
+        }
         const name = this.add.text(x + 12, y - 48, entry.name, { fontFamily: "Arial Black", fontSize: "17px", color: "#ffffff" }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
         const price = this.add.text(x + 12, y - 15, "", { fontFamily: "Arial Black", fontSize: "16px", color: "#e4a7ff" }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
         const button = this.add.text(x + 12, y + 38, "UNLOCK", { fontFamily: "Arial Black", fontSize: "17px", color: "#ffffff", backgroundColor: "#694b91", padding: { x: 22, y: 9 } }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
