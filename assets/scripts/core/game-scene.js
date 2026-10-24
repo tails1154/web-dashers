@@ -950,7 +950,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const isWeeklyButton = frame === "GJ_weeklyBtn_001.png";
         const isEventButton = frame === "GJ_eventBtn_001.png";
         const isGauntletButton = frame === "GJ_gauntletsBtn_001.png";
-        if (isQuestButton) {
+        if (isMapButton) {
+          // Map is intentionally unavailable until server-side map progression is ready.
+          btn.postFX.addColorMatrix().grayscale(1);
+          btn.setTint(0xafafaf);
+        } else if (isQuestButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => this._showQuestPanel(), () => true);
         } else if (isHighscoreButton) {
@@ -958,12 +962,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
             this._openLeaderboardScene();
-          }, () => true);
-        } else if (isMapButton) {
-          btn.setInteractive();
-          this._makeBouncyButton(btn, btnScale, () => {
-            this._closeCreatorMenu(true);
-            this._openMapScene();
           }, () => true);
         } else if (isSearchButton) {
           btn.setInteractive();
