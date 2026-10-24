@@ -491,9 +491,7 @@ class PlayerObject {
   }
   setPhaseGhosted(ghosted) {
     this.p.phaseGhosted = !!ghosted;
-    for (const layer of (this._playerLayers || [])) {
-      if (layer?.sprite?.setAlpha) layer.sprite.setAlpha(this.p.phaseGhosted ? 0.45 : 1);
-    }
+    this._gameLayer?._setPhaseSolidOpacity?.(this.p.phaseGhosted ? 0.45 : 1);
   }
   _applyPlayerTints() {
     const applyLayer = (layer) => {
@@ -534,7 +532,7 @@ class PlayerObject {
       }
     }
     for (const layer of (this._playerLayers || [])) {
-      if (layer?.sprite?.setAlpha) layer.sprite.setAlpha(this.p?.isPhase && this.p.phaseGhosted ? 0.45 : 1);
+      if (layer?.sprite?.setAlpha) layer.sprite.setAlpha(1);
     }
   }
 	  _makeportalguide(gameObj) {
