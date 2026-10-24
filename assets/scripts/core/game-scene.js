@@ -9831,6 +9831,7 @@ _applyMirrorEffect() {
         window.AccountAPI?.claimDailyReward?.(dailyId, true, false).then(result => {
           if (result && Number.isFinite(Number(result.diamonds))) localStorage.setItem("wd_diamonds", String(result.diamonds));
           if (result && !result.already_claimed) window.alert("Daily Level complete! +10 diamonds");
+          return window.AccountAPI?.syncLeaderboardStats?.();
         }).catch(error => console.warn("Daily reward was not claimed:", error));
         window._dailyLevelActive = false;
         window._dailyLevelId = null;
@@ -9863,11 +9864,14 @@ _applyMirrorEffect() {
             const reward = await window.AccountAPI.claimQuest(quest.id);
             if (reward && Number.isFinite(Number(reward.diamonds))) localStorage.setItem("wd_diamonds", String(reward.diamonds));
             if (reward && !reward.already_claimed) window.alert(`Quest complete! +${reward.awarded} diamonds`);
+            await window.AccountAPI.syncLeaderboardStats();
           } catch (questError) {
             console.warn("Quest reward was not claimed:", questError);
           }
         }
       }).catch(error => console.warn("Could not load quests:", error));
+      const statsSync = window.AccountAPI?.syncLeaderboardStats?.();
+      statsSync?.catch(error => console.warn("Leaderboard stats were not synced:", error));
       window.GDAchievements?.check();
     } else {
       this._practiceBestPercent = 100;

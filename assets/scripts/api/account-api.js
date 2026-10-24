@@ -592,6 +592,12 @@ window.AccountAPI = {
     if (!res.ok) throw new Error(data.error || 'Failed to save');
   },
 
+  async syncLeaderboardStats() {
+    if (!this.currentUser && !(await this.checkSession())) return false;
+    await this.setCloudSave(this.collectLocalData());
+    return true;
+  },
+
   collectLocalData() {
     const keys = [
       'gd_settings', 'gd_totalAttempts', 'gd_totalJumps', 'gd_totalDeaths',
