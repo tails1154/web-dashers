@@ -871,8 +871,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setScrollFactor(0).setDepth(100).setOrigin(0, 0).setFlipY(true)
       const cornerBL = this.add.image(0,  sh, "GJ_GameSheet03", "GJ_sideArt_001.png")
         .setScrollFactor(0).setDepth(152).setOrigin(0, 1)
-      const treasureroom = this.add.image(1095, 40, "GJ_GameSheet03", "GJ_lock_001.png")
-        .setScrollFactor(0).setDepth(104).setTint(0x666666);
+      const diamondEntryCost = 25;
+      const treasureroom = this.add.image(sw - 55, 40, "GJ_GameSheet03", "GJ_lock_001.png")
+        .setScrollFactor(0).setDepth(104).setTint(0x666666).setInteractive();
+      this._makeBouncyButton(treasureroom, 1, () => {
+        const diamonds = parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0;
+        if (diamonds >= diamondEntryCost) {
+          treasureroom.clearTint();
+          this._showDiamondGuard(true, diamonds, diamondEntryCost);
+        } else {
+          this._showDiamondGuard(false, diamonds, diamondEntryCost);
+        }
+      }, () => true);
       const vaultsecret = this.add.image(1095, 601, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
         .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666);
 
@@ -919,12 +929,32 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const btn = this.add.image(bx, by, "GJ_GameSheet04", frame)
           .setScrollFactor(0).setDepth(104).setScale(btnScale);
         const isSearchButton  = frame === "GJ_searchBtn_001.png";
+        const isMapButton = frame === "GJ_mapBtn_001.png";
+        const isHighscoreButton = frame === "GJ_highscoreBtn_001.png";
+        const isQuestButton = frame === "GJ_challengeBtn_001.png";
         const isFeaturedButton = frame === "GJ_featuredBtn_001.png";
         const isEditorButton = frame === "GJ_createBtn_001.png"; 
         const isSavedButton  = frame === "GJ_savedBtn_001.png";
         const isVersusButton = frame === "GJ_versusBtn_001.png";
         const isDailyButton = frame === "GJ_dailyBtn_001.png";
-        if (isSearchButton) {
+        const isWeeklyButton = frame === "GJ_weeklyBtn_001.png";
+        const isEventButton = frame === "GJ_eventBtn_001.png";
+        if (isQuestButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => this._showQuestPanel(), () => true);
+        } else if (isHighscoreButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openLeaderboardScene();
+          }, () => true);
+        } else if (isMapButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openMapScene();
+          }, () => true);
+        } else if (isSearchButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
@@ -953,6 +983,42 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
             this._openVersusMenu();
+          }, () => true);
+        } else if (isWeeklyButton || isEventButton) {
+          btn.setInteractive();
+          const kind = isWeeklyButton ? "weekly" : "event";
+          const label = isWeeklyButton ? "Weekly" : "Event";
+          this._makeBouncyButton(btn, btnScale, async () => {
+            if (this._specialLevelLoadingOverlay) return;
+            this._closeCreatorMenu(true);
+            const loadingOverlay = this.add.graphics().setScrollFactor(0).setDepth(700);
+            loadingOverlay.fillStyle(0x000000, 0.88).fillRect(0, 0, sw, sh);
+            const loadingBlocker = this.add.zone(sw / 2, sh / 2, sw, sh)
+              .setScrollFactor(0).setDepth(701).setInteractive();
+            const loadingText = this.add.bitmapText(sw / 2, sh / 2, "goldFont", `Loading ${label} Level...`, 28)
+              .setOrigin(0.5).setScrollFactor(0).setDepth(702);
+            this._specialLevelLoadingOverlay = { loadingOverlay, loadingBlocker, loadingText };
+            const clearLoading = () => {
+              if (!this._specialLevelLoadingOverlay) return;
+              loadingOverlay.destroy(); loadingBlocker.destroy(); loadingText.destroy();
+              this._specialLevelLoadingOverlay = null;
+            };
+            try {
+              const data = await window.AccountAPI[`get${label}Level`]();
+              if (!data.level) {
+                clearLoading();
+                window.alert(`No ${label} Level has been selected yet.`);
+                this._openCreatorMenu();
+                return;
+              }
+              window._selectedLevelData = { ...data.level, id: data.level.id, songName: data.level.song || "Unknown" };
+              clearLoading();
+              this._openPlayMenu(() => this._openCreatorMenu());
+            } catch (error) {
+              clearLoading();
+              window.alert(error.message || `Could not load ${label} Level`);
+              this._openCreatorMenu();
+            }
           }, () => true);
         } else if (isDailyButton) {
           btn.setInteractive();
@@ -1351,8 +1417,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       }
 
       const leaderboardBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 4, "GJ_GameSheet03", "GJ_levelLeaderboardBtn_001.png")
-        .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive().setTint(0x666666);
+        .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
       this._makeBouncyButton(leaderboardBtn, sideBtnScale, () => {
+        this._closePlayMenu(true, () => this._openLeaderboardScene());
       });
 
       const likeBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_rateDiffBtn_001.png")
@@ -1364,7 +1431,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           const shade = document.createElement("div");
           shade.dataset.wdModMenu = "1";
           shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
-          shade.innerHTML = `<div style="width:min(390px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 8px;text-align:center;color:#ffd84d">Moderator Menu</h2><p style="margin:0 0 18px;text-align:center;color:#bbb">${String(lvl.name || "Level").replace(/[&<>\"']/g, "")}</p><p data-error style="min-height:18px;margin:0 0 12px;color:#ff9b9b;text-align:center"></p><div style="display:grid;gap:10px"><button type="button" data-rate style="padding:12px;border:0;border-radius:8px;background:#ffd84d;font-weight:bold;cursor:pointer">Rate Level</button><button type="button" data-daily style="padding:12px;border:0;border-radius:8px;background:#61d66f;font-weight:bold;cursor:pointer">Set as Daily Level</button><button type="button" data-close style="padding:12px;border:0;border-radius:8px;background:#888;font-weight:bold;cursor:pointer">Close</button></div></div>`;
+          shade.innerHTML = `<div style="width:min(390px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 8px;text-align:center;color:#ffd84d">Moderator Menu</h2><p style="margin:0 0 18px;text-align:center;color:#bbb">${String(lvl.name || "Level").replace(/[&<>\"']/g, "")}</p><p data-error style="min-height:18px;margin:0 0 12px;color:#ff9b9b;text-align:center"></p><div style="display:grid;gap:10px"><button type="button" data-rate style="padding:12px;border:0;border-radius:8px;background:#ffd84d;font-weight:bold;cursor:pointer">Rate Level</button><button type="button" data-map style="padding:12px;border:0;border-radius:8px;background:#6ec8ff;font-weight:bold;cursor:pointer">Add to Map</button><button type="button" data-daily style="padding:12px;border:0;border-radius:8px;background:#61d66f;font-weight:bold;cursor:pointer">Set as Daily Level</button><button type="button" data-weekly style="padding:12px;border:0;border-radius:8px;background:#b58cff;font-weight:bold;cursor:pointer">Set as Weekly Level</button><button type="button" data-event style="padding:12px;border:0;border-radius:8px;background:#ff754d;font-weight:bold;cursor:pointer">Set as Event Level</button><button type="button" data-close style="padding:12px;border:0;border-radius:8px;background:#888;font-weight:bold;cursor:pointer">Close</button></div></div>`;
           document.body.appendChild(shade);
           const close = () => shade.remove();
           shade.querySelector("[data-close]").addEventListener("click", close);
@@ -1375,6 +1442,40 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             button.disabled = true;
             try { await window.AccountAPI.setDailyLevel(lvl.id); error.style.color = "#88ffbb"; error.textContent = "Set as today's Daily Level."; }
             catch (errorValue) { error.textContent = errorValue.message || "Could not set Daily Level"; button.disabled = false; }
+          });
+          shade.querySelector("[data-map]").addEventListener("click", async event => {
+            const button = event.currentTarget;
+            const error = shade.querySelector("[data-error]");
+            const answer = window.prompt("Add this level to which Map world? (1-5)", "1");
+            const worldId = Number(answer);
+            if (!Number.isInteger(worldId) || worldId < 1 || worldId > 5) return;
+            button.disabled = true;
+            try {
+              await window.AccountAPI.addLevelToMap(lvl.id, worldId);
+              error.style.color = "#88ddff";
+              error.textContent = `Added to Map world ${worldId}.`;
+            } catch (errorValue) {
+              error.textContent = errorValue.message || "Could not add level to Map";
+              button.disabled = false;
+            }
+          });
+          [
+            ["weekly", "Weekly"],
+            ["event", "Event"]
+          ].forEach(([kind, label]) => {
+            shade.querySelector(`[data-${kind}]`).addEventListener("click", async event => {
+              const button = event.currentTarget;
+              const error = shade.querySelector("[data-error]");
+              button.disabled = true;
+              try {
+                await window.AccountAPI[`set${label}Level`](lvl.id);
+                error.style.color = "#88ffbb";
+                error.textContent = `Set as this period's ${label} Level.`;
+              } catch (errorValue) {
+                error.textContent = errorValue.message || `Could not set ${label} Level`;
+                button.disabled = false;
+              }
+            });
           });
           shade.querySelector("[data-rate]").addEventListener("click", async event => {
             const button = event.currentTarget;
@@ -1397,14 +1498,15 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           return;
         }
         try {
-          const result = await window.AccountAPI.ratePrompt(lvl.id, lvl._myRating || 0);
-          if (result?.level) {
-            Object.assign(lvl, result.level);
-            lvl._myRating = result.rating;
+          const result = await window.AccountAPI.toggleLevelLike(lvl.id);
+          if (result) {
+            lvl.likes = Number(result.likes) || 0;
+            lvl._liked = !!result.liked;
             window._selectedLevelData = lvl;
+            likeBtn.setTint(lvl._liked ? 0xffe45c : 0xffffff);
           }
         } catch (error) {
-          window.alert(error.message || "Rating failed");
+          window.alert(error.message || "Like failed");
         }
       });
 
@@ -1555,6 +1657,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const loadingText = this.add.bitmapText(screenWidth / 2, screenHeight / 2, "goldFont", "Downloading Level...", 30)
         .setOrigin(0.5).setScrollFactor(0).setDepth(1001);
       try {
+        try {
+          await window.AccountAPI?.recordLevelDownload?.(lvl.id);
+        } catch (counterError) {
+          console.warn("Could not record level download:", counterError);
+        }
         const res = await fetch(`${PROXY_BASE}?action=get&id=${lvl.id}`);
         if (!res.ok) throw new Error(`Server returned ${res.status}`);
         const data = await res.json();
@@ -2811,10 +2918,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           const buttonTypes = {
             "Downloads": 1,
             "Likes": 2,
+            "Sent": 5,
             "Trending": 3,
             "Recent": 4,
             "Magic": 7,
             "Awarded": 11,
+            "Followed": 8,
+            "Friends": 9,
           };
           const type = buttonTypes[labelStr];
           if (!type) {
@@ -3442,12 +3552,17 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setOrigin(1, 0.5).setScrollFactor(0).setDepth(105).setTint(0xffe45c);
       const _iconStarCounter = this.add.bitmapText(sw - 28, 108, "goldFont", "Stars: " + (window.WDCoinEconomy?.getStars?.() || 0), 24)
         .setOrigin(1, 0.5).setScrollFactor(0).setDepth(105).setTint(0xfff2a1);
+      const _iconDiamondCounter = this.add.bitmapText(sw - 28, 138, "goldFont", "Diamonds: " + (parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0), 24)
+        .setOrigin(1, 0.5).setScrollFactor(0).setDepth(105).setTint(0xd98cff);
       this._refreshIconCoinHud = () => {
         if (_iconCoinCounter && _iconCoinCounter.active) {
           _iconCoinCounter.setText("Coins: " + (window.WDCoinEconomy?.getBalance?.() || 0));
         }
         if (_iconStarCounter && _iconStarCounter.active) {
           _iconStarCounter.setText("Stars: " + (window.WDCoinEconomy?.getStars?.() || 0));
+        }
+        if (_iconDiamondCounter && _iconDiamondCounter.active) {
+          _iconDiamondCounter.setText("Diamonds: " + (parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0));
         }
       };
       let titleFocused = false;
@@ -3499,7 +3614,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         window.addEventListener("keydown", _onTitleKeyDown);
         this._iconTitleKeyHandler = _onTitleKeyDown;
       }
-      this._iconOverlayObjects = [overlay, blocker, titleTxt];
+      this._iconOverlayObjects = [overlay, blocker, titleTxt, _iconCoinCounter, _iconStarCounter, _iconDiamondCounter];
 
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
         .setScrollFactor(0).setDepth(104).setFlipY(true)
@@ -9670,12 +9785,29 @@ _applyMirrorEffect() {
       let completedSet;
       try { completedSet = JSON.parse(localStorage.getItem(completedKey) || "[]"); } catch(e) { completedSet = []; }
       const levelId = window.currentlevel[2] || "level_1";
+      const wasAlreadyCompleted = completedSet.includes(levelId);
       if (!completedSet.includes(levelId)) {
         completedSet.push(levelId);
         localStorage.setItem(completedKey, JSON.stringify(completedSet));
         window._completedLevels = completedSet.length;
         localStorage.setItem("gd_completedLevels", window._completedLevels);
       }
+      window.AccountAPI?.getQuests?.().then(async questData => {
+        const levelHasStars = Number(window._selectedLevelData?.stars || window._selectedLevelData?.star_reward || 0) > 0;
+        for (const quest of (questData?.quests || [])) {
+          const qualifies = quest.kind === "beat_any" ||
+            (quest.kind === "beat_star" && levelHasStars) ||
+            (quest.kind === "rebeat_main" && /^level_\d+$/.test(String(levelId)) && wasAlreadyCompleted);
+          if (!qualifies) continue;
+          try {
+            const reward = await window.AccountAPI.claimQuest(quest.id);
+            if (reward && Number.isFinite(Number(reward.diamonds))) localStorage.setItem("wd_diamonds", String(reward.diamonds));
+            if (reward && !reward.already_claimed) window.alert(`Quest complete! +${reward.awarded} diamonds`);
+          } catch (questError) {
+            console.warn("Quest reward was not claimed:", questError);
+          }
+        }
+      }).catch(error => console.warn("Could not load quests:", error));
       window.GDAchievements?.check();
     } else {
       this._practiceBestPercent = 100;
@@ -10668,18 +10800,300 @@ _applyMirrorEffect() {
     return _lengthValues[lengthIdx] || "Tiny";
   }
 
+  _openLeaderboardScene() {
+    if (this._leaderboardOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    this._leaderboardOverlay = root;
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.98).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 42, "goldFont", "LEADERBOARDS", 46).setOrigin(0.5);
+    const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
+      .setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, title, close]);
+    this._makeBouncyButton(close, 1, () => {
+      root.destroy(true);
+      this._leaderboardOverlay = null;
+      this._openCreatorMenu();
+    });
+
+    const categories = [
+      ["stars", "MOST STARS", 0xffe45c],
+      ["diamonds", "MOST DIAMONDS", 0xd98cff],
+      ["coins", "MOST COINS", 0x8de8ff]
+    ];
+    const tabs = [];
+    const rows = [];
+    const status = this.add.bitmapText(sw / 2, sh / 2, "bigFont", "Loading...", 28).setOrigin(0.5);
+    root.add(status);
+    let activeCategory = "stars";
+
+    const render = async category => {
+      activeCategory = category;
+      tabs.forEach(tab => tab.setAlpha(tab.category === category ? 1 : 0.55));
+      rows.forEach(row => row.destroy());
+      rows.length = 0;
+      status.setText("Loading...").setVisible(true);
+      try {
+        const data = await window.AccountAPI.getLeaderboard(category);
+        status.setVisible(false);
+        const entries = Array.isArray(data.entries) ? data.entries : [];
+        if (!entries.length) {
+          status.setText("No scores yet.").setVisible(true);
+          return;
+        }
+        entries.slice(0, 20).forEach((entry, index) => {
+          const y = 142 + index * 23;
+          const line = this.add.bitmapText(sw / 2, y, "bigFont",
+            `${String(entry.rank || index + 1).padStart(2, " ")}   ${String(entry.username || "Unknown").slice(0, 22).padEnd(22, " ")}   ${Number(entry.value || 0).toLocaleString("en-US")}`,
+            22
+          ).setOrigin(0.5).setTint(index === 0 ? 0xffe45c : 0xffffff);
+          root.add(line);
+          rows.push(line);
+        });
+      } catch (error) {
+        status.setText(error.message || "Could not load leaderboard").setVisible(true);
+      }
+    };
+
+    categories.forEach(([category, label, color], index) => {
+      const tab = this.add.bitmapText(sw / 2 - 245 + index * 245, 92, "goldFont", label, 20)
+        .setOrigin(0.5).setTint(color).setInteractive();
+      tab.category = category;
+      tabs.push(tab);
+      root.add(tab);
+      this._makeBouncyButton(tab, 1, () => render(category));
+    });
+    render(activeCategory);
+  }
+
+  async _showQuestPanel() {
+    if (document.querySelector("[data-wd-quests]")) return;
+    try {
+      const data = await window.AccountAPI.getQuests();
+      const shade = document.createElement("div");
+      shade.dataset.wdQuests = "1";
+      shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+      const items = (data.quests || []).map(quest => `<li style=\"margin:12px 0;color:#fff\"><b>${String(quest.text || "Quest").replace(/[&<>\"']/g, "")}</b><span style=\"float:right;color:#d98cff\">+${Number(quest.reward) || 0} diamonds</span></li>`).join("");
+      shade.innerHTML = `<div style="width:min(520px,calc(100vw - 32px));padding:24px;border:3px solid #8de8ff;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 8px;text-align:center;color:#8de8ff">DAILY QUESTS</h2><p style="text-align:center;color:#bbb;margin:0 0 16px">Complete these in clean Normal Mode.</p><ul style="padding-left:22px">${items || "<li>No quests available.</li>"}</ul><button type="button" data-close style="display:block;margin:20px auto 0;padding:11px 24px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">Close</button></div>`;
+      document.body.appendChild(shade);
+      const close = () => shade.remove();
+      shade.querySelector("[data-close]").addEventListener("click", close);
+      shade.addEventListener("click", event => { if (event.target === shade) close(); });
+    } catch (error) {
+      window.alert(error.message || "Could not load quests");
+    }
+  }
+
+  _showDiamondGuard(canEnter, diamonds, required) {
+    const existing = document.querySelector("[data-wd-diamond-guard]");
+    if (existing) existing.remove();
+    const lockedMessages = [
+      "HALT! The Diamond Vault is sealed.",
+      "The guard checks your pockets. Not enough sparkle.",
+      "Come back when you have more diamonds.",
+      "The vault requires a serious diamond collection."
+    ];
+    this._diamondGuardMessageIndex = (this._diamondGuardMessageIndex || 0) + 1;
+    const message = canEnter
+      ? "The guard steps aside. Enter a vault code."
+      : lockedMessages[this._diamondGuardMessageIndex % lockedMessages.length];
+    const shade = document.createElement("div");
+    shade.dataset.wdDiamondGuard = "1";
+    shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+    shade.innerHTML = `<div style="width:min(430px,calc(100vw - 32px));padding:24px;border:3px solid ${canEnter ? "#8de8ff" : "#888"};border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 12px;color:${canEnter ? "#8de8ff" : "#ddd"}">${canEnter ? "DIAMOND VAULT" : "VAULT GUARD"}</h2><p style="min-height:48px;margin:0 0 12px;font-size:18px">${message}</p><p style="color:#d98cff;margin:0 0 20px">${diamonds}/${required} diamonds</p>${canEnter ? '<input data-vault-code autocomplete="off" placeholder="Enter vault code" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font-size:17px;margin-bottom:12px"><p data-vault-error style="min-height:20px;color:#ff9b9b;margin:0 0 10px"></p><button type="button" data-enter style="padding:11px 24px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">ENTER</button>' : ''}<button type="button" data-close style="display:block;margin:12px auto 0;padding:11px 24px;border:0;border-radius:9px;background:#888;font-weight:bold;cursor:pointer">CLOSE</button></div>`;
+    document.body.appendChild(shade);
+    const close = () => shade.remove();
+    shade.querySelector("[data-close]").addEventListener("click", close);
+    shade.addEventListener("click", event => { if (event.target === shade) close(); });
+    if (canEnter) {
+      const codeInput = shade.querySelector("[data-vault-code]");
+      const error = shade.querySelector("[data-vault-error]");
+      const enter = () => {
+        if (String(codeInput.value || "").trim().toLowerCase() !== "the challenge") {
+          error.textContent = "The guard does not recognize that code.";
+          return;
+        }
+        close();
+        this._startVaultMusic();
+        window._selectedLevelData = {
+          id: "77243245", name: "The Challenge", author: "RobsVault",
+          songName: "Level 27", officialSong: 27, difficulty: 3, stars: 0
+        };
+        this._openPlayMenu(() => this._openCreatorMenu());
+      };
+      shade.querySelector("[data-enter]").addEventListener("click", enter);
+      codeInput.addEventListener("keydown", event => { if (event.key === "Enter") enter(); });
+      codeInput.focus();
+    }
+  }
+
+  _startVaultMusic() {
+    if (this._vaultAudio) { this._vaultAudio.pause(); this._vaultAudio = null; }
+    const songs = ["StayInsideMe", "PowerTrip", "NockEm", "The7Seas"];
+    const song = songs[Math.floor(Math.random() * songs.length)];
+    const audio = new Audio(`assets/music/${song}.mp3`);
+    audio.loop = true;
+    audio.volume = 0.45;
+    audio.play().catch(() => {});
+    this._vaultAudio = audio;
+  }
+
+  _openMapScene() {
+    if (this._mapOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    this._mapOverlay = root;
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x061126, 0.96).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 38, "goldFont", "THE MAP", 48).setOrigin(0.5);
+    const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
+    const worldBack = this.add.bitmapText(112, 48, "goldFont", "WORLDS", 22).setOrigin(0.5).setInteractive().setVisible(false);
+    root.add([shade, title, close, worldBack]);
+    this._makeBouncyButton(close, 1, () => {
+      root.destroy(true);
+      this._mapOverlay = null;
+      this._openCreatorMenu();
+    });
+    this._makeBouncyButton(worldBack, 1, () => {
+      selectedWorld = null;
+      worldSelectMode = true;
+      worldBack.setVisible(false);
+      worldIcons.forEach((icon, index) => {
+        const alpha = isWorldUnlocked(index) ? 1 : 0.35;
+        icon.visual.setAlpha(alpha);
+        icon.hitZone.setAlpha(alpha);
+      });
+      renderLevels();
+    });
+
+    const mapX = 38;
+    const mapY = 92;
+    const mapW = sw - 76;
+    const mapH = Math.min(430, sh - 230);
+    const mapBg = this.add.graphics();
+    mapBg.fillStyle(0x102b4d, 1).fillRoundedRect(mapX, mapY, mapW, mapH, 28);
+    mapBg.lineStyle(4, 0x4ca8df, 0.8).strokeRoundedRect(mapX, mapY, mapW, mapH, 28);
+    mapBg.lineStyle(8, 0x254d70, 0.8);
+    for (let i = 0; i < 14; i++) mapBg.lineBetween(mapX + i * 90, mapY + 35, mapX + i * 90 + 130, mapY + mapH - 20);
+    root.add(mapBg);
+    const path = this.add.graphics().lineStyle(8, 0xffd84d, 0.65);
+    root.add(path);
+
+    const worldLayer = this.add.container(0, 0);
+    const levelLayer = this.add.container(0, 0);
+    root.add([worldLayer, levelLayer]);
+    const worldIcons = [];
+    let worlds = [];
+    let selectedWorld = null;
+    let worldSelectMode = true;
+    const completedLevels = () => {
+      try { return new Set(JSON.parse(localStorage.getItem("gd_completedSet") || "[]")); }
+      catch (_) { return new Set(); }
+    };
+    const isWorldUnlocked = index => index === 0 || worlds[index - 1]?.levels?.length > 0 && worlds[index - 1].levels.every(level => completedLevels().has(String(level.id)));
+
+    const worldPosition = world => ({
+      x: mapX + (Math.max(0, Math.min(1000, Number(world.x) || 0)) / 1000) * mapW,
+      y: mapY + (Math.max(0, Math.min(600, Number(world.y) || 0)) / 600) * mapH
+    });
+    const drawIcon = (world, index) => {
+      const pos = worldPosition(world);
+      const group = this.add.container(pos.x, pos.y);
+      const g = this.add.graphics();
+      g.fillStyle([0x56d67d, 0x53d8ff, 0xff754d, 0xb58cff, 0xd66cff][index % 5], 1);
+      g.fillCircle(0, 0, 38);
+      g.lineStyle(5, 0xffffff, 0.9).strokeCircle(0, 0, 38);
+      g.lineStyle(4, 0x13213d, 0.9);
+      if (index === 0) { g.fillStyle(0xefffc1, 1); g.fillTriangle(-5, 22, 22, -18, -22, -8); }
+      if (index === 1) { g.fillStyle(0xe6fbff, 1); g.fillTriangle(0, -25, 22, 0, 0, 25); g.fillTriangle(0, -25, -22, 0, 0, 25); }
+      if (index === 2) { g.fillStyle(0x35142e, 1); g.fillTriangle(-25, 22, 0, -25, 25, 22); g.fillStyle(0xffd84d, 1); g.fillCircle(0, 3, 8); }
+      if (index === 3) { g.fillStyle(0xf4efff, 1); g.fillCircle(-13, 5, 12); g.fillCircle(3, -4, 16); g.fillCircle(17, 6, 11); }
+      if (index === 4) { g.fillStyle(0x17132b, 1); g.fillCircle(0, 0, 22); g.fillStyle(0xffec9c, 1); g.fillCircle(8, -7, 18); g.fillStyle(0x17132b, 1); g.fillCircle(15, -11, 16); }
+      group.add(g);
+      const label = this.add.bitmapText(0, 54, "goldFont", String(world.name || `World ${world.id}`), 22).setOrigin(0.5);
+      group.add(label);
+      const locked = !isWorldUnlocked(index);
+      if (locked) group.setAlpha(0.35);
+      // Keep input independent from the container's child bounds. The label
+      // below the icon was making the container hitbox appear offset.
+      const hitZone = this.add.zone(pos.x, pos.y, 120, 120)
+        .setScrollFactor(0)
+        .setDepth(902)
+        .setInteractive(new Phaser.Geom.Rectangle(-60, -60, 120, 120), Phaser.Geom.Rectangle.Contains);
+      if (locked) hitZone.setAlpha(0.35);
+      hitZone.on("pointerup", () => {
+        if (locked) return;
+        selectedWorld = world;
+        worldSelectMode = false;
+        worldBack.setVisible(true);
+        renderLevels();
+      });
+      worldLayer.add(group);
+      // Keep the input object out of the nested world layer so its screen
+      // coordinates cannot be transformed separately from the visual icon.
+      root.add(hitZone);
+      worldIcons.push({ visual: group, hitZone });
+      return pos;
+    };
+    const renderLevels = () => {
+      levelLayer.removeAll(true);
+      if (!selectedWorld) {
+        levelLayer.add(this.add.bitmapText(sw / 2, mapY + mapH + 42, "goldFont", "SELECT A WORLD", 28).setOrigin(0.5));
+        return;
+      }
+      const panelY = mapY + mapH + 20;
+      const heading = this.add.bitmapText(58, panelY, "goldFont", `${selectedWorld.name}  •  ${selectedWorld.levels.length} LEVELS`, 26).setOrigin(0, 0.5);
+      levelLayer.add(heading);
+      selectedWorld.levels.slice(0, 4).forEach((level, index) => {
+        const x = 58 + index * ((sw - 116) / 4);
+        const unlocked = index === 0 || completedLevels().has(String(selectedWorld.levels[index - 1]?.id));
+        const node = this.add.image(x + 45, panelY + 48, "GJ_GameSheet04", "GJ_playBtn_001.png").setScale(0.72).setInteractive();
+        const text = this.add.bitmapText(x + 45, panelY + 84, "bigFont", unlocked ? String(level.name || "Level") : "LOCKED", 16).setOrigin(0.5).setTint(unlocked ? 0xffffff : 0x888888);
+        if (!unlocked) node.setTint(0x666666);
+        levelLayer.add([node, text]);
+        this._makeBouncyButton(node, 0.72, () => {
+          if (!unlocked) return;
+          window._selectedLevelData = level;
+          root.destroy(true);
+          this._mapOverlay = null;
+          this._openPlayMenu(() => this._openMapScene());
+        }, () => unlocked);
+      });
+    };
+    const loadMap = async () => {
+      try {
+        const response = await fetch(`${window._gdProxyUrl}?action=map`);
+        if (!response.ok) throw new Error("Map unavailable");
+        const data = await response.json();
+        worlds = Array.isArray(data.worlds) ? data.worlds : [];
+        worlds.forEach((world, index) => drawIcon(world, index));
+        for (let i = 1; i < worlds.length; i++) {
+          const a = worldPosition(worlds[i - 1]);
+          const b = worldPosition(worlds[i]);
+          path.lineBetween(a.x, a.y, b.x, b.y);
+        }
+        if (worlds.length) { selectedWorld = null; worldSelectMode = true; renderLevels(); }
+      } catch (error) {
+        root.add(this.add.bitmapText(sw / 2, sh / 2, "bigFont", error.message || "Map unavailable", 28).setOrigin(0.5));
+      }
+    };
+    loadMap();
+  }
+
   _openOnlineLevelsScene(params = {}) {
     if (this._onlineLevelsOverlay) return;
 
     const sw = screenWidth;
     const sh = screenHeight;
     const isFeatured = (params.type === 6);
+    const isMap = params.map === true;
     const shell = this._openListScene(
-      isFeatured ? "" : "Online Levels",
+      isFeatured ? "" : (isMap ? "Map" : "Online Levels"),
       180,
       () => {
         this._onlineLevelsOverlay = null;
-        if (isFeatured) {
+        if (isFeatured || isMap) {
           this._openCreatorMenu();
         } else {
           this._openSearchMenu();
@@ -10978,12 +11392,17 @@ _applyMirrorEffect() {
           if (!PROXY_BASE) throw new Error("no proxy configured");
           const query = (params.str || params.query || "").trim();
           const searchType = params.type || "0";
-          let url;
-          if (query) {
-            url = `${PROXY_BASE}?action=search&query=${encodeURIComponent(query)}&type=${searchType}&page=${page}`;
-          } else {
-            url = `${PROXY_BASE}?action=list&type=${searchType}`;
+          const searchQuery = new URLSearchParams({
+            action: query ? "search" : "list",
+            type: String(searchType),
+            page: String(page)
+          });
+          if (query) searchQuery.set("query", query);
+          if (params.diff) searchQuery.set("diff", String(params.diff));
+          if (params.demonFilter !== undefined && params.demonFilter !== null) {
+            searchQuery.set("demonFilter", String(params.demonFilter));
           }
+          const url = `${PROXY_BASE}?${searchQuery.toString()}`;
           const res = await fetch(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
           response = await res.json();

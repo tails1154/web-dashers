@@ -225,6 +225,90 @@ window.AccountAPI = {
     return data;
   },
 
+  async getWeeklyLevel() {
+    const res = await fetch(`${window._gdProxyUrl}?action=weekly`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load Weekly Level');
+    return data;
+  },
+
+  async setWeeklyLevel(levelId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=weekly`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level_id: levelId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not set Weekly Level');
+    return data;
+  },
+
+  async getEventLevel() {
+    const res = await fetch(`${window._gdProxyUrl}?action=event`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load Event Level');
+    return data;
+  },
+
+  async setEventLevel(levelId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=event`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level_id: levelId })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not set Event Level');
+    return data;
+  },
+
+  async getLeaderboard(category = 'stars') {
+    const allowed = ['stars', 'diamonds', 'coins'];
+    const selected = allowed.includes(category) ? category : 'stars';
+    const res = await fetch(`${window._gdProxyUrl}?action=leaderboard&category=${selected}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load leaderboard');
+    return data;
+  },
+
+  async recordLevelDownload(levelId) {
+    const res = await fetch(`${window._gdProxyUrl}?action=download`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: String(levelId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not record download');
+    return data;
+  },
+
+  async toggleLevelLike(levelId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required to like levels');
+    const res = await fetch(`${window._gdProxyUrl}?action=like`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: String(levelId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not update like');
+    return data;
+  },
+
+  async getQuests() {
+    const res = await fetch(`${window._gdProxyUrl}?action=quests`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load quests');
+    return data;
+  },
+
+  async claimQuest(questId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=quests`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quest_id: String(questId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not claim quest');
+    return data;
+  },
+
   async claimDailyReward(levelId, clean = false, practice = false) {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
     const res = await fetch(`${window._gdProxyUrl}?action=daily&claim=1`, {
@@ -301,6 +385,17 @@ window.AccountAPI = {
     const res = await fetch(`${window._gdProxyUrl}?action=get&id=${encodeURIComponent(id)}`, { credentials: 'include' });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Level lookup failed');
+    return data;
+  },
+
+  async addLevelToMap(level_id, world_id) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=map`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level_id, world_id })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not add level to Map');
     return data;
   },
 
