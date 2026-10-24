@@ -11077,10 +11077,40 @@ _applyMirrorEffect() {
       catch (_) { return new Set(); }
     })();
     const nextIndex = this._getNextGauntletLevelIndex(gauntlet);
+    let claimedGauntlets = {};
+    try { claimedGauntlets = JSON.parse(localStorage.getItem("wd_gauntlet_claims") || "{}"); } catch (_) {}
+    if (!claimedGauntlets || typeof claimedGauntlets !== "object") claimedGauntlets = {};
+    const gauntletCompleted = nextIndex < 0;
+    if (gauntletCompleted) {
+      const claimButton = this.add.nineslice(sw / 2, 94, "GJ_button01", null, 300, 58, 20, 20, 20, 20)
+        .setInteractive();
+      const claimLabel = this.add.bitmapText(sw / 2, 93, "goldFont", claimedGauntlets[String(gauntlet.id)] ? "CLAIMED" : "CLAIM +10 DIAMONDS", 22)
+        .setOrigin(0.5);
+      root.add([claimButton, claimLabel]);
+      if (claimedGauntlets[String(gauntlet.id)]) {
+        claimButton.setTint(0x666666);
+        claimLabel.setTint(0x999999);
+      } else {
+        this._makeCompositeBouncyButton(claimButton, [claimButton, claimLabel], 1, async () => {
+          claimButton.disableInteractive();
+          try {
+            const result = await window.AccountAPI.claimGauntlet(gauntlet.id);
+            if (Number.isFinite(Number(result.diamonds))) localStorage.setItem("wd_diamonds", String(result.diamonds));
+            claimedGauntlets[String(gauntlet.id)] = Date.now();
+            localStorage.setItem("wd_gauntlet_claims", JSON.stringify(claimedGauntlets));
+            claimLabel.setText("CLAIMED");
+            claimButton.setTint(0x666666);
+          } catch (error) {
+            claimButton.setInteractive();
+            window.alert(error.message || "Could not claim Gauntlet reward");
+          }
+        });
+      }
+    }
     (gauntlet.levels || []).forEach((level, index) => {
       const isComplete = completed.has(String(level.id));
       const isUnlocked = isComplete || index === nextIndex;
-      const y = 118 + index * 82;
+      const y = (gauntletCompleted ? 170 : 118) + index * 82;
       const panel = this.add.nineslice(sw / 2, y, "GJ_button01", null, 650, 64, 24, 24, 24, 24)
         .setInteractive();
       const label = this.add.bitmapText(sw / 2, y, "goldFont", `${index + 1}. ${String(level.name || `Level ${level.id}`)}  ${isComplete ? "✓" : isUnlocked ? "PLAY" : "LOCKED"}`, 23).setOrigin(0.5);

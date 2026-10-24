@@ -298,6 +298,17 @@ window.AccountAPI = {
     return data;
   },
 
+  async claimGauntlet(gauntletId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=gauntlets`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claim_id: String(gauntletId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not claim Gauntlet reward');
+    return data;
+  },
+
   async getLeaderboard(category = 'stars') {
     const allowed = ['stars', 'diamonds', 'coins'];
     const selected = allowed.includes(category) ? category : 'stars';
@@ -575,7 +586,7 @@ window.AccountAPI = {
         'gd_completedLevels', 'created_levels', 'iconMainColor', 'iconSecondaryColor',
         'iconCurrentPlayer', 'iconCurrentShip', 'iconCurrentBall', 'iconCurrentWave',
         'iconCurrentSpider', 'iconCurrentBird', 'userMusicVol', 'userSfxVol',
-        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
+        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
       ];
       for (const key of keys) {
         localStorage.removeItem(key);
@@ -658,7 +669,7 @@ window.AccountAPI = {
       'gd_completedLevels', 'created_levels', 'iconMainColor', 'iconSecondaryColor',
       'iconCurrentPlayer', 'iconCurrentShip', 'iconCurrentBall', 'iconCurrentWave',
       'iconCurrentSpider', 'iconCurrentBird', 'userMusicVol', 'userSfxVol',
-        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
+        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
     ];
     const save = {};
     for (const key of keys) {
@@ -683,7 +694,7 @@ window.AccountAPI = {
       'gd_completedLevels', 'created_levels', 'iconMainColor', 'iconSecondaryColor',
       'iconCurrentPlayer', 'iconCurrentShip', 'iconCurrentBall', 'iconCurrentWave',
       'iconCurrentSpider', 'iconCurrentBird', 'userMusicVol', 'userSfxVol',
-        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
+        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
     ];
     for (const key of keys) {
       if (save[key] !== undefined) localStorage.setItem(key, save[key]);
