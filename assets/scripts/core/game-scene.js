@@ -1744,7 +1744,14 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         loadingText.setText("Loading Level...");
         this.game.registry.set("autoStartGame", true);
         window._onlineReturnToPlayMenu = { lvl, backTarget: this._playMenuBackTarget };
-        this._closePlayMenu(false, () => this.scene.restart());
+        if (this._playOverlay) {
+          this._closePlayMenu(false, () => this.scene.restart());
+        } else {
+          // Vault entry starts from the Create menu, so there is no Play-menu
+          // overlay to close before restarting into gameplay.
+          this._closeCreatorMenu(true);
+          this.scene.restart();
+        }
         return true;
       } catch (err) {
         console.warn("Failed to start online level", err);
