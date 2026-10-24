@@ -4931,7 +4931,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const arrowL = this.add.image(55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(true).setInteractive();
     const arrowR = this.add.image(sw - 55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(false).setInteractive();
     const allLevels = window.allLevels || [];
-    const visibleLevels = allLevels.filter(level => !(level && ["level_22", "level_23", "level_25"].includes(level[2])));
+    const visibleLevels = allLevels.filter(level => !(level && ["level_22", "level_23", "level_25", "level_3001"].includes(level[2])));
     const pageCount = visibleLevels.length + 1;
     let currentPageIndex = visibleLevels.findIndex(l => l[2] === window.currentlevel[2]);
     if (currentPageIndex < 0) currentPageIndex = 0;
