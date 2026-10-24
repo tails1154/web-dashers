@@ -23,7 +23,17 @@
     { id: "explorer", title: "Explorer", description: "Play 10 different levels." },
     { id: "main_levels_5", title: "Road Trip", description: "Beat 5 main levels." },
     { id: "main_levels_10", title: "Main Character", description: "Beat 10 main levels." },
-    { id: "main_levels_all", title: "Main Event", description: "Beat every main level through 1.9, excluding Hexagon Force." }
+    { id: "main_levels_all", title: "Main Event", description: "Beat every main level through 1.9, excluding Hexagon Force." },
+    { id: "coin_sweep", title: "Coin Sweep", description: "Collect all 3 coins in one level." },
+    { id: "coin_collector", title: "Coin Collector", description: "Collect 25 level coins." },
+    { id: "user_coin_hoard", title: "Pocket Change", description: "Collect 10 user coins." },
+    { id: "star_archivist", title: "Star Archivist", description: "Claim 25 level stars." },
+    { id: "diamond_hoard", title: "Diamond Hoard", description: "Earn 100 diamonds." },
+    { id: "daily_grinder", title: "Daily Grinder", description: "Complete 5 Daily Levels." },
+    { id: "gauntlet_runner", title: "Gauntlet Runner", description: "Complete a 3-level gauntlet." },
+    { id: "level_publisher", title: "Going Public", description: "Upload your first level." },
+    { id: "ten_published", title: "Public Works", description: "Upload 10 levels." },
+    { id: "challenge_survivor", title: "Challenge Accepted", description: "Complete The Challenge." }
   ];
 
   function read() {
@@ -61,6 +71,22 @@
       if (key.startsWith("practiceBestPercent_") && Number(localStorage.getItem(key) || 0) > 0) practiceLevels++;
     }
     const starCount = Object.values(stars).filter(Boolean).length;
+    const diamonds = Number(localStorage.getItem("wd_diamonds") || 0);
+    const userCoins = Number(localStorage.getItem("wd_user_coins") || 0);
+    let collectedCoins = {};
+    let dailyClaims = [];
+    try { collectedCoins = JSON.parse(localStorage.getItem("wd_collected_coins") || "{}"); } catch (_) {}
+    try { dailyClaims = JSON.parse(localStorage.getItem("wd_daily_claims") || "[]"); } catch (_) {}
+    if (!collectedCoins || typeof collectedCoins !== "object") collectedCoins = {};
+    if (!Array.isArray(dailyClaims)) dailyClaims = [];
+    const coinLists = Object.values(collectedCoins).filter(value => Array.isArray(value));
+    const totalCoins = coinLists.reduce((total, value) => total + value.length, 0);
+    const sweptLevel = coinLists.some(value => value.length >= 3);
+    const completedGauntlet = Object.keys(localStorage).some(key => {
+      if (!key.startsWith("gd_gauntlet_")) return false;
+      try { return JSON.parse(localStorage.getItem(key) || "[]").length >= 3; } catch (_) { return false; }
+    });
+    const published = created.filter(level => level && level.uploaded);
     if (completed >= 1) unlock("first_clear");
     if (completed >= 5) unlock("five_clear");
     if (completed >= 10) unlock("ten_clear");
@@ -77,6 +103,16 @@
     if (mainCompleted >= 5) unlock("main_levels_5");
     if (mainCompleted >= 10) unlock("main_levels_10");
     if (mainCompleted === MAIN_LEVEL_IDS.length) unlock("main_levels_all");
+    if (sweptLevel) unlock("coin_sweep");
+    if (totalCoins >= 25) unlock("coin_collector");
+    if (userCoins >= 10) unlock("user_coin_hoard");
+    if (starCount >= 25) unlock("star_archivist");
+    if (diamonds >= 100) unlock("diamond_hoard");
+    if (dailyClaims.length >= 5) unlock("daily_grinder");
+    if (completedGauntlet) unlock("gauntlet_runner");
+    if (published.length >= 1) unlock("level_publisher");
+    if (published.length >= 10) unlock("ten_published");
+    if (localStorage.getItem("wd_challenge_completed") === "1") unlock("challenge_survivor");
   }
 
   function showToast(item) {
