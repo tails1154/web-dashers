@@ -11,6 +11,8 @@
   const ICON_PRICES_KEY = "wd_icon_prices";
   const ICON_PRICE_VERSION_KEY = "wd_icon_prices_version";
   const ICON_PRICE_VERSION = "3";
+  const COIN_COLLECTION_VERSION_KEY = "wd_coin_collection_version";
+  const COIN_COLLECTION_VERSION = "4";
   const items = [
     { id: "neon", name: "Neon Runner", cost: 25, main: "00ff88", secondary: "00d9ff" },
     { id: "sunset", name: "Sunset Runner", cost: 50, main: "ff7a18", secondary: "ff2d55" },
@@ -84,6 +86,13 @@
     } catch (_) { return {}; }
   };
   const readNumber = key => Math.max(0, parseInt(localStorage.getItem(key) || "0", 10) || 0);
+  if (localStorage.getItem(COIN_COLLECTION_VERSION_KEY) !== COIN_COLLECTION_VERSION) {
+    localStorage.setItem(BALANCE_KEY, "0");
+    localStorage.setItem(USER_COIN_KEY, "0");
+    localStorage.removeItem(COLLECTED_KEY);
+    sessionStorage.removeItem(PENDING_KEY);
+    localStorage.setItem(COIN_COLLECTION_VERSION_KEY, COIN_COLLECTION_VERSION);
+  }
   const notify = scene => {
     if (scene && typeof scene._refreshCoinHud === "function") scene._refreshCoinHud();
     if (scene && typeof scene._refreshIconCoinHud === "function") scene._refreshIconCoinHud();
@@ -150,6 +159,7 @@
       const pending = readPending();
       if (!Array.isArray(pending[level])) pending[level] = [];
       if (pending[level].some(entry => entry.id === coin)) return false;
+      if (collected[level].length + pending[level].length >= 3) return false;
       pending[level].push({ id: coin, amount: Math.max(1, Math.floor(Number(amount) || 1)), kind });
       sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending));
       return true;

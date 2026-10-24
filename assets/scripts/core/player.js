@@ -23,9 +23,6 @@ class PlayerState {
     this.railGroupId = 0;
     this.isPhase = false;
     this.phaseGhosted = false;
-    this.extraGamemode = "";
-    this.extraGamemodeTimer = 0;
-    this.extraGamemodePulse = 0;
     this.isBird = false;
     this.isDart = false;
     this.isRobot = false;
@@ -439,7 +436,6 @@ class PlayerObject {
     this._robotJumpFlameSprite = null;
     this._robotJumpFlamePulse = 0;
     this._robotJumpFlameFadeInTimer = 0;
-    this._shieldBubbleSprite = null;
     this._robotJumpFlameActive = false;
     this._robotJumpFlameAnchorX = centerX;
     this._robotJumpFlameAnchorY = b(this.p.y);
@@ -476,7 +472,6 @@ class PlayerObject {
     return this._invertPlayerColors ? window.mainColor : window.secondaryColor;
   }
   _tintForLayerKind(kind) {
-    if (this._extraGamemodeTint) return this._extraGamemodeTint;
     if (this._vectorTinted && (this.p?.isVector || this.p?.isRail)) return 0x00d9c6;
     if (kind === "base") return this._primaryColor();
     if (kind === "overlay" || kind === "glow") return this._secondaryColor();
@@ -541,10 +536,6 @@ class PlayerObject {
     for (const layer of (this._playerLayers || [])) {
       if (layer?.sprite?.setAlpha) layer.sprite.setAlpha(this.p?.isPhase && this.p.phaseGhosted ? 0.45 : 1);
     }
-  }
-  setExtraGamemodeTint(tint) {
-    this._extraGamemodeTint = Number.isFinite(tint) ? tint : null;
-    this._applyPlayerTints();
   }
 	  _makeportalguide(gameObj) {
 	    if (!gameObj) return;
@@ -1350,8 +1341,6 @@ class PlayerObject {
     this.playerSprite = this._playerSpriteLayer.sprite;
     this.shipSprite = this._shipSpriteLayer.sprite;
     this._playerLayers = [this._playerSpriteLayer, this._playerGlowLayer, this._playerOverlayLayer, this._playerExtraLayer];
-    this._shieldBubbleSprite = spriteY.add.image(particleY, spriteX, "shield-bubble.png");
-    this._shieldBubbleSprite.setDepth(11).setVisible(false).setAlpha(0.85);
     this._shipLayers = [this._shipSpriteLayer, this._shipGlowLayer, this._shipOverlayLayer, this._shipExtraLayer];
     this._ballLayers = [this._ballSpriteLayer, this._ballGlowLayer, this._ballOverlayLayer].filter(_0x37ad93 => !!_0x37ad93);
     this._waveLayers = [this._waveSpriteLayer, this._waveOverlayLayer, this._waveExtraLayer, this._waveGlowLayer].filter(_0x37ad93 => !!_0x37ad93);
@@ -1951,15 +1940,6 @@ if (this.p.isFlying || this.p.isUfo) {
       this._waveSpriteLayer.sprite.x += 1.5 * _0x3f036a;
       this._waveSpriteLayer.sprite.y -= 1;
     }
-    if (this._shieldBubbleSprite) {
-      const shieldMode = this.p.extraGamemode === "shield" && !this.p.isDead;
-      const miniScale = this.p.isMini ? 0.6 : 1;
-      this._shieldBubbleSprite.setPosition(_0x7f0705, _0x1a433c);
-      this._shieldBubbleSprite.setScale(0.72 * miniScale);
-      this._shieldBubbleSprite.setRotation(0);
-      this._shieldBubbleSprite.setAlpha(this.p.extraGamemodeTimer > 0 ? 0.9 : 0.35);
-      this._shieldBubbleSprite.setVisible(shieldMode);
-    }
     if (this.p.isSpider && !this.p.isDead) {
       this.setCubeVisible(false);
       this.setBallVisible(false);
@@ -2381,52 +2361,6 @@ if (this.p.isFlying || this.p.isUfo) {
     if (!this.p.isPhase) return;
     this.p.isPhase = false;
     this.setPhaseGhosted(false);
-    this.p.yVelocity = 0;
-    this.p.onGround = false;
-    this.p.canJump = false;
-    this.p.isJumping = false;
-    this._rotation = 0;
-    this.setCubeVisible(true);
-  }
-  enterExtraGamemode(mode, portal = null) {
-    const nextMode = String(mode || "");
-    if (!nextMode) return;
-    if (this.p.extraGamemode === nextMode) return;
-    this.exitPhaseMode();
-    this.exitVectorMode();
-    this.exitRailMode();
-    this.exitShipMode();
-    this.exitRobotMode();
-    this.exitBallMode();
-    this.exitWaveMode();
-    this.exitSpiderMode();
-    this.exitFlipMode();
-    this.exitUfoMode();
-    this.p.extraGamemode = nextMode;
-    this.p.extraGamemodeTimer = 0;
-    this.p.extraGamemodePulse = 0;
-    this.p.yVelocity = 0;
-    this.p.gravityFlipped = false;
-    this.p.onGround = false;
-    this.p.canJump = true;
-    this.p.isJumping = false;
-    this._rotation = 0;
-    this.setCubeVisible(true);
-    this.setBallVisible(false);
-    this.setShipVisible(false);
-    this.setWaveVisible(false);
-    this.setSpiderVisible(false);
-    this.setRobotVisible(false);
-    this.setBirdVisible(false);
-    this.setExtraGamemodeTint(Number(portal?.extraModeTint));
-    this._setGamemodeFlyBounds(false, 0);
-  }
-  exitExtraGamemode() {
-    if (!this.p.extraGamemode) return;
-    this.p.extraGamemode = "";
-    this.p.extraGamemodeTimer = 0;
-    this.p.extraGamemodePulse = 0;
-    this.setExtraGamemodeTint(null);
     this.p.yVelocity = 0;
     this.p.onGround = false;
     this.p.canJump = false;
@@ -3752,8 +3686,6 @@ if (this.p.isFlying || this.p.isUfo) {
       this._updateFlipJump(_0x3d1c6f);
     } else if (this.p.isPhase) {
       this._updatePhaseJump(_0x3d1c6f);
-    } else if (this.p.extraGamemode) {
-      this._updateExtraGamemode(_0x3d1c6f);
     } else if (this.p.isRail) {
       this._updateRailJump(_0x3d1c6f);
     } else if (this.p.isVector) {
@@ -3869,72 +3801,6 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.yVelocity -= p * dt * this.flipMod();
     if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, 30);
     else this.p.yVelocity = Math.max(this.p.yVelocity, -30);
-  }
-  _updateExtraGamemode(dt) {
-    const mode = this.p.extraGamemode;
-    const pressed = !!this.p.upKeyPressed;
-    if (pressed) {
-      this.p.upKeyPressed = false;
-      this.p.queuedHold = false;
-    }
-    if (mode === "invert" || mode === "zigzag") {
-      if (pressed) this.flipGravity(!this.p.gravityFlipped, 0.2);
-    } else if (mode === "rewind") {
-      if (pressed) this.p.yVelocity *= -1;
-    } else if (mode === "spring") {
-      if (pressed && (this.p.canJump || this.p.onGround || this.p.onCeiling)) {
-        this.p.isJumping = true;
-        this.p.onGround = false;
-        this.p.onCeiling = false;
-        this.p.canJump = false;
-        this.p.yVelocity = this.flipMod() * 28;
-        this.runRotateAction();
-      }
-    } else if (mode === "shield") {
-      if (pressed && (this.p.canJump || this.p.onGround || this.p.onCeiling)) {
-        this.p.isJumping = true;
-        this.p.onGround = false;
-        this.p.onCeiling = false;
-        this.p.canJump = false;
-        this.p.yVelocity = this.flipMod() * 22.360064;
-        this.runRotateAction();
-      }
-    } else if (mode === "smash") {
-      if (pressed) {
-        this.p.isJumping = false;
-        this.p.onGround = false;
-        this.p.yVelocity = this.flipMod() * -32;
-      }
-    } else if (mode === "bounce" && this.p.onGround) {
-      this.p.isJumping = true;
-      this.p.onGround = false;
-      this.p.canJump = false;
-      this.p.yVelocity = this.flipMod() * 22.360064;
-      this.runRotateAction();
-    }
-    if (mode === "shield") {
-      if (pressed) this.p.extraGamemodeTimer = 0.8;
-      this.p.extraGamemodeTimer = Math.max(0, this.p.extraGamemodeTimer - dt);
-    }
-    if (mode === "hover" || mode === "float" || mode === "rocket") {
-      const thrust = mode === "rocket" ? 42 : mode === "float" ? 24 : 12;
-      if (this.p.upKeyDown) this.p.yVelocity += thrust * dt * this.flipMod();
-      else this.p.yVelocity -= p * dt * this.flipMod();
-      const cap = mode === "rocket" ? 24 : 18;
-      if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, cap);
-      else this.p.yVelocity = Math.max(this.p.yVelocity, -cap);
-      return;
-    }
-    if (mode === "bounce" || mode === "spring" || mode === "smash" || mode === "invert" || mode === "zigzag" || mode === "rewind" || mode === "shield") {
-      if (this.p.isJumping) {
-        this.p.yVelocity -= p * dt * this.flipMod();
-        if (this.playerIsFalling()) this.p.isJumping = false;
-      } else {
-        this.p.yVelocity -= p * dt * this.flipMod();
-        if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, 30);
-        else this.p.yVelocity = Math.max(this.p.yVelocity, -30);
-      }
-    }
   }
   _vectorNearbySolids(worldX) {
     return (this._gameLayer?.getNearbySectionObjects?.(worldX) || [])
@@ -4845,11 +4711,6 @@ if (this.p.isFlying || this.p.isUfo) {
             _colType !== "portal_phase" && !isGravityPortal) {
           this.exitPhaseMode();
         }
-        if (this.p.extraGamemode &&
-            (_colType.startsWith("portal_") || _colType === speedType || _colType === "speed") &&
-            _colType !== "portal_extra" && !isGravityPortal) {
-          this.exitExtraGamemode();
-        }
         if (this.p.isVector &&
             (_colType.startsWith("portal_") || _colType === speedType || _colType === "speed") &&
             _colType !== "portal_vector" && !isGravityPortal) {
@@ -4994,12 +4855,6 @@ if (this.p.isFlying || this.p.isUfo) {
             this._setObjectActivated(gameObj, true);
             this._playPortalShine(gameObj, 2);
             this.enterPhaseMode();
-          }
-        } else if (_colType === "portal_extra") {
-          if (!this._isObjectActivated(gameObj)) {
-            this._setObjectActivated(gameObj, true);
-            this._playPortalShine(gameObj, 2);
-            this.enterExtraGamemode(gameObj.extraGamemode, gameObj);
           }
         } else if (_colType === "portal_glider") {
           if (!this._isObjectActivated(gameObj)) {
@@ -5394,7 +5249,6 @@ if (this.p.isFlying || this.p.isUfo) {
         } else if (_colType === hazardType) {
           // Phase's ghost toggle applies to hazards as well as solid blocks.
           if (this.p.isPhase && this.p.phaseGhosted) continue;
-          if (this.p.extraGamemode === "shield" && this.p.extraGamemodeTimer > 0) continue;
           if (window.noClip) {
             this.p.diedThisFrame = true; 
             continue;
@@ -5913,11 +5767,6 @@ if (this.p.isFlying || this.p.isUfo) {
     this._robotJumpFlameActive = false;
     this._robotJumpFlamePulse = 0;
     this._robotJumpFlameFadeInTimer = 0;
-    this.p.extraGamemode = "";
-    this.p.extraGamemodeTimer = 0;
-    this.p.extraGamemodePulse = 0;
-    this.setExtraGamemodeTint(null);
-    if (this._shieldBubbleSprite) this._shieldBubbleSprite.setVisible(false);
     if (this._spiderTeleportCircles?.length) {
       for (const circle of this._spiderTeleportCircles) if (circle?.destroy) circle.destroy();
       this._spiderTeleportCircles = [];
