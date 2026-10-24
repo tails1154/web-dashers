@@ -1,5 +1,7 @@
 window.AccountAPI = {
   currentUser: null,
+  _leaderboardSyncTimer: null,
+  _leaderboardSyncInFlight: null,
 
   _url(path) {
     return `${window._apiBase}${path}`;
@@ -16,11 +18,14 @@ window.AccountAPI = {
       if (res.ok) {
         const data = await res.json();
         this.currentUser = data.user;
+        this._startLeaderboardStatsSync();
       } else {
         this.currentUser = null;
+        this._stopLeaderboardStatsSync();
       }
     } catch {
       this.currentUser = null;
+      this._stopLeaderboardStatsSync();
     }
     return this.currentUser;
   },
@@ -35,6 +40,7 @@ window.AccountAPI = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
     this.currentUser = data.user;
+    this._startLeaderboardStatsSync();
     return data.user;
   },
 
@@ -48,6 +54,7 @@ window.AccountAPI = {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
     this.currentUser = data.user;
+    this._startLeaderboardStatsSync();
     return data.user;
   },
 
@@ -55,6 +62,7 @@ window.AccountAPI = {
     const res = await fetch(this._url('/api/auth/logout'), { method: 'POST', credentials: 'include' });
     if (!res.ok) throw new Error('Logout failed');
     this.currentUser = null;
+    this._stopLeaderboardStatsSync();
   },
 
   async logoutAndRefresh() {
@@ -594,8 +602,25 @@ window.AccountAPI = {
 
   async syncLeaderboardStats() {
     if (!this.currentUser && !(await this.checkSession())) return false;
-    await this.setCloudSave(this.collectLocalData());
+    this._startLeaderboardStatsSync();
+    if (this._leaderboardSyncInFlight) return this._leaderboardSyncInFlight;
+    this._leaderboardSyncInFlight = this.setCloudSave(this.collectLocalData())
+      .then(() => true)
+      .finally(() => { this._leaderboardSyncInFlight = null; });
+    await this._leaderboardSyncInFlight;
     return true;
+  },
+
+  _startLeaderboardStatsSync() {
+    if (!this.currentUser || this._leaderboardSyncTimer) return;
+    this._leaderboardSyncTimer = setInterval(() => {
+      this.syncLeaderboardStats().catch(error => console.warn('Leaderboard stats sync failed:', error));
+    }, 1000);
+  },
+
+  _stopLeaderboardStatsSync() {
+    if (this._leaderboardSyncTimer) clearInterval(this._leaderboardSyncTimer);
+    this._leaderboardSyncTimer = null;
   },
 
   collectLocalData() {
