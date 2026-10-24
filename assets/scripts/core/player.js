@@ -445,6 +445,7 @@ class PlayerObject {
     this._flipTinted = false;
     this._vectorTinted = false;
     this._vectorTurnCooldown = 0;
+    this._vectorLastLedgeTurnX = null;
     this._deathBurstEmitter = null;
     this._deathFlashGraphics = null;
     this._deathFlashTween = null;
@@ -2255,6 +2256,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.isVector = true;
     this.p.vectorDirection = 0;
     this._vectorTurnCooldown = 0;
+    this._vectorLastLedgeTurnX = null;
     this.p.yVelocity = 0;
     this.p.onGround = false;
     this.p.canJump = true;
@@ -3642,10 +3644,14 @@ if (this.p.isFlying || this.p.isUfo) {
     if (this.p.upKeyPressed) {
       this.p.upKeyPressed = false;
       this.p.queuedHold = false;
-      this.p.vectorDirection = (this.p.vectorDirection + 1) % 4;
-      this._rotation = this.p.vectorDirection * (Math.PI / 2);
-      this.flipGravity(this.p.vectorDirection === 2, 0.5);
-      this.p.yVelocity = 0;
+      if (this.p.canJump || this.p.onGround || this.p.onCeiling) {
+        this.p.isJumping = true;
+        this.p.onGround = false;
+        this.p.onCeiling = false;
+        this.p.canJump = false;
+        this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
+        this.runRotateAction();
+      }
     }
     this.p.yVelocity -= p * 0.6 * dt * this.flipMod();
     if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, 30);
@@ -3660,19 +3666,24 @@ if (this.p.isFlying || this.p.isUfo) {
     const bottom = obj.y + obj.h / 2;
     return gravityFlipped ? top - playerSize : bottom + playerSize;
   }
-  _tryVectorWallTurn(gameObj, left, right, top, bottom, pieceWidth, playerSize) {
+  _tryVectorWallTurn(gameObj, pieceWidth, playerSize) {
     if (!this.p.isVector || this._vectorTurnCooldown > 0) return false;
 
-    // A Vector player is allowed to turn onto the other face of a block when
-    // a normal solid collision would kill it. Prefer the surface that keeps
-    // the player outside the block, then try the opposite gravity as a
-    // fallback. This makes vertical walls and corners self-navigating.
+    // Move onto a face of the block when a side impact would otherwise kill.
     const options = [!this.p.gravityFlipped, this.p.gravityFlipped];
-    const movingRight = pieceWidth >= left;
-    const wallX = movingRight ? right : left;
     for (const gravityFlipped of options) {
       const targetY = this._vectorSurfaceCandidate(gameObj, gravityFlipped, playerSize);
       if (!Number.isFinite(targetY)) continue;
+      const blocked = this._vectorNearbySolids(pieceWidth).some(other => {
+        if (other === gameObj) return false;
+        const otherLeft = other.x - other.w / 2;
+        const otherRight = other.x + other.w / 2;
+        const otherTop = other.y - other.h / 2;
+        const otherBottom = other.y + other.h / 2;
+        return pieceWidth + playerSize - 4 > otherLeft && pieceWidth - playerSize + 4 < otherRight &&
+          targetY + playerSize - 4 > otherTop && targetY - playerSize + 4 < otherBottom;
+      });
+      if (blocked) continue;
       this.p.y = targetY;
       this.p.lastY = targetY;
       this.p.yVelocity = 0;
@@ -3683,16 +3694,13 @@ if (this.p.isFlying || this.p.isUfo) {
       this.flipGravity(gravityFlipped, 1);
       this._rotation = gravityFlipped ? Math.PI : 0;
       this._vectorTurnCooldown = 0.12;
-      // Keep the player flush with the wall while the next physics sample
-      // advances the runner. The regular horizontal runner position remains
-      // authoritative; this only prevents a one-frame tunnel through walls.
-      if (Number.isFinite(wallX)) this._scene._playerWorldX = wallX + (movingRight ? playerSize : -playerSize);
       return true;
     }
     return false;
   }
   _tryVectorLedgeTurn(pieceWidth, playersY, playerSize) {
     if (!this.p.isVector || this._vectorTurnCooldown > 0 || (!this.p.onGround && !this.p.onCeiling)) return;
+    if (this._vectorLastLedgeTurnX !== null && Math.abs(pieceWidth - this._vectorLastLedgeTurnX) < playerSize * 2) return;
     const lookAhead = pieceWidth + playerSize * 1.75;
     const solids = this._vectorNearbySolids(lookAhead);
     const currentGravity = !!this.p.gravityFlipped;
@@ -3714,6 +3722,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.canJump = false;
     this._rotation = nextGravity ? Math.PI : 0;
     this._vectorTurnCooldown = 0.12;
+    this._vectorLastLedgeTurnX = pieceWidth;
   }
   _shouldPrioritizeGroundOrbInput() {
     if (!(this.p.isBall || this.p.isSpider)) return false;
@@ -5128,7 +5137,7 @@ if (this.p.isFlying || this.p.isUfo) {
           const _0xLandTop = (this.p.yVelocity >= 0 || this.p.onGround) && (_0x3e7199 <= top || _0x135a9d <= top);
           const isstandingOnAPlatform = this.p.gravityFlipped ? _0xLandTop : _0xLandBot;
           if (iscolliding && !isstandingOnAPlatform) {
-            if (this._tryVectorWallTurn(gameObj, left, right, top, bottom, pieceWidth, playerSize)) {
+            if (this._tryVectorWallTurn(gameObj, pieceWidth, playerSize)) {
               _boostedThisStep = true;
               continue;
             }
