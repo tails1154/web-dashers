@@ -1421,10 +1421,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._closePlayMenu(true, () => this._openLeaderboardScene());
       });
 
-      const likeBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_rateDiffBtn_001.png")
-        .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
+      const likeBtn = this.add.nineslice(sideBtnX - 78, sideBtnY0 + sideBtnGap * 2, "GJ_button01", null, 125, 48, 16, 16, 16, 16)
+        .setScrollFactor(0).setDepth(504).setOrigin(0.5).setInteractive();
+      const likeLabel = this.add.bitmapText(sideBtnX - 78, sideBtnY0 + sideBtnGap * 2, "bigFont", "LIKE", 18)
+        .setScrollFactor(0).setDepth(505).setOrigin(0.5);
       likeBtn.setTint(lvl.liked ? 0xffe45c : 0xffffff);
-      this._makeBouncyButton(likeBtn, sideBtnScale, async () => {
+      likeLabel.setTint(lvl.liked ? 0xffe45c : 0xffffff);
+      this._makeBouncyButton(likeBtn, 1, async () => {
         const isModerator = window.AccountAPI?.currentUser?.username === "tails1154";
         if (isModerator) {
           if (document.querySelector("[data-wd-mod-menu]")) return;
@@ -1504,13 +1507,14 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             lvl._liked = !!result.liked;
             window._selectedLevelData = lvl;
             likeBtn.setTint(lvl._liked ? 0xffe45c : 0xffffff);
+            likeLabel.setTint(lvl._liked ? 0xffe45c : 0xffffff);
           }
         } catch (error) {
           window.alert(error.message || "Like failed");
         }
       });
 
-      this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, leaderboardBtn, likeBtn);
+      this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, leaderboardBtn, likeBtn, likeLabel);
       if (moderatorBtn) this._playOverlayObjects.push(moderatorBtn);
       const songBoxW = sw * 0.55;
       const songBoxH = 190;
