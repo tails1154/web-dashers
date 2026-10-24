@@ -11480,13 +11480,13 @@ _applyMirrorEffect() {
     this.time.delayedCall(3600, () => window.location.reload());
   }
 
-  _showPathUnlockToast(iconId, rewardName) {
+  _showPathUnlockToast(iconId) {
     const sw = screenWidth;
     const toast = this.add.container(sw / 2, 92).setScrollFactor(0).setDepth(1200);
     const bg = this.add.rectangle(0, 0, 560, 88, 0x182642, 0.98).setStrokeStyle(4, 0xffd84d, 1);
     const icon = this.add.image(-220, 0, "GJ_GameSheetIcons", `${iconId}_001.png`).setScale(0.9);
     const title = this.add.bitmapText(-165, -18, "goldFont", "PATH REWARD UNLOCKED!", 24).setOrigin(0, 0.5);
-    const text = this.add.bitmapText(-165, 18, "bigFont", rewardName, 22).setOrigin(0, 0.5);
+    const text = this.add.bitmapText(-165, 18, "bigFont", "NEW ICON UNLOCKED", 22).setOrigin(0, 0.5);
     toast.add([bg, icon, title, text]);
     this.tweens.add({ targets: toast, y: 120, duration: 250, ease: "Back.Out" });
     this.tweens.add({ targets: toast, alpha: 0, delay: 2800, duration: 450, onComplete: () => toast.destroy(true) });
@@ -11513,22 +11513,35 @@ _applyMirrorEffect() {
     const stars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
     const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
     const coins = Math.max(0, Number(window.WDCoinEconomy?.getBalance?.() || 0));
-    const currentXP = stars + diamonds + coins;
-    const savedXP = Math.max(currentXP, parseInt(localStorage.getItem("wd_paths_xp") || "0", 10) || 0);
-    localStorage.setItem("wd_paths_xp", String(savedXP));
-    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `PATH XP: ${savedXP}   •   Stars ${stars}   Diamonds ${diamonds}   Coins ${coins}`, 25).setOrigin(0.5).setTint(0xffe45c);
+    const now = new Date();
+    const weekAnchor = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    weekAnchor.setUTCDate(weekAnchor.getUTCDate() + 4 - (weekAnchor.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(weekAnchor.getUTCFullYear(), 0, 1));
+    const weekNumber = Math.ceil((((weekAnchor - yearStart) / 86400000) + 1) / 7);
+    const weekKey = `${weekAnchor.getUTCFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
+    let pathState = (() => { try { return JSON.parse(localStorage.getItem("wd_paths_week") || "null"); } catch (_) { return null; } })();
+    if (!pathState || pathState.week !== weekKey) {
+      pathState = { week: weekKey, baseline: { stars, diamonds, coins }, claimed: {} };
+      localStorage.setItem("wd_paths_week", JSON.stringify(pathState));
+    }
+    const baseline = pathState.baseline || { stars: 0, diamonds: 0, coins: 0 };
+    const gainedStars = Math.max(0, stars - Number(baseline.stars || 0));
+    const gainedDiamonds = Math.max(0, diamonds - Number(baseline.diamonds || 0));
+    const gainedCoins = Math.max(0, coins - Number(baseline.coins || 0));
+    const currentXP = gainedStars + gainedDiamonds + gainedCoins;
+    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `WEEKLY PATH XP: ${currentXP}   •   +${gainedStars} stars   +${gainedDiamonds} diamonds   +${gainedCoins} coins`, 22).setOrigin(0.5).setTint(0xffe45c);
     root.add(xpLabel);
 
     // Server-configurable paths can replace this reward list later; each entry
     // is intentionally just a star/XP threshold and an icon reward.
     const rewards = [
-      { xp: 5, icon: "player_02", name: "Blue Cube" },
-      { xp: 15, icon: "player_05", name: "Sharp Cube" },
-      { xp: 30, icon: "player_10", name: "Pulse Cube" },
-      { xp: 50, icon: "player_15", name: "Orbit Cube" },
-      { xp: 75, icon: "player_20", name: "Crown Cube" },
+      { xp: 100, icon: "player_02" },
+      { xp: 500, icon: "player_05" },
+      { xp: 1500, icon: "player_10" },
+      { xp: 3500, icon: "player_15" },
+      { xp: 7500, icon: "player_20" },
     ];
-    const claimed = (() => { try { return JSON.parse(localStorage.getItem("wd_paths_claimed") || "{}"); } catch (_) { return {}; } })();
+    const claimed = pathState.claimed || {};
     const startX = sw / 2 - ((rewards.length - 1) * 150) / 2;
     const line = this.add.graphics().lineStyle(12, 0x48627e, 1);
     line.lineBetween(startX, 280, startX + (rewards.length - 1) * 150, 280);
@@ -11540,17 +11553,18 @@ _applyMirrorEffect() {
       const node = this.add.circle(x, 280, 42, unlocked ? 0xffd84d : 0x4d5e70, 1).setStrokeStyle(5, unlocked ? 0xffffff : 0x8190a0, 1);
       const icon = this.add.image(x, 280, "GJ_GameSheetIcons", `${reward.icon}_001.png`).setScale(0.72).setAlpha(unlocked ? 1 : 0.38);
       const xp = this.add.bitmapText(x, 345, "goldFont", `${reward.xp} XP`, 23).setOrigin(0.5);
-      const label = this.add.bitmapText(x, 378, "bigFont", unlocked ? reward.name : "LOCKED", 17).setOrigin(0.5).setTint(unlocked ? 0xffffff : 0x9aa8b8);
+      const label = this.add.bitmapText(x, 378, "bigFont", unlocked ? "UNLOCKED" : "LOCKED", 17).setOrigin(0.5).setTint(unlocked ? 0xffffff : 0x9aa8b8);
       root.add([node, icon, xp, label]);
       if (unlocked && !alreadyClaimed) {
         if (window.WDCoinEconomy?.unlockIcon?.(reward.icon, this)) {
           claimed[reward.icon] = true;
-          localStorage.setItem("wd_paths_claimed", JSON.stringify(claimed));
-          this._showPathUnlockToast(reward.icon, reward.name);
+          pathState.claimed = claimed;
+          localStorage.setItem("wd_paths_week", JSON.stringify(pathState));
+          this._showPathUnlockToast(reward.icon);
         }
       }
     });
-    const note = this.add.bitmapText(sw / 2, sh - 82, "bigFont", "Milestones are free and permanent. Mods set the reward thresholds.", 21).setOrigin(0.5).setTint(0xbfeeff);
+    const note = this.add.bitmapText(sw / 2, sh - 82, "bigFont", `Weekly path: ${weekKey}  •  progress resets each week`, 21).setOrigin(0.5).setTint(0xbfeeff);
     root.add(note);
   }
 
