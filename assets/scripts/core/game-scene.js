@@ -10924,28 +10924,18 @@ _applyMirrorEffect() {
           return;
         }
         close();
-        this._startVaultMusic();
         window._selectedLevelData = {
           id: "77243245", name: "The Challenge", author: "RobsVault",
           songName: "DJRubRub", officialSong: 0, difficulty: 3, stars: 0
         };
-        this._openPlayMenu(() => this._openCreatorMenu());
+        // Start the imported level immediately; the normal online-level loader
+        // provides the loading screen and transitions directly into gameplay.
+        this._playSelectedOnlineLevel(window._selectedLevelData);
       };
       shade.querySelector("[data-enter]").addEventListener("click", enter);
       codeInput.addEventListener("keydown", event => { if (event.key === "Enter") enter(); });
       codeInput.focus();
     }
-  }
-
-  _startVaultMusic() {
-    if (this._vaultAudio) { this._vaultAudio.pause(); this._vaultAudio = null; }
-    const songs = ["StayInsideMe", "PowerTrip", "NockEm", "The7Seas"];
-    const song = songs[Math.floor(Math.random() * songs.length)];
-    const audio = new Audio(`assets/music/${song}.mp3`);
-    audio.loop = true;
-    audio.volume = 0.45;
-    audio.play().catch(() => {});
-    this._vaultAudio = audio;
   }
 
   _openMapScene() {
