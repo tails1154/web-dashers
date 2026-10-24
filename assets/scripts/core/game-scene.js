@@ -11065,7 +11065,27 @@ _applyMirrorEffect() {
         button.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#f08cff;font-weight:bold";
         button.disabled = button.textContent === "Added";
         button.addEventListener("click", () => addCurrent(gauntlet, button));
-        row.append(label, button);
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.textContent = "Delete";
+        deleteButton.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#ff7777;font-weight:bold";
+        deleteButton.addEventListener("click", async () => {
+          if (!window.confirm(`Delete the gauntlet \"${gauntlet.name}\"?`)) return;
+          deleteButton.disabled = true;
+          try {
+            await window.AccountAPI.deleteGauntlet(gauntlet.id);
+            row.remove();
+            status.style.color = "#88ffbb";
+            status.textContent = `Deleted ${gauntlet.name}.`;
+          } catch (error) {
+            status.textContent = error.message || "Could not delete gauntlet";
+            deleteButton.disabled = false;
+          }
+        });
+        const actions = document.createElement("span");
+        actions.style.cssText = "display:flex;gap:6px";
+        actions.append(button, deleteButton);
+        row.append(label, actions);
         existing.appendChild(row);
       });
     } catch (error) {
