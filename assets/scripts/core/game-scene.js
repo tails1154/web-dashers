@@ -10919,7 +10919,7 @@ _applyMirrorEffect() {
         this._startVaultMusic();
         window._selectedLevelData = {
           id: "77243245", name: "The Challenge", author: "RobsVault",
-          songName: "Level 27", officialSong: 27, difficulty: 3, stars: 0
+          songName: "DJRubRub", officialSong: 0, difficulty: 3, stars: 0
         };
         this._openPlayMenu(() => this._openCreatorMenu());
       };
