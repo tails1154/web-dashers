@@ -269,6 +269,24 @@ window.AccountAPI = {
     return data;
   },
 
+  async getGauntlets() {
+    const res = await fetch(`${window._gdProxyUrl}?action=gauntlets`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load Gauntlets');
+    return data;
+  },
+
+  async setGauntlet(name, levelIds) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=gauntlets`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, level_ids: levelIds })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not set Gauntlet');
+    return data;
+  },
+
   async getLeaderboard(category = 'stars') {
     const allowed = ['stars', 'diamonds', 'coins'];
     const selected = allowed.includes(category) ? category : 'stars';

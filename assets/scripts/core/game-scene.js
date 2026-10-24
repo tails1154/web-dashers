@@ -938,6 +938,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const isDailyButton = frame === "GJ_dailyBtn_001.png";
         const isWeeklyButton = frame === "GJ_weeklyBtn_001.png";
         const isEventButton = frame === "GJ_eventBtn_001.png";
+        const isGauntletButton = frame === "GJ_gauntletsBtn_001.png";
         if (isQuestButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => this._showQuestPanel(), () => true);
@@ -1063,6 +1064,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               window.alert(error.message || "Could not load Daily Level");
               this._openCreatorMenu();
             }
+          }, () => true);
+        } else if (isGauntletButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openGauntletsMenu();
           }, () => true);
         } else {
           btn.postFX.addColorMatrix().grayscale(1);
@@ -1428,7 +1435,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           const shade = document.createElement("div");
           shade.dataset.wdModMenu = "1";
           shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
-          shade.innerHTML = `<div style="width:min(390px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 8px;text-align:center;color:#ffd84d">Moderator Menu</h2><p style="margin:0 0 18px;text-align:center;color:#bbb">${String(lvl.name || "Level").replace(/[&<>\"']/g, "")}</p><p data-error style="min-height:18px;margin:0 0 12px;color:#ff9b9b;text-align:center"></p><div style="display:grid;gap:10px"><button type="button" data-rate style="padding:12px;border:0;border-radius:8px;background:#ffd84d;font-weight:bold;cursor:pointer">Rate Level</button><button type="button" data-map style="padding:12px;border:0;border-radius:8px;background:#6ec8ff;font-weight:bold;cursor:pointer">Add to Map</button><button type="button" data-daily style="padding:12px;border:0;border-radius:8px;background:#61d66f;font-weight:bold;cursor:pointer">Set as Daily Level</button><button type="button" data-weekly style="padding:12px;border:0;border-radius:8px;background:#b58cff;font-weight:bold;cursor:pointer">Set as Weekly Level</button><button type="button" data-event style="padding:12px;border:0;border-radius:8px;background:#ff754d;font-weight:bold;cursor:pointer">Set as Event Level</button><button type="button" data-close style="padding:12px;border:0;border-radius:8px;background:#888;font-weight:bold;cursor:pointer">Close</button></div></div>`;
+              shade.innerHTML = `<div style="width:min(390px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 8px;text-align:center;color:#ffd84d">Moderator Menu</h2><p style="margin:0 0 18px;text-align:center;color:#bbb">${String(lvl.name || "Level").replace(/[&<>\"']/g, "")}</p><p data-error style="min-height:18px;margin:0 0 12px;color:#ff9b9b;text-align:center"></p><div style="display:grid;gap:10px"><button type="button" data-rate style="padding:12px;border:0;border-radius:8px;background:#ffd84d;font-weight:bold;cursor:pointer">Rate Level</button><button type="button" data-map style="padding:12px;border:0;border-radius:8px;background:#6ec8ff;font-weight:bold;cursor:pointer">Add to Map</button><button type="button" data-daily style="padding:12px;border:0;border-radius:8px;background:#61d66f;font-weight:bold;cursor:pointer">Set as Daily Level</button><button type="button" data-weekly style="padding:12px;border:0;border-radius:8px;background:#b58cff;font-weight:bold;cursor:pointer">Set as Weekly Level</button><button type="button" data-event style="padding:12px;border:0;border-radius:8px;background:#ff754d;font-weight:bold;cursor:pointer">Set as Event Level</button><button type="button" data-gauntlet style="padding:12px;border:0;border-radius:8px;background:#f08cff;font-weight:bold;cursor:pointer">Add to Gauntlet</button><button type="button" data-close style="padding:12px;border:0;border-radius:8px;background:#888;font-weight:bold;cursor:pointer">Close</button></div></div>`;
           document.body.appendChild(shade);
           const close = () => shade.remove();
           shade.querySelector("[data-close]").addEventListener("click", close);
@@ -9846,6 +9853,16 @@ _applyMirrorEffect() {
       let completedSet;
       try { completedSet = JSON.parse(localStorage.getItem(completedKey) || "[]"); } catch(e) { completedSet = []; }
       const levelId = window.currentlevel[2] || "level_1";
+      if (window._activeGauntlet?.id) {
+        const gauntletKey = `gd_gauntlet_${window._activeGauntlet.id}`;
+        let gauntletCompleted = [];
+        try { gauntletCompleted = JSON.parse(localStorage.getItem(gauntletKey) || "[]"); } catch (_) {}
+        if (!Array.isArray(gauntletCompleted)) gauntletCompleted = [];
+        const completedId = String(window._selectedLevelData?.id || levelId).replace(/^online_/, "");
+        if (!gauntletCompleted.includes(completedId)) gauntletCompleted.push(completedId);
+        localStorage.setItem(gauntletKey, JSON.stringify(gauntletCompleted));
+        window._activeGauntlet = null;
+      }
       const wasAlreadyCompleted = completedSet.includes(levelId);
       if (!completedSet.includes(levelId)) {
         completedSet.push(levelId);
@@ -9974,6 +9991,21 @@ _applyMirrorEffect() {
               containerY.fillPath();
             }
           });
+        });
+        shade.querySelector("[data-gauntlet]").addEventListener("click", async event => {
+          const button = event.currentTarget;
+          const name = window.prompt("Gauntlet name:");
+          const ids = window.prompt("Uploaded level IDs, comma-separated (3-5 levels):");
+          if (!name || !ids) return;
+          button.disabled = true;
+          try {
+            await window.AccountAPI.setGauntlet(name, ids.split(",").map(value => value.trim()).filter(Boolean));
+            error.style.color = "#88ffbb";
+            error.textContent = "Gauntlet saved.";
+          } catch (errorValue) {
+            error.textContent = errorValue.message || "Could not save Gauntlet";
+            button.disabled = false;
+          }
         });
         if (_0x1a79fc > _0x594d69) {
           _0x594d69 = _0x1a79fc;
@@ -10929,6 +10961,68 @@ _applyMirrorEffect() {
       this._makeBouncyButton(tab, 1, () => render(category));
     });
     render(activeCategory);
+  }
+
+  _openGauntletsMenu() {
+    if (this._gauntletsOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    this._gauntletsOverlay = root;
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.98).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 42, "goldFont", "GAUNTLETS", 46).setOrigin(0.5);
+    const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
+      .setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, title, close]);
+    const closeMenu = () => {
+      root.destroy(true);
+      this._gauntletsOverlay = null;
+      this._openCreatorMenu();
+    };
+    this._makeBouncyButton(close, 1, closeMenu);
+    const status = this.add.bitmapText(sw / 2, sh / 2, "bigFont", "Loading...", 28).setOrigin(0.5);
+    root.add(status);
+
+    window.AccountAPI.getGauntlets().then(data => {
+      status.setVisible(false);
+      const gauntlets = Array.isArray(data.gauntlets) ? data.gauntlets : [];
+      if (!gauntlets.length) {
+        status.setText("No gauntlets available.").setVisible(true);
+        return;
+      }
+      gauntlets.forEach((gauntlet, index) => {
+        const y = 120 + index * 88;
+        const panel = this.add.nineslice(sw / 2, y, "GJ_button01", null, 620, 70, 24, 24, 24, 24)
+          .setInteractive();
+        const progress = this._getGauntletProgress(gauntlet);
+        const label = this.add.bitmapText(sw / 2, y, "goldFont", `${gauntlet.name}  ${progress}/${gauntlet.levels.length}`, 27).setOrigin(0.5);
+        root.add([panel, label]);
+        this._makeCompositeBouncyButton(panel, [panel, label], 1, () => {
+          const nextIndex = this._getNextGauntletLevelIndex(gauntlet);
+          if (nextIndex < 0) {
+            window.alert("You completed this gauntlet!");
+            return;
+          }
+          window._activeGauntlet = { id: String(gauntlet.id), levelIndex: nextIndex };
+          closeMenu();
+          this._playSelectedOnlineLevel(gauntlet.levels[nextIndex]);
+        });
+      });
+    }).catch(error => status.setText(error.message || "Could not load Gauntlets").setVisible(true));
+  }
+
+  _getGauntletProgress(gauntlet) {
+    try {
+      const completed = new Set(JSON.parse(localStorage.getItem(`gd_gauntlet_${gauntlet.id}`) || "[]"));
+      return (gauntlet.levels || []).filter(level => completed.has(String(level.id))).length;
+    } catch (_) { return 0; }
+  }
+
+  _getNextGauntletLevelIndex(gauntlet) {
+    try {
+      const completed = new Set(JSON.parse(localStorage.getItem(`gd_gauntlet_${gauntlet.id}`) || "[]"));
+      return (gauntlet.levels || []).findIndex(level => !completed.has(String(level.id)));
+    } catch (_) { return 0; }
   }
 
   async _showQuestPanel() {
