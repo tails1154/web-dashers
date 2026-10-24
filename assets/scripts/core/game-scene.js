@@ -1778,6 +1778,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (!data || data.error || !data.level_string) return;
 
         const levelString = data.level_string;
+        try {
+          await window.AccountAPI?.recordLevelDownload?.(lvl.id);
+        } catch (counterError) {
+          console.warn("Could not record level download:", counterError);
+        }
         if (!levelString) { console.warn("Duplicate level: no level data"); return; }
 
         const rawLevels = localStorage.getItem("created_levels");
