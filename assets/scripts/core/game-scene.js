@@ -885,6 +885,17 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._showDiamondGuard(false, diamonds, diamondEntryCost);
         }
       }, () => true);
+      const shopButton = this.add.image(sw - 118, 112, "GJ_GameSheet03", "GJ_diamondsIcon_001.png")
+        .setScrollFactor(0).setDepth(104).setScale(0.72).setInteractive();
+      const shopLabel = this.add.text(sw - 118, 150, "SHOP", {
+        fontFamily: "Arial Black", fontSize: "16px", color: "#ffffff",
+        stroke: "#15204b", strokeThickness: 4
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(104);
+      this._expandHitArea(shopButton, 1.8);
+      this._makeBouncyButton(shopButton, 0.72, () => {
+        this._closeCreatorMenu(true);
+        this._openDiamondShop(true);
+      }, () => true);
       const vaultsecret = this.add.image(1095, 601, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
         .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666);
 
@@ -893,7 +904,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setRotation(Math.PI).setInteractive();
       this._makeBouncyButton(backBtn, 1, () => this._closeCreatorMenu());
 
-      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, vaultsecret];
+      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, shopButton, shopLabel, vaultsecret];
 
       const menuButtons = [
         "GJ_createBtn_001.png",
@@ -4342,8 +4353,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
       });
     };
-    this._openDiamondShop = () => {
+    this._openDiamondShop = (returnToCreator = false) => {
       if (this._diamondShopOverlay) return;
+      this._diamondShopReturnToCreator = !!returnToCreator;
       const sw = screenWidth, sh = screenHeight, cx = sw / 2;
       const objects = this._diamondShopObjects = [];
       const overlay = this.add.graphics().setScrollFactor(0).setDepth(700);
@@ -4382,6 +4394,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const button = this.add.text(x + 12, y + 38, "UNLOCK", { fontFamily: "Arial Black", fontSize: "17px", color: "#ffffff", backgroundColor: "#694b91", padding: { x: 22, y: 9 } }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
         button.on("pointerup", () => {
           if (window.WDCoinEconomy?.buyDiamondIcon?.(entry.id, entry.cost, this)) {
+            if (this.cache.audio.exists("highscoreGet02")) this.sound.play("highscoreGet02", { volume: 0.7 });
             balance.setText(String(window.WDCoinEconomy.getDiamonds()));
             refresh(entry, button, price);
           } else if (window.WDCoinEconomy?.getDiamonds?.() < entry.cost) {
@@ -4405,6 +4418,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._diamondShopOverlay = null;
       if (this._diamondShopMusic) { this._diamondShopMusic.stop(); this._diamondShopMusic.destroy(); this._diamondShopMusic = null; }
       this._audio?.startMenuMusic?.();
+      if (this._diamondShopReturnToCreator) {
+        this._diamondShopReturnToCreator = false;
+        this._openCreatorMenu?.();
+      }
     };
     this._openVersusMenu = () => {
       if (this._versusOverlay) return;
