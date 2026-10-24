@@ -5221,6 +5221,16 @@ class LevelEditor {
     saveObj._raw[7] = String(normalized.r);
     saveObj._raw[8] = String(normalized.g);
     saveObj._raw[9] = String(normalized.b);
+    saveObj._raw["7"] = saveObj._raw[7];
+    saveObj._raw["8"] = saveObj._raw[8];
+    saveObj._raw["9"] = saveObj._raw[9];
+
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : null;
+    const liveTrigger = this._level?._colorTriggers?.find(trigger => trigger?.uid === linkedId);
+    if (liveTrigger) {
+        liveTrigger.color = { ...normalized };
+        liveTrigger.index = this._getEditorColorTriggerTargetChannel(saveObj);
+    }
   }
 
 
