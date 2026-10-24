@@ -4817,6 +4817,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       window._selectedLevelData = lvl;
       this._openPlayMenu(backTarget);
     }
+    if (localStorage.getItem("wd_challenge_guardian_pending") === "1" &&
+        !this.game.registry.get("autoStartGame")) {
+      localStorage.removeItem("wd_challenge_guardian_pending");
+      this.time.delayedCall(350, () => this._showChallengeGuardianSpeech());
+    }
   }
   _parseLevelColors(levelId) {
     const LEVEL_COLORS = [
@@ -9757,6 +9762,10 @@ _applyMirrorEffect() {
       return;
     }
     if (!this._practicedMode.practiceMode) {
+      if (String(window.currentlevel?.[2] || "") === "level_3001") {
+        localStorage.setItem("wd_challenge_completed", "1");
+        localStorage.setItem("wd_challenge_guardian_pending", "1");
+      }
       // A clean completion replaces any earlier cheat-assisted verification.
       const verifyingLevelId = String(window.currentlevel?.[2] || "");
       if (verifyingLevelId.startsWith("local_")) {
@@ -10902,8 +10911,9 @@ _applyMirrorEffect() {
       "The vault requires a serious diamond collection."
     ];
     this._diamondGuardMessageIndex = (this._diamondGuardMessageIndex || 0) + 1;
+    const challengeLocked = localStorage.getItem("wd_challenge_completed") === "1";
     const message = canEnter
-      ? "The guard steps aside. Enter a vault code."
+      ? (challengeLocked ? "The guardian watches in silence." : "The guard steps aside. Enter a vault code.")
       : lockedMessages[this._diamondGuardMessageIndex % lockedMessages.length];
     const shade = document.createElement("div");
     shade.dataset.wdDiamondGuard = "1";
@@ -10926,6 +10936,10 @@ _applyMirrorEffect() {
       const codeInput = shade.querySelector("[data-vault-code]");
       const error = shade.querySelector("[data-vault-error]");
       const enter = () => {
+        if (challengeLocked) {
+          error.textContent = "Don't";
+          return;
+        }
         if (String(codeInput.value || "").trim().toLowerCase() !== "the challenge") {
           error.textContent = "The guard does not recognize that code.";
           return;
@@ -10952,6 +10966,17 @@ _applyMirrorEffect() {
       codeInput.addEventListener("keydown", event => { if (event.key === "Enter") enter(); });
       codeInput.focus();
     }
+  }
+
+  _showChallengeGuardianSpeech() {
+    const existing = document.querySelector("[data-wd-challenge-guardian]");
+    if (existing) existing.remove();
+    const shade = document.createElement("div");
+    shade.dataset.wdChallengeGuardian = "1";
+    shade.style.cssText = "position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:rgba(0,0,0,.82);font-family:Arial,sans-serif;color:#fff";
+    shade.innerHTML = '<div style="width:min(520px,calc(100vw - 32px));padding:28px;border:3px solid #8de8ff;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 18px;color:#8de8ff">THE GUARDIAN</h2><p style="margin:0;font-size:22px;line-height:1.45">You were never supposed to beat this...<br>You have no idea what you have done</p></div>';
+    document.body.appendChild(shade);
+    this.time.delayedCall(3600, () => window.location.reload());
   }
 
   _openMapScene() {
