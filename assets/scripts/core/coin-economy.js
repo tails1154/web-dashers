@@ -124,6 +124,15 @@
       localStorage.setItem(ICON_PRICES_KEY, JSON.stringify(prices));
     },
     add(amount, scene) { const value = writeBalance(readBalance() + (Number(amount) || 0)); notify(scene); return value; },
+    getDiamonds() { return Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0); },
+    spendDiamonds(amount, scene) {
+      amount = Math.max(0, Math.floor(Number(amount) || 0));
+      const balance = this.getDiamonds();
+      if (balance < amount) return false;
+      localStorage.setItem("wd_diamonds", String(balance - amount));
+      notify(scene);
+      return true;
+    },
     getUserCoinCount() { return Math.max(0, parseInt(localStorage.getItem(USER_COIN_KEY) || "0", 10) || 0); },
     getStars() { return readNumber(STARS_KEY); },
     awardLevelStars(levelId, amount, scene) {
@@ -211,6 +220,15 @@
       if (!isLockableIcon(iconId) || isDefaultIcon(iconId) || this.ownsIcon(iconId)) return false;
       if (!this.spend(getIconPrice(iconId), scene)) return false;
       const owned = readOwnedIcons(); owned.add(iconId);
+      localStorage.setItem(OWNED_ICONS_KEY, JSON.stringify([...owned]));
+      return true;
+    },
+    buyDiamondIcon(id, cost, scene) {
+      const iconId = normalizeIcon(id);
+      const price = Math.max(0, Math.floor(Number(cost) || 0));
+      if (!isLockableIcon(iconId) || isDefaultIcon(iconId) || this.ownsIcon(iconId) || !this.spendDiamonds(price, scene)) return false;
+      const owned = readOwnedIcons();
+      owned.add(iconId);
       localStorage.setItem(OWNED_ICONS_KEY, JSON.stringify([...owned]));
       return true;
     },

@@ -734,6 +734,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._menuAchievementsBtn = this.add.image(centerX - 12, screenHeight - 90, "GJ_GameSheet03", "GJ_achBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive();
     this._expandHitArea(this._menuAchievementsBtn, 1);
     this._makeBouncyButton(this._menuAchievementsBtn, 1, () => window.GDAchievements?.showPanel(), () => this._menuActive);
+    this._menuShopBtn = this.add.image(centerX - 122, screenHeight - 90, "GJ_GameSheet03", "GJ_diamondsIcon_001.png").setScrollFactor(0).setDepth(30).setScale(0.78).setInteractive();
+    this._expandHitArea(this._menuShopBtn, 1.7);
+    this._makeBouncyButton(this._menuShopBtn, 0.78, () => this._openDiamondShop?.(), () => this._menuActive && !this._diamondShopOverlay);
     this._menuNewgroundsBtn = this.add.image(centerX + 312, screenHeight - 90, "GJ_GameSheet03", "GJ_ngBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive();
     this._expandHitArea(this._menuNewgroundsBtn, 1);
     this._makeBouncyButton(this._menuNewgroundsBtn, 1, () => {
@@ -4339,6 +4342,70 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
       });
     };
+    this._openDiamondShop = () => {
+      if (this._diamondShopOverlay) return;
+      const sw = screenWidth, sh = screenHeight, cx = sw / 2;
+      const objects = this._diamondShopObjects = [];
+      const overlay = this.add.graphics().setScrollFactor(0).setDepth(700);
+      overlay.fillGradientStyle(0x17254c, 0x263c70, 0x080d24, 0x10152f, 1);
+      overlay.fillRect(0, 0, sw, sh);
+      this._diamondShopOverlay = overlay;
+      const blocker = this.add.zone(cx, sh / 2, sw, sh).setScrollFactor(0).setDepth(701).setInteractive();
+      const title = this.add.bitmapText(cx, 54, "bigFont", "DIAMOND SHOP", 42).setOrigin(0.5).setScrollFactor(0).setDepth(703);
+      const subtitle = this.add.text(cx, 100, "UNLOCK EXCLUSIVE ICONS", { fontFamily: "Arial Black", fontSize: "17px", color: "#9de8ff" }).setOrigin(0.5).setScrollFactor(0).setDepth(703);
+      const diamond = this.add.image(sw - 155, 54, "GJ_GameSheet03", "GJ_diamondsIcon_001.png").setScale(0.55).setScrollFactor(0).setDepth(704);
+      const balance = this.add.text(sw - 112, 54, String(window.WDCoinEconomy?.getDiamonds?.() || 0), { fontFamily: "Arial Black", fontSize: "25px", color: "#e4a7ff" }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(704);
+      const back = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_01_001.png").setScale(0.8).setFlipX(true).setScrollFactor(0).setDepth(704).setInteractive();
+      this._makeBouncyButton(back, 0.8, () => this._closeDiamondShop());
+      objects.push(overlay, blocker, title, subtitle, diamond, balance, back);
+      const inventory = [
+        { id: "player_10", name: "PULSE CUBE", cost: 10 },
+        { id: "player_25", name: "ORBIT CUBE", cost: 25 },
+        { id: "player_50", name: "PRISM CUBE", cost: 50 },
+        { id: "player_100", name: "CROWN CUBE", cost: 100 }
+      ];
+      const refresh = (entry, button, label) => {
+        const owned = window.WDCoinEconomy?.ownsIcon?.(entry.id);
+        label.setText(owned ? "OWNED" : `${entry.cost} DIAMONDS`).setColor(owned ? "#88ffbb" : "#e4a7ff");
+        button.setText(owned ? "EQUIPPED" : "UNLOCK");
+        button.setBackgroundColor(owned ? "#32634f" : "#694b91");
+        if (owned) button.disableInteractive(); else button.setInteractive();
+      };
+      inventory.forEach((entry, index) => {
+        const col = index % 2, row = Math.floor(index / 2);
+        const x = cx + (col ? 220 : -220), y = 205 + row * 190;
+        const card = this.add.rectangle(x, y, 385, 155, 0x1c2750, 0.95).setStrokeStyle(3, 0x536da8, 1).setScrollFactor(0).setDepth(702);
+        const icon = addImageToScene(this, x - 120, y - 5, `${entry.id}_001.png`);
+        if (icon) icon.setScale(1.55).setTint(Number(window.mainColor) || 0xffffff).setScrollFactor(0).setDepth(704);
+        const name = this.add.text(x + 12, y - 48, entry.name, { fontFamily: "Arial Black", fontSize: "17px", color: "#ffffff" }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
+        const price = this.add.text(x + 12, y - 15, "", { fontFamily: "Arial Black", fontSize: "16px", color: "#e4a7ff" }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
+        const button = this.add.text(x + 12, y + 38, "UNLOCK", { fontFamily: "Arial Black", fontSize: "17px", color: "#ffffff", backgroundColor: "#694b91", padding: { x: 22, y: 9 } }).setOrigin(0.5).setScrollFactor(0).setDepth(704);
+        button.on("pointerup", () => {
+          if (window.WDCoinEconomy?.buyDiamondIcon?.(entry.id, entry.cost, this)) {
+            balance.setText(String(window.WDCoinEconomy.getDiamonds()));
+            refresh(entry, button, price);
+          } else if (window.WDCoinEconomy?.getDiamonds?.() < entry.cost) {
+            price.setText(`NEED ${entry.cost - window.WDCoinEconomy.getDiamonds()} MORE` ).setColor("#ff9b9b");
+          }
+        });
+        refresh(entry, button, price);
+        objects.push(card, icon, name, price, button);
+      });
+      this._audio?.stopMusic?.();
+      const musicKey = this.cache.audio.exists("shopLoop") ? "shopLoop" : (this.cache.audio.exists("menu_music") ? "menu_music" : null);
+      if (musicKey) {
+        this._diamondShopMusic = this.sound.add(musicKey, { loop: true, volume: this._audio?._effectiveVolume?.() ?? 0.7 });
+        this._diamondShopMusic.play();
+      }
+    };
+    this._closeDiamondShop = () => {
+      if (!this._diamondShopOverlay) return;
+      for (const obj of this._diamondShopObjects || []) obj?.destroy?.();
+      this._diamondShopObjects = [];
+      this._diamondShopOverlay = null;
+      if (this._diamondShopMusic) { this._diamondShopMusic.stop(); this._diamondShopMusic.destroy(); this._diamondShopMusic = null; }
+      this._audio?.startMenuMusic?.();
+    };
     this._openVersusMenu = () => {
       if (this._versusOverlay) return;
       const sw = screenWidth, sh = screenHeight, cx = sw / 2;
@@ -7562,6 +7629,9 @@ _buildSettingsPopup() {
     if (this._menuAchievementsBtn) {
       this._menuAchievementsBtn.setVisible(false);
     }
+    if (this._menuShopBtn) {
+      this._menuShopBtn.setVisible(false);
+    }
     if (this._menuStatsBtn) {
       this._menuStatsBtn.setVisible(false);
     }
@@ -7575,6 +7645,13 @@ _buildSettingsPopup() {
       _dismiss(this._iconBtn, { scale: 0.01, duration: 200, ease: "Quad.In" }, () => {
         this._iconBtn.destroy();
         this._iconBtn = null;
+      });
+    }
+    if (this._menuShopBtn) {
+      this._closeDiamondShop?.();
+      _dismiss(this._menuShopBtn, { scale: 0.01, duration: 200, ease: "Quad.In" }, () => {
+        this._menuShopBtn.destroy();
+        this._menuShopBtn = null;
       });
     }
     _dismiss(this._chrSelDecor, { y: screenHeight + 100, alpha: 0, duration: 200, ease: "Quad.In" }, () => {
@@ -7927,6 +8004,10 @@ _buildSettingsPopup() {
         yoyo: true,
         repeat: -1
       });
+    }
+    if (this._menuShopBtn) {
+      this._menuShopBtn.x = _0x1e5db8 - 122;
+      this._menuShopBtn.y = screenHeight - 90;
     }
     if (this._creatorBtn) {
       this._creatorBtn.x = (screenWidth / 2) + this._playBtn.width / 2 + 100 + (this._creatorBtn.width * this._creatorBtn.scaleX) / 2;
