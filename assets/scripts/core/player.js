@@ -443,6 +443,7 @@ class PlayerObject {
     this._ignoreTeleportUntilClear = false;
     this._invertPlayerColors = false;
     this._flipTinted = false;
+    this._vectorTinted = false;
     this._deathBurstEmitter = null;
     this._deathFlashGraphics = null;
     this._deathFlashTween = null;
@@ -477,6 +478,10 @@ class PlayerObject {
     this._flipTinted = !!tinted;
     this._applyPlayerTints();
   }
+  setVectorTinted(tinted) {
+    this._vectorTinted = !!tinted;
+    this._applyPlayerTints();
+  }
   _applyPlayerTints() {
     const applyLayer = (layer) => {
       if (!layer?.sprite) return;
@@ -508,6 +513,11 @@ class PlayerObject {
     if (this._flipTinted) {
       for (const layer of (this._playerLayers || [])) {
         if (layer?.sprite?.setTint) layer.sprite.setTint(0x000000);
+      }
+    }
+    if (this._vectorTinted) {
+      for (const layer of (this._playerLayers || [])) {
+        if (layer?.sprite?.setTint) layer.sprite.setTint(0x00d9c6);
       }
     }
   }
@@ -2250,6 +2260,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.gravityFlipped = false;
     this._rotation = 0;
     this.setCubeVisible(true);
+    this.setVectorTinted(true);
     this.setBallVisible(false);
     this.setShipVisible(false);
     this.setWaveVisible(false);
@@ -2261,6 +2272,7 @@ if (this.p.isFlying || this.p.isUfo) {
   exitVectorMode() {
     if (!this.p.isVector) return;
     this.p.isVector = false;
+    this.setVectorTinted(false);
     this.p.vectorDirection = 0;
     this.p.yVelocity = 0;
     this.p.gravityFlipped = false;
@@ -4464,6 +4476,11 @@ if (this.p.isFlying || this.p.isUfo) {
         if (this.p.isFlip && _colType.startsWith("portal_") &&
             _colType !== "portal_flip" && !isGravityPortal) {
           this.exitFlipMode();
+        }
+        if (this.p.isVector &&
+            (_colType.startsWith("portal_") || _colType === speedType || _colType === "speed") &&
+            _colType !== "portal_vector" && !isGravityPortal) {
+          this.exitVectorMode();
         }
         if (_colType === "portal_teleport") {
           if (!this._isObjectActivated(gameObj)) {
