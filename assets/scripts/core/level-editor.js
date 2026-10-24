@@ -8805,6 +8805,23 @@ _serializeObject(object) {
   return parts.join(",");
   }
 
+  _inferEditorLevelLength(objects = window.levelObjects) {
+    let maxX = 0;
+    for (const object of Array.isArray(objects) ? objects : []) {
+      if (!object) continue;
+      const x = Number(object.x ?? object._raw?.[2] ?? object._raw?.["2"]);
+      if (Number.isFinite(x)) maxX = Math.max(maxX, x);
+    }
+
+    // Geometry Dash length metadata is based on the furthest object position.
+    // These boundaries match the game's five normal length buckets.
+    if (maxX < 10000) return 0;
+    if (maxX < 20000) return 1;
+    if (maxX < 30000) return 2;
+    if (maxX < 60000) return 3;
+    return 4;
+  }
+
 
   _saveEditorLevel() {
     const levelData = {
@@ -8819,6 +8836,7 @@ _serializeObject(object) {
 
     if (levelIndex !== -1) {
         createdLevels[levelIndex].levelString = newLevelString;
+        createdLevels[levelIndex].levelLength = this._inferEditorLevelLength(levelData.objects);
         createdLevels[levelIndex].lastModified = Date.now();
 
         if (this._editorPendingSongId !== undefined) {
