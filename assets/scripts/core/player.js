@@ -439,6 +439,7 @@ class PlayerObject {
     this._robotJumpFlameSprite = null;
     this._robotJumpFlamePulse = 0;
     this._robotJumpFlameFadeInTimer = 0;
+    this._shieldBubbleSprite = null;
     this._robotJumpFlameActive = false;
     this._robotJumpFlameAnchorX = centerX;
     this._robotJumpFlameAnchorY = b(this.p.y);
@@ -1349,6 +1350,8 @@ class PlayerObject {
     this.playerSprite = this._playerSpriteLayer.sprite;
     this.shipSprite = this._shipSpriteLayer.sprite;
     this._playerLayers = [this._playerSpriteLayer, this._playerGlowLayer, this._playerOverlayLayer, this._playerExtraLayer];
+    this._shieldBubbleSprite = spriteY.add.image(particleY, spriteX, "shield-bubble.png");
+    this._shieldBubbleSprite.setDepth(11).setVisible(false).setAlpha(0.85);
     this._shipLayers = [this._shipSpriteLayer, this._shipGlowLayer, this._shipOverlayLayer, this._shipExtraLayer];
     this._ballLayers = [this._ballSpriteLayer, this._ballGlowLayer, this._ballOverlayLayer].filter(_0x37ad93 => !!_0x37ad93);
     this._waveLayers = [this._waveSpriteLayer, this._waveOverlayLayer, this._waveExtraLayer, this._waveGlowLayer].filter(_0x37ad93 => !!_0x37ad93);
@@ -1947,6 +1950,15 @@ if (this.p.isFlying || this.p.isUfo) {
       const _0x3f036a = this.p.mirrored ? 1 : -1;
       this._waveSpriteLayer.sprite.x += 1.5 * _0x3f036a;
       this._waveSpriteLayer.sprite.y -= 1;
+    }
+    if (this._shieldBubbleSprite) {
+      const shieldMode = this.p.extraGamemode === "shield" && !this.p.isDead;
+      const miniScale = this.p.isMini ? 0.6 : 1;
+      this._shieldBubbleSprite.setPosition(_0x7f0705, _0x1a433c);
+      this._shieldBubbleSprite.setScale(0.72 * miniScale);
+      this._shieldBubbleSprite.setRotation(0);
+      this._shieldBubbleSprite.setAlpha(this.p.extraGamemodeTimer > 0 ? 0.9 : 0.35);
+      this._shieldBubbleSprite.setVisible(shieldMode);
     }
     if (this.p.isSpider && !this.p.isDead) {
       this.setCubeVisible(false);
@@ -3876,6 +3888,15 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.onCeiling = false;
         this.p.canJump = false;
         this.p.yVelocity = this.flipMod() * 28;
+        this.runRotateAction();
+      }
+    } else if (mode === "shield") {
+      if (pressed && (this.p.canJump || this.p.onGround || this.p.onCeiling)) {
+        this.p.isJumping = true;
+        this.p.onGround = false;
+        this.p.onCeiling = false;
+        this.p.canJump = false;
+        this.p.yVelocity = this.flipMod() * 22.360064;
         this.runRotateAction();
       }
     } else if (mode === "smash") {
@@ -5894,6 +5915,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this.p.extraGamemodeTimer = 0;
     this.p.extraGamemodePulse = 0;
     this.setExtraGamemodeTint(null);
+    if (this._shieldBubbleSprite) this._shieldBubbleSprite.setVisible(false);
     if (this._spiderTeleportCircles?.length) {
       for (const circle of this._spiderTeleportCircles) if (circle?.destroy) circle.destroy();
       this._spiderTeleportCircles = [];
