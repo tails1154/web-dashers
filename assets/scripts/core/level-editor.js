@@ -105,6 +105,20 @@ class LevelEditor {
     this._editorPlaytestSavedView = null;
     this._editorPlaytestPauseView = null;
     this._editorPlaytestLastTrailPoint = null;
+    if (this._editorAutosaveTimer?.remove) this._editorAutosaveTimer.remove(false);
+    this._editorAutosaveTimer = this.time.addEvent({
+        delay: 60000,
+        loop: true,
+        callback: () => {
+            if (!window.isEditor) return;
+            try {
+                this._saveEditorLevel();
+                this._editorLastAutosaveAt = Date.now();
+            } catch (error) {
+                console.error("Editor autosave failed", error);
+            }
+        }
+    });
     this.input.on('pointerdown', (pointer) => {
         if (this._editorPlaytestActive && !this._editorPlaytestPaused) return;
         this._clickStartPos.x = pointer.x;
@@ -8835,6 +8849,9 @@ _serializeObject(object) {
     let levelIndex = createdLevels.findIndex(l => l.createdId === window.currentlevel[2]);
 
     if (levelIndex !== -1) {
+        const hasPendingSong = this._editorPendingSongId !== undefined || this._editorPendingSongName !== undefined;
+        if (createdLevels[levelIndex].levelString === newLevelString && !hasPendingSong) return;
+
         createdLevels[levelIndex].levelString = newLevelString;
         createdLevels[levelIndex].lastModified = Date.now();
 
