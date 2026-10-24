@@ -3427,7 +3427,7 @@ class LevelEditor {
   _setEditorSongStartOffset(seconds) {
     const { levels, idx } = this._getCurrentEditorLevelRecord();
     const value = Number(seconds);
-    const offset = Number.isFinite(value) ? Math.max(-30, Math.min(30, value)) : 0;
+    const offset = Number.isFinite(value) ? value : 0;
 
     // Store the offset in the level settings string as well as the local
     // record. AudioManager reads kA13 from the serialized level settings.
