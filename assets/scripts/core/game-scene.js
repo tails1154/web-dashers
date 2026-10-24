@@ -1397,21 +1397,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       });
 
       let moderatorBtn = null;
+      let openModeratorMenuNext = false;
       if (window.AccountAPI?.currentUser?.username === "tails1154") {
-        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 7, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
+        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
           .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
-        this._makeBouncyButton(moderatorBtn, sideBtnScale, async () => {
-          try {
-            const details = await window.AccountAPI.moderatorPrompt(lvl.id);
-            if (!details) return;
-            const result = await window.AccountAPI.moderateLevel(details.id, details.difficulty, details.featured, details.star_reward, details.stars, details.verified, details.verification_hacks, details.verification_start_pos);
-            if (String(details.id) === String(lvl.id) && result.level) {
-              Object.assign(lvl, result.level);
-              window._selectedLevelData = lvl;
-            }
-          } catch (error) {
-            window.alert(error.message || "Moderation failed");
-          }
+        this._makeBouncyButton(moderatorBtn, sideBtnScale, () => {
+          openModeratorMenuNext = true;
+          likeBtn.emit("pointerup");
         });
       }
 
@@ -1429,7 +1421,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       likeLabel.setTint(lvl.liked ? 0xffe45c : 0xffffff);
       this._makeBouncyButton(likeBtn, 1, async () => {
         const isModerator = window.AccountAPI?.currentUser?.username === "tails1154";
-        if (isModerator) {
+        if (isModerator && openModeratorMenuNext) {
+          openModeratorMenuNext = false;
           if (document.querySelector("[data-wd-mod-menu]")) return;
           const shade = document.createElement("div");
           shade.dataset.wdModMenu = "1";
@@ -1500,18 +1493,37 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           });
           return;
         }
-        try {
-          const result = await window.AccountAPI.toggleLevelLike(lvl.id);
-          if (result) {
-            lvl.likes = Number(result.likes) || 0;
-            lvl._liked = !!result.liked;
-            window._selectedLevelData = lvl;
-            likeBtn.setTint(lvl._liked ? 0xffe45c : 0xffffff);
-            likeLabel.setTint(lvl._liked ? 0xffe45c : 0xffffff);
+        if (document.querySelector("[data-wd-like-prompt]")) return;
+        const shade = document.createElement("div");
+        shade.dataset.wdLikePrompt = "1";
+        shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+        shade.innerHTML = `<div style="width:min(360px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 8px;color:#ffd84d">Rate Level</h2><p style="margin:0 0 18px;color:#bbb">Would you like or dislike this level?</p><p data-error style="min-height:18px;margin:0 0 12px;color:#ff9b9b"></p><div style="display:flex;justify-content:center;gap:10px"><button type="button" data-like style="padding:11px 20px;border:0;border-radius:8px;background:#88ffbb;font-weight:bold;cursor:pointer">Like</button><button type="button" data-dislike style="padding:11px 20px;border:0;border-radius:8px;background:#ff9999;font-weight:bold;cursor:pointer">Dislike</button></div><button type="button" data-close style="margin-top:14px;padding:9px 18px;border:0;border-radius:8px;background:#888;font-weight:bold;cursor:pointer">Cancel</button></div>`;
+        document.body.appendChild(shade);
+        const close = () => shade.remove();
+        shade.querySelector("[data-close]").addEventListener("click", close);
+        shade.addEventListener("click", event => { if (event.target === shade) close(); });
+        const choose = async liked => {
+          const error = shade.querySelector("[data-error]");
+          if (!!lvl.liked === liked) { close(); return; }
+          shade.querySelectorAll("button").forEach(button => { button.disabled = true; });
+          try {
+            const result = await window.AccountAPI.toggleLevelLike(lvl.id);
+            if (result) {
+              lvl.likes = Number(result.likes) || 0;
+              lvl.liked = !!result.liked;
+              lvl._liked = lvl.liked;
+              window._selectedLevelData = lvl;
+              likeBtn.setTint(lvl.liked ? 0xffe45c : 0xffffff);
+              likeLabel.setTint(lvl.liked ? 0xffe45c : 0xffffff);
+            }
+            close();
+          } catch (errorValue) {
+            error.textContent = errorValue.message || "Could not update rating";
+            shade.querySelectorAll("button").forEach(button => { button.disabled = false; });
           }
-        } catch (error) {
-          window.alert(error.message || "Like failed");
-        }
+        };
+        shade.querySelector("[data-like]").addEventListener("click", () => choose(true));
+        shade.querySelector("[data-dislike]").addEventListener("click", () => choose(false));
       });
 
       this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, leaderboardBtn, likeBtn, likeLabel);
