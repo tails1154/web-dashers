@@ -2564,7 +2564,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           const songId = parseInt(level.songId, 10);
           if (songId < 0) {
             const officialIndex = Math.abs(songId) - 1;
-            const officialSong = window.allLevels?.[officialIndex];
+            const songs = [
+              ...(window.allLevels || []),
+              ...(window.editorOnlySongs || [])
+            ];
+            const officialSong = songs[officialIndex];
             if (!officialSong) throw new Error(`Unknown official song ${songId}`);
 
             const songKey = officialSong[0];

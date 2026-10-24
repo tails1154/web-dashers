@@ -209,3 +209,14 @@ window.allLevels = [
     ]
 	*/
 ]
+
+// Songs available in the editor without adding placeholder main levels.
+window.editorOnlySongs = [
+    [
+        "machina",
+        "Machina",
+        null,
+        ["Dex Arson", "Dex Arson"],
+        "Machina"
+    ]
+];

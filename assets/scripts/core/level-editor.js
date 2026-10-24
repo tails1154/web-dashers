@@ -3456,7 +3456,11 @@ class LevelEditor {
 
     if (songId < 0) {
         const normalIndex = Math.abs(songId) - 1;
-        const levelSong = window.allLevels?.[normalIndex];
+        const songs = [
+            ...(window.allLevels || []),
+            ...(window.editorOnlySongs || [])
+        ];
+        const levelSong = songs[normalIndex];
 
         if (levelSong) {
             window.currentlevel[0] = levelSong[0];
@@ -8272,6 +8276,10 @@ class LevelEditor {
 
     let customInput = activeSongId > 0 ? String(activeSongId) : "";
     let customFocused = false;
+    const getEditorSongs = () => [
+        ...(window.allLevels || []),
+        ...(window.editorOnlySongs || [])
+    ];
 
     const makeSongTabButton = (x, label, callback) => {
         const tabRoot = this.add.container(x, songTabY);
@@ -8456,7 +8464,7 @@ class LevelEditor {
             songText.setAlpha(1);
             songText.clearTint();
 
-            const songs = window.allLevels || [];
+            const songs = getEditorSongs();
 
             if (!songs.length) {
                 setSongText("No normal songs loaded");
@@ -8489,7 +8497,7 @@ class LevelEditor {
     };
 
     const commitNormalSongDraft = () => {
-        const songs = window.allLevels || [];
+        const songs = getEditorSongs();
         if (!songs.length) return;
 
         normalIndex = Phaser.Math.Wrap(normalIndex, 0, songs.length);
@@ -8509,7 +8517,7 @@ class LevelEditor {
     };
 
     this._makeBouncyButton(prevSong, 1.2, () => {
-        const songs = window.allLevels || [];
+        const songs = getEditorSongs();
         if (!songs.length) return;
 
         normalIndex = Phaser.Math.Wrap(normalIndex - 1, 0, songs.length);
@@ -8518,7 +8526,7 @@ class LevelEditor {
     });
 
     this._makeBouncyButton(nextSong, 1.2, () => {
-        const songs = window.allLevels || [];
+        const songs = getEditorSongs();
         if (!songs.length) return;
 
         normalIndex = Phaser.Math.Wrap(normalIndex + 1, 0, songs.length);

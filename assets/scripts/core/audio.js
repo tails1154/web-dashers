@@ -92,14 +92,18 @@ class AudioManager {
     return !!(this._scene?._practicedMode?.practiceMode && !window.practiceMusicSync);
   }
   _getOfficialSongAudioPath(songKey = window.currentlevel?.[0]) {
-    if (!songKey || !Array.isArray(window.allLevels)) return null;
+    const songs = [
+      ...(Array.isArray(window.allLevels) ? window.allLevels : []),
+      ...(Array.isArray(window.editorOnlySongs) ? window.editorOnlySongs : [])
+    ];
+    if (!songKey || !songs.length) return null;
 
     const currentLevel = Array.isArray(window.currentlevel) ? window.currentlevel : null;
     if (currentLevel && currentLevel[0] === songKey && currentLevel[4]) {
       return "assets/music/" + currentLevel[4] + ".mp3";
     }
 
-    const levelEntry = window.allLevels.find(level => level && level[0] === songKey);
+    const levelEntry = songs.find(level => level && level[0] === songKey);
     if (!levelEntry) return null;
 
     const fileName = levelEntry[4] || String(levelEntry[1] || songKey).replaceAll(" ", "");
