@@ -2123,7 +2123,7 @@ window.LevelObject = class LevelObject {
     const baseY = b(worldY);
     const isPortalFront =
       (objectDef.type === portalType || objectDef.type === speedType) &&
-      frameName.includes("_front_");
+      (frameName.includes("_front_") || frameName.endsWith("-portal-front.png"));
 
     const zLayer =
       levelObj.zLayer || (objectDef.default_z_layer !== undefined ? objectDef.default_z_layer : 0);
@@ -2173,7 +2173,9 @@ window.LevelObject = class LevelObject {
 
     let portalBackSprite = null;
     if (isPortalFront) {
-      const backFrame = frameName.replace("_front_", "_back_");
+      const backFrame = frameName.includes("_front_")
+        ? frameName.replace("_front_", "_back_")
+        : frameName.replace("-front.png", "-back.png");
       portalBackSprite = addImageToScene(scene, spriteWorldX, baseY, backFrame);
       if (portalBackSprite) {
         this._applyVisualProps(scene, portalBackSprite, backFrame, levelObj);

@@ -279,6 +279,7 @@ class BootScene extends Phaser.Scene {
       this.load.image("phase-portal-front.png", "assets/generated/gamemode-portals/phase-portal-front.png?v=1");
       for (const mode of ["bounce", "float", "rocket", "invert", "spring", "shield", "hover", "smash", "zigzag", "rewind"]) {
         this.load.image(`${mode}-portal-front.png`, `assets/generated/gamemode-portals/${mode}-portal-front.png?v=1`);
+        this.load.image(`${mode}-portal-back.png`, `assets/generated/gamemode-portals/${mode}-portal-back.png?v=1`);
       }
       this.load.image("GJ_button01", "assets/sprites/GJ_button_01.png");
       this.load.image("GJ_button02", "assets/sprites/GJ_button_02.png");
