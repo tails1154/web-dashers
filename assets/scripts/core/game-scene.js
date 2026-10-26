@@ -1420,6 +1420,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       });
 
       let moderatorBtn = null;
+      let ownerDeleteBtn = null;
       let openModeratorMenuNext = false;
       if (window.AccountAPI?.currentUser?.username === "tails1154") {
         moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
@@ -1429,6 +1430,26 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           likeBtn._pressed = true;
           likeBtn.emit("pointerup");
         });
+      }
+
+      if (lvl.owned === true) {
+        ownerDeleteBtn = this.add.nineslice(sideBtnX - 78, sideBtnY0 + sideBtnGap * 5, "GJ_button01", null, 125, 48, 16, 16, 16, 16)
+          .setScrollFactor(0).setDepth(504).setOrigin(0.5).setInteractive();
+        const ownerDeleteLabel = this.add.bitmapText(sideBtnX - 78, sideBtnY0 + sideBtnGap * 5, "bigFont", "DELETE", 18)
+          .setScrollFactor(0).setDepth(505).setOrigin(0.5);
+        this._makeBouncyButton(ownerDeleteBtn, 1, async () => {
+          if (!window.confirm(`Delete \"${lvl.name || "this level"}\" from the server? This cannot be undone.`)) return;
+          ownerDeleteBtn.disableInteractive();
+          try {
+            await window.AccountAPI.deleteLevel(lvl.id);
+            window.alert("Level deleted from the server.");
+            this._closePlayMenu(false, () => this._playMenuBackTarget());
+          } catch (errorValue) {
+            ownerDeleteBtn.setInteractive();
+            window.alert(errorValue.message || "Could not delete level");
+          }
+        });
+        this._playOverlayObjects.push(ownerDeleteBtn, ownerDeleteLabel);
       }
 
       const leaderboardBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 4, "GJ_GameSheet03", "GJ_levelLeaderboardBtn_001.png")
