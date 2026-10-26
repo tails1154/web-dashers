@@ -6277,29 +6277,104 @@ class LevelEditor {
 
   _openEditorRotateTriggerOptionsPopup(saveObj) {
     if (!saveObj) return;
-    const ask = (label, value) => window.prompt(label, String(value));
-    const targetGroup = ask("Target group ID:", this._getEditorTriggerTargetGroup(saveObj));
-    if (targetGroup === null) return;
-    this._setEditorTriggerTargetGroup(saveObj, targetGroup);
+    this._closeEditorObjectOptionsPopup();
 
-    const degrees = ask("Rotation degrees:", this._getEditorRotateTriggerNumber(saveObj, 68));
-    if (degrees === null) return;
-    this._setEditorRotateTriggerNumber(saveObj, 68, degrees, -360);
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const panelW = 820;
+    const panelH = 570;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.5).setOrigin(0).setInteractive());
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 42, "bigFont", "Rotate Trigger", 38).setOrigin(0.5));
 
-    const duration = ask("Duration in seconds (0 = instant):", this._getEditorRotateTriggerNumber(saveObj, 10));
-    if (duration === null) return;
-    this._setEditorRotateTriggerNumber(saveObj, 10, duration);
+    const close = this.add.image(-panelW / 2 + 18, -panelH / 2 + 18, "GJ_WebSheet", "GJ_closeBtn_001.png")
+      .setScale(0.75).setInteractive();
+    inner.add(close);
+    this._makeBouncyButton(close, 0.75, () => this._closeEditorObjectOptionsPopup());
 
-    const turns = ask("Extra full 360-degree turns:", this._getEditorRotateTriggerNumber(saveObj, 69));
-    if (turns === null) return;
-    this._setEditorRotateTriggerNumber(saveObj, 69, turns);
+    const fields = [];
+    const stop = (event) => { event?.preventDefault?.(); event?.stopPropagation?.(); };
+    const makeField = (x, y, label, getValue, setValue, allowMinus = false) => {
+      const width = 190;
+      const bg = this.add.rectangle(x, y, width, 52, 0x000000, 0.42).setOrigin(0.5).setInteractive();
+      const text = this.add.bitmapText(x, y, "bigFont", "", 28).setOrigin(0.5);
+      const labelObj = this.add.bitmapText(x, y - 42, "goldFont", label, 24).setOrigin(0.5);
+      inner.add([bg, text, labelObj]);
+      let focused = false;
+      let value = String(getValue());
+      const render = () => text.setText(`${focused ? value : String(getValue())}${focused ? "|" : ""}`);
+      const commit = () => { setValue(value); render(); };
+      const entry = {
+        focused: () => focused,
+        blur: (save) => { if (!focused) return; if (save) commit(); focused = false; this._editorTextInputFocused = false; render(); },
+        cancel: () => { focused = false; this._editorTextInputFocused = false; render(); },
+        isInside: (pointer) => Math.abs(pointer.x - (sw / 2 + x)) <= width / 2 && Math.abs(pointer.y - sh / 2 - y) <= 30,
+        handleKey: (event) => {
+          if (!focused) return false;
+          if (event.key === "Enter") entry.blur(true);
+          else if (event.key === "Backspace") value = value.slice(0, -1);
+          else if (allowMinus && event.key === "-" && value.length === 0) value = "-";
+          else if (/^[0-9.]$/.test(event.key) && value.length < 8 && (event.key !== "." || !value.includes("."))) value += event.key;
+          else if (event.key.length !== 1) return true;
+          render();
+          return true;
+        }
+      };
+      bg.on("pointerdown", (pointer) => {
+        fields.forEach(other => { if (other !== entry) other.blur(true); });
+        value = String(getValue());
+        focused = true;
+        this._editorTextInputFocused = true;
+        render();
+        stop(pointer?.event);
+      });
+      fields.push(entry);
+      render();
+      return entry;
+    };
 
-    const centerGroup = ask("Center group ID (0 = rotate in place):", this._getEditorRotateCenterGroup(saveObj));
-    if (centerGroup === null) return;
-    this._setEditorRotateCenterGroup(saveObj, centerGroup);
+    makeField(-220, -155, "Target Group", () => this._getEditorTriggerTargetGroup(saveObj), value => this._setEditorTriggerTargetGroup(saveObj, value));
+    makeField(220, -155, "Center Group", () => this._getEditorRotateCenterGroup(saveObj), value => this._setEditorRotateCenterGroup(saveObj, value));
+    makeField(-220, -35, "Degrees", () => this._getEditorRotateTriggerNumber(saveObj, 68), value => this._setEditorRotateTriggerNumber(saveObj, 68, value, -360), true);
+    makeField(220, -35, "Duration", () => this._getEditorRotateTriggerNumber(saveObj, 10), value => this._setEditorRotateTriggerNumber(saveObj, 10, value));
+    makeField(-220, 85, "Extra 360 Turns", () => this._getEditorRotateTriggerNumber(saveObj, 69), value => this._setEditorRotateTriggerNumber(saveObj, 69, value));
 
-    const lockRotation = window.confirm("Keep objects upright while rotating?");
-    this._setEditorTriggerBool(saveObj, 70, lockRotation);
+    const lockRow = this.add.container(170, 88);
+    const lockCheck = this.add.image(0, 0, "GJ_GameSheet03", "GJ_checkOff_001.png").setScale(0.82).setInteractive();
+    const lockText = this.add.bitmapText(42, 0, "bigFont", "Keep Upright", 23).setOrigin(0, 0.5).setInteractive();
+    lockRow.add([lockCheck, lockText]);
+    inner.add(lockRow);
+    const refreshLock = () => lockCheck.setTexture("GJ_GameSheet03", this._getEditorTriggerBool(saveObj, 70) ? "GJ_checkOn_001.png" : "GJ_checkOff_001.png");
+    const toggleLock = () => { this._setEditorTriggerBool(saveObj, 70, !this._getEditorTriggerBool(saveObj, 70)); refreshLock(); };
+    this._makeBouncyButton(lockCheck, 0.82, toggleLock);
+    lockText.on("pointerdown", toggleLock);
+    refreshLock();
+
+    this._editorGroupInputPointerDownHandler = (pointer) => {
+      const focused = fields.find(field => field.focused());
+      if (focused && !focused.isInside(pointer)) focused.blur(true);
+    };
+    this.input.on("pointerdown", this._editorGroupInputPointerDownHandler);
+    this._editorObjectOptionsKeyHandler = (event) => {
+      const focused = fields.find(field => field.focused());
+      if (event.key === "Escape") {
+        if (focused) focused.cancel();
+        else this._closeEditorObjectOptionsPopup();
+        stop(event);
+      } else if (focused && focused.handleKey(event)) stop(event);
+    };
+    window.addEventListener("keydown", this._editorObjectOptionsKeyHandler);
+
+    this._makeEditorOkButton(inner, -100, panelH / 2 - 48, "CANCEL", () => this._closeEditorObjectOptionsPopup());
+    this._makeEditorOkButton(inner, 100, panelH / 2 - 48, "OK", () => {
+      fields.forEach(field => field.blur(true));
+      this._closeEditorObjectOptionsPopup();
+    });
   }
 
 
