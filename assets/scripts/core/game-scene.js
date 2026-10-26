@@ -4,6 +4,7 @@ class PracticeMode {
     this.practiceMode = false;
     this.autoCheckpoints = true;
     this.autoCheckpointSpacing = 720;
+    this._suppressAutoUntil = 0;
     this.checkpointSprites = [];
   }
   togglePracticeMode() {
@@ -99,6 +100,7 @@ class PracticeMode {
   }
   updateAutoCheckpoint(playerState, playerWorldX, cameraX, scene) {
     if (!this.practiceMode || !this.autoCheckpoints || !playerState || playerState.isDead) return false;
+    if (Date.now() < this._suppressAutoUntil) return false;
     // Only save stable positions. A checkpoint in midair or during a mode
     // transition can respawn the player inside an obstacle or with stale input.
     const settled = !playerState.isJumping && !playerState.isDashing;
@@ -115,6 +117,7 @@ class PracticeMode {
     return false;
   }
   deleteLastCheckpoint() {
+    this._suppressAutoUntil = Date.now() + 750;
     if (this.checkpoints.length > 0) {
       this.checkpoints.pop();
       if (this.checkpointSprites.length > 0) {
