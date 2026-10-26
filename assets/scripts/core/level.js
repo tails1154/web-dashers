@@ -460,6 +460,22 @@ if (!allObjects[5062]) {
     portalParticleColor: 0xb45cff
   };
 }
+if (!allObjects[5063]) {
+  allObjects[5063] = {
+    can_color: false,
+    default_base_color_channel: 0,
+    frame: "flip-portal-front.png",
+    glow_frame: "flip-portal-front.png",
+    gridH: 2.516666650534,
+    gridW: 0.791666686534,
+    spritesheet: "GJ_GameSheet02-uhd",
+    type: "portal",
+    sub: "size",
+    z: 10,
+    portalParticle: true,
+    portalParticleColor: 0xff4de1
+  };
+}
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
 const _extraSpeedValues = [SpeedPortal.SIX_TIMES, SpeedPortal.SEVEN_TIMES, SpeedPortal.EIGHT_TIMES, SpeedPortal.NINE_TIMES, SpeedPortal.TEN_TIMES];
 for (let i = 0; i < _extraSpeedPortalIds.length; i++) {
@@ -2621,6 +2637,7 @@ window.LevelObject = class LevelObject {
         5060: "flip",
         5061: "vector",
         5062: "phase",
+        5063: "size",
         747: "teleport",
         286: "dual_on",
         287: "dual_off"
@@ -2642,6 +2659,7 @@ window.LevelObject = class LevelObject {
         flip: "portal_flip",
         vector: "portal_vector",
         phase: "portal_phase",
+        size: "portal_size",
         glider: "portal_glider",
         teleport: "portal_teleport",
         mirrora: "portal_mirror_on",

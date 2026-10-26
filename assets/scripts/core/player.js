@@ -17,6 +17,7 @@ class PlayerState {
     this.isUfo = false;
     this.isSpider = false;
     this.isFlip = false;
+    this.isSizeMode = false;
     this.isVector = false;
     this.vectorDirection = 0;
     this.isRail = false;
@@ -451,6 +452,7 @@ class PlayerObject {
     this._ignoreTeleportUntilClear = false;
     this._invertPlayerColors = false;
     this._flipTinted = false;
+    this._sizeTinted = false;
     this._vectorTinted = false;
     this._vectorTurnCooldown = 0;
     this._vectorLastLedgeTurnX = null;
@@ -476,6 +478,7 @@ class PlayerObject {
     return this._invertPlayerColors ? window.mainColor : window.secondaryColor;
   }
   _tintForLayerKind(kind) {
+    if (this._sizeTinted && this.p?.isSizeMode) return 0xff4de1;
     if (this._vectorTinted && (this.p?.isVector || this.p?.isRail)) return 0x00d9c6;
     if (kind === "base") return this._primaryColor();
     if (kind === "overlay" || kind === "glow") return this._secondaryColor();
@@ -487,6 +490,10 @@ class PlayerObject {
   }
   setFlipTinted(tinted) {
     this._flipTinted = !!tinted;
+    this._applyPlayerTints();
+  }
+  setSizeTinted(tinted) {
+    this._sizeTinted = !!tinted;
     this._applyPlayerTints();
   }
   setVectorTinted(tinted) {
@@ -2262,6 +2269,39 @@ if (this.p.isFlying || this.p.isUfo) {
     this.setSpiderVisible(false);
     this._setGamemodeFlyBounds(false, 0);
   }
+  enterSizeMode() {
+    if (this.p.isSizeMode) return;
+    this.exitShipMode();
+    this.exitRobotMode();
+    this.exitBallMode();
+    this.exitWaveMode();
+    this.exitSpiderMode();
+    this.exitFlipMode();
+    this.exitUfoMode();
+    this.exitVectorMode();
+    this.p.isSizeMode = true;
+    this.p.yVelocity = 0;
+    this.p.isJumping = false;
+    this.p.canJump = true;
+    this.setCubeVisible(true);
+    this.setSizeTinted(true);
+    this.setBallVisible(false);
+    this.setShipVisible(false);
+    this.setWaveVisible(false);
+    this.setSpiderVisible(false);
+    this.setRobotVisible(false);
+    this.setBirdVisible(false);
+    this._setGamemodeFlyBounds(false, 0);
+  }
+  exitSizeMode() {
+    if (!this.p.isSizeMode) return;
+    this.p.isSizeMode = false;
+    this.setSizeTinted(false);
+    this.p.yVelocity = 0;
+    this.p.canJump = false;
+    this.p.isJumping = false;
+    this.setCubeVisible(true);
+  }
   enterVectorMode(portal = null) {
     if (this.p.isVector) return;
     this.exitShipMode();
@@ -3688,6 +3728,8 @@ if (this.p.isFlying || this.p.isUfo) {
       this._updateSpiderJump(_0x3d1c6f);
     } else if (this.p.isFlip) {
       this._updateFlipJump(_0x3d1c6f);
+    } else if (this.p.isSizeMode) {
+      this._updateSizeJump(_0x3d1c6f);
     } else if (this.p.isPhase) {
       this._updatePhaseJump(_0x3d1c6f);
     } else if (this.p.isRail) {
@@ -4474,6 +4516,19 @@ if (this.p.isFlying || this.p.isUfo) {
       this.p.yVelocity = Math.max(this.p.yVelocity, -30);
     }
   }
+  _updateSizeJump(dt) {
+    if (this.p.upKeyPressed) {
+      this.p.upKeyPressed = false;
+      this.p.queuedHold = false;
+      this.p.isMini = !this.p.isMini;
+      this._applyPlayerTints();
+    }
+    if (this.playerIsFalling()) this.p.canJump = false;
+    this.p.yVelocity -= p * dt * this.flipMod();
+    if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, 30);
+    else this.p.yVelocity = Math.max(this.p.yVelocity, -30);
+    if (this.playerIsFalling()) this.p.onGround = false;
+  }
   _isPortalCollisionType(colType) {
     const typeStr = String(colType || "");
     return typeStr.startsWith("portal_") || typeStr === speedType || typeStr === "speed";
@@ -4706,6 +4761,10 @@ if (this.p.isFlying || this.p.isUfo) {
             _colType !== "portal_flip" && !isGravityPortal) {
           this.exitFlipMode();
         }
+        if (this.p.isSizeMode && _colType.startsWith("portal_") &&
+            _colType !== "portal_size" && !isGravityPortal) {
+          this.exitSizeMode();
+        }
         if (this.p.isRail &&
             (_colType.startsWith("portal_") || _colType === speedType || _colType === "speed") &&
             !isGravityPortal) {
@@ -4848,6 +4907,12 @@ if (this.p.isFlying || this.p.isUfo) {
             this._setObjectActivated(gameObj, true);
             this._playPortalShine(gameObj, 2);
             this.enterFlipMode(gameObj);
+          }
+        } else if (_colType === "portal_size") {
+          if (!this._isObjectActivated(gameObj)) {
+            this._setObjectActivated(gameObj, true);
+            this._playPortalShine(gameObj, 2);
+            this.enterSizeMode();
           }
         } else if (_colType === "portal_vector") {
           if (!this._isObjectActivated(gameObj)) {
