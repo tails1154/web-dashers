@@ -5727,7 +5727,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const error = shade.querySelector("[data-error]");
       button.disabled = true;
       try {
-        const levelId = window.currentlevel?.[2] || window._onlineLevelId;
+        const rawLevelId = window._selectedLevelData?.id || window._onlineLevelId || window.currentlevel?.[2];
+        const levelId = String(rawLevelId || "").replace(/^online_/, "");
+        if (!/^\d+$/.test(levelId)) {
+          throw new Error("Like triggers only work on uploaded server levels.");
+        }
         const result = await window.AccountAPI.setLevelRating(levelId, "like");
         if (window._selectedLevelData && result) Object.assign(window._selectedLevelData, result);
         resume();
