@@ -8124,6 +8124,7 @@ _buildSettingsPopup() {
     this._levelWon = false;
     this._pendingStarReward = 0;
     this._pendingStarRewardLevelId = null;
+    this._pendingStarRewardStartCount = 0;
     this._endCameraOverride = false;
     this._endCamTween = null;
     this._spaceWasDown = false;
@@ -10054,6 +10055,7 @@ _applyMirrorEffect() {
       if (earnedStars) {
         this._pendingStarReward = earnedStars;
         this._pendingStarRewardLevelId = String(window.currentlevel?.[2] || "");
+        this._pendingStarRewardStartCount = Math.max(0, (window.WDCoinEconomy?.getStars?.() || 0) - earnedStars);
       }
       this._bestPercent = 100;
       localStorage.setItem("bestPercent_" + (window.currentlevel[2] || "level_1"), 100);
@@ -10926,13 +10928,15 @@ _applyMirrorEffect() {
       : 0;
     this._pendingStarReward = 0;
     this._pendingStarRewardLevelId = null;
+    const startingStars = Math.max(0, Number(this._pendingStarRewardStartCount) || 0);
+    this._pendingStarRewardStartCount = 0;
     if (!count) return;
 
     const startX = this._endStarX;
     const startY = this._endStarY + (this._endLayerInternal.y || 0);
     const targetX = screenWidth - 78;
     const targetY = 108;
-    const starCounter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Stars: ${window.WDCoinEconomy?.getStars?.() || 0}`, 24)
+    const starCounter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Stars: ${startingStars}`, 24)
       .setOrigin(1, 0.5)
       .setScrollFactor(0)
       .setDepth(221)
@@ -10940,6 +10944,7 @@ _applyMirrorEffect() {
     this.tweens.add({ targets: starCounter, scale: 1.12, duration: 180, yoyo: true, ease: "Quad.Out" });
     this._audio.playEffect("highscoreGet02");
 
+    let arrivedStars = 0;
     for (let index = 0; index < count; index++) {
       const star = this.add.image(startX, startY, "GJ_WebSheet", "GJ_bigStar_001.png")
         .setScale(0.42)
@@ -10967,7 +10972,8 @@ _applyMirrorEffect() {
             ease: "Cubic.In",
             onComplete: () => {
               star.destroy();
-              starCounter.setText(`Stars: ${window.WDCoinEconomy?.getStars?.() || 0}`);
+              arrivedStars += 1;
+              starCounter.setText(`Stars: ${startingStars + arrivedStars}`);
               this._refreshIconCoinHud?.();
             }
           });
