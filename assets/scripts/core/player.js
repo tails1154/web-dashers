@@ -4522,21 +4522,13 @@ if (this.p.isFlying || this.p.isUfo) {
       this.p.queuedHold = false;
       this.p.isMini = !this.p.isMini;
       this._applyPlayerTints();
-      const canJump = this.p.canJump || this.p.onGround || this.p.onCeiling;
-      if (canJump) {
-        this.p.isJumping = true;
-        this.p.onGround = false;
-        this.p.onCeiling = false;
-        this.p.canJump = false;
-        this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
-        this.runRotateAction();
-      }
     }
-    if (this.playerIsFalling()) this.p.canJump = false;
-    this.p.yVelocity -= p * dt * this.flipMod();
-    if (this.p.gravityFlipped) this.p.yVelocity = Math.min(this.p.yVelocity, 30);
-    else this.p.yVelocity = Math.max(this.p.yVelocity, -30);
-    if (this.playerIsFalling()) this.p.onGround = false;
+    // Reuse the normal Cube physics, including jump eligibility and held input.
+    // Temporarily hide the custom mode flag to avoid recursing into this method.
+    const sizeMode = this.p.isSizeMode;
+    this.p.isSizeMode = false;
+    this.updateJump(dt);
+    this.p.isSizeMode = sizeMode;
   }
   _isPortalCollisionType(colType) {
     const typeStr = String(colType || "");
