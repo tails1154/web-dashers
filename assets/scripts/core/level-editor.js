@@ -1996,6 +1996,12 @@ class LevelEditor {
                 itemsForGrid.push({ type: "object", id: 5063, frame: sizePortal.frame });
             }
         }
+        if (activeCatDef?.types?.includes("trigger")) {
+            const likeTrigger = getObjectFromId(5064);
+            if (likeTrigger && !itemsForGrid.some(item => item.id === 5064)) {
+                itemsForGrid.push({ type: "object", id: 5064, frame: likeTrigger.frame });
+            }
+        }
     } else if (this._editorTab === "edit") {
         const moveActions = [
             { dx: 0, dy: -3, icon: "edit_upBtn_001.png", angle: 0, scale: 1, flipX: false },
