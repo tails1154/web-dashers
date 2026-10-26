@@ -8153,6 +8153,9 @@ _buildSettingsPopup() {
     this._pendingStarReward = 0;
     this._pendingStarRewardLevelId = null;
     this._pendingStarRewardStartCount = 0;
+    this._pendingCoinReward = 0;
+    this._pendingCoinRewardLevelId = null;
+    this._pendingCoinRewardStartCount = 0;
     this._endCameraOverride = false;
     this._endCamTween = null;
     this._spaceWasDown = false;
@@ -10056,7 +10059,12 @@ _applyMirrorEffect() {
         } catch (_) {}
       }
       // Coins are only paid out after the level is actually beaten.
-      window.WDCoinEconomy?.commitLevel?.(window.currentlevel?.[2], this);
+      const earnedCoins = window.WDCoinEconomy?.commitLevel?.(window.currentlevel?.[2], this) || 0;
+      if (earnedCoins) {
+        this._pendingCoinReward = earnedCoins;
+        this._pendingCoinRewardLevelId = String(window.currentlevel?.[2] || "");
+        this._pendingCoinRewardStartCount = Math.max(0, (window.WDCoinEconomy?.getBalance?.() || 0) - earnedCoins);
+      }
       if (window._dailyLevelActive) {
         const dailyId = String(window._dailyLevelId || window._selectedLevelData?.id || window.currentlevel?.[2] || "").replace(/^online_/, "");
         window.AccountAPI?.claimDailyReward?.(dailyId, true, false).then(result => {
@@ -10489,7 +10497,7 @@ _applyMirrorEffect() {
         this._endLayerInternal.y = _0x59b9ab.p * 650 - 640;
       },
       onComplete: () => {
-        if (Number(this._pendingStarReward) > 0) this._playStarAward();
+        if (Number(this._pendingStarReward) > 0 || Number(this._pendingCoinReward) > 0) this._playStarAward();
       }
     });
     const _0x595215 = 712;
@@ -11050,7 +11058,10 @@ _applyMirrorEffect() {
     this._pendingStarRewardLevelId = null;
     const startingStars = Math.max(0, Number(this._pendingStarRewardStartCount) || 0);
     this._pendingStarRewardStartCount = 0;
-    if (!count) return;
+    if (!count) {
+      this._playCoinAward();
+      return;
+    }
 
     const startX = this._endStarX;
     const startY = this._endStarY + (this._endLayerInternal.y || 0);
@@ -11098,6 +11109,59 @@ _applyMirrorEffect() {
             }
           });
         }
+      });
+    }
+    this._playCoinAward();
+  }
+
+  _playCoinAward() {
+    if (!this._endLayerInternal) return;
+    const currentLevelId = String(window.currentlevel?.[2] || "");
+    const rewardBelongsToCurrentLevel = this._pendingCoinRewardLevelId === currentLevelId;
+    const count = rewardBelongsToCurrentLevel ? Math.max(0, Math.min(3, Number(this._pendingCoinReward) || 0)) : 0;
+    this._pendingCoinReward = 0;
+    this._pendingCoinRewardLevelId = null;
+    const startingCoins = Math.max(0, Number(this._pendingCoinRewardStartCount) || 0);
+    this._pendingCoinRewardStartCount = 0;
+    if (!count) return;
+
+    const startX = this._endStarX - 18;
+    const startY = this._endStarY + (this._endLayerInternal.y || 0) + 34;
+    const targetX = screenWidth - 78;
+    const targetY = 78;
+    const counter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Coins: ${startingCoins}`, 24)
+      .setOrigin(1, 0.5).setScrollFactor(0).setDepth(221).setTint(0xffd84d);
+    let arrived = 0;
+    this._audio.playEffect("highscoreGet02");
+    for (let index = 0; index < count; index++) {
+      const coin = this.add.image(startX, startY, "GJ_GameSheet03", "GJ_coinsIcon_001.png")
+        .setScale(0.42).setScrollFactor(0).setDepth(220);
+      this.tweens.add({
+        targets: coin,
+        x: startX + (index - (count - 1) / 2) * 26,
+        y: startY - 50 - Math.random() * 40,
+        angle: 360 + Math.random() * 180,
+        duration: 420 + index * 35,
+        ease: "Bounce.Out",
+        onComplete: () => this.tweens.add({
+          targets: coin,
+          x: targetX,
+          y: targetY,
+          scale: 0.22,
+          duration: 650,
+          delay: index * 55,
+          ease: "Cubic.In",
+          onComplete: () => {
+            coin.destroy();
+            arrived += 1;
+            counter.setText(`Coins: ${startingCoins + arrived}`);
+            if (arrived >= count) {
+              counter.setText(`Coins: ${startingCoins + count}`);
+              this._refreshIconCoinHud?.();
+              this.time.delayedCall(350, () => counter.destroy());
+            }
+          }
+        })
       });
     }
   }
