@@ -479,8 +479,8 @@ if (!allObjects[5063]) {
 if (!allObjects[5064]) {
   allObjects[5064] = {
     can_color: false,
-    frame: "edit_eeNoneBtn_001.png",
-    editorFrame: "edit_eeNoneBtn_001.png",
+    frame: "like-level-trigger.png",
+    editorFrame: "like-level-trigger.png",
     gridH: 1,
     gridW: 1,
     spritesheet: "GJ_GameSheet02-uhd",
