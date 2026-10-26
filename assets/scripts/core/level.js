@@ -476,6 +476,20 @@ if (!allObjects[5063]) {
     portalParticleColor: 0xff4de1
   };
 }
+if (!allObjects[5064]) {
+  allObjects[5064] = {
+    can_color: false,
+    frame: "edit_eeNoneBtn_001.png",
+    editorFrame: "edit_eeNoneBtn_001.png",
+    gridH: 1,
+    gridW: 1,
+    spritesheet: "GJ_GameSheet02-uhd",
+    type: "trigger",
+    z: 2,
+    default_detail_color_channel: -1,
+    default_base_color_channel: 0
+  };
+}
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
 const _extraSpeedValues = [SpeedPortal.SIX_TIMES, SpeedPortal.SEVEN_TIMES, SpeedPortal.EIGHT_TIMES, SpeedPortal.NINE_TIMES, SpeedPortal.TEN_TIMES];
 for (let i = 0; i < _extraSpeedPortalIds.length; i++) {
@@ -704,6 +718,8 @@ window.LevelObject = class LevelObject {
     this._rotateTriggers = [];
     this._rotateTriggerIdx = 0;
     this._activeRotateTweens = [];
+    this._likeTriggers = [];
+    this._likeTriggerIdx = 0;
     this._pulseTriggers = [];
     this._pulseTriggerIdx = 0;
     this._activePulses = [];
@@ -2013,6 +2029,13 @@ window.LevelObject = class LevelObject {
       });
     }
 
+    if (levelObj.id === 5064) {
+      this._likeTriggers.push({
+        ...triggerBase,
+        x: levelObj.x * 2
+      });
+    }
+
     if (levelObj.id === 1006) {
       const _raw = levelObj._raw;
       const targetType = parseInt(_raw[52] ?? 0, 10);
@@ -2797,6 +2820,7 @@ window.LevelObject = class LevelObject {
     this._zoomTriggers.sort((a, b) => a.x - b.x);
     this._alphaTriggers.sort((a, b) => a.x - b.x);
     this._rotateTriggers.sort((a, b) => a.x - b.x);
+    this._likeTriggers.sort((a, b) => a.x - b.x);
     this._pulseTriggers.sort((a, b) => a.x - b.x);
 
     for (let si = 0; si < this._sectionContainers.length; si++) {
@@ -3779,6 +3803,21 @@ window.LevelObject = class LevelObject {
       if (!trig.spawnTriggered) this._startRotateTriggerTween(trig);
       this._rotateTriggerIdx++;
     }
+  }
+
+  checkLikeTriggers(playerX) {
+    while (this._likeTriggerIdx < this._likeTriggers.length) {
+      const trigger = this._likeTriggers[this._likeTriggerIdx];
+      if (trigger.x > playerX) break;
+      if (this._isTriggerSaveObjectLive(trigger.uid)) {
+        this._scene?._showLikeTriggerPrompt?.();
+      }
+      this._likeTriggerIdx++;
+    }
+  }
+
+  resetLikeTriggers() {
+    this._likeTriggerIdx = 0;
   }
 
   stepRotateTriggers(dt) {

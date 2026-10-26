@@ -5667,6 +5667,46 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._glitterEmitter.timeScale = timeScale;
     }
   }
+
+  _showLikeTriggerPrompt() {
+    if (this._likeTriggerPromptOpen || this._levelWon || this._menuActive) return;
+    this._likeTriggerPromptOpen = true;
+    this._paused = true;
+    this._pauseBtn?.setVisible(false);
+    this._audio?.pauseMusic?.();
+    this._setParticleTimeScale(0);
+
+    const shade = document.createElement("div");
+    shade.dataset.wdLikeTriggerPrompt = "1";
+    shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+    shade.innerHTML = `<div style="width:min(380px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 8px;color:#ffd84d">Like Trigger</h2><p style="margin:0 0 18px;color:#bbb">Did this level earn a like?</p><p data-error style="min-height:18px;margin:0 0 12px;color:#ff9b9b"></p><div style="display:flex;justify-content:center;gap:10px"><button type="button" data-like style="padding:11px 20px;border:0;border-radius:8px;background:#88ffbb;font-weight:bold;cursor:pointer">Like</button><button type="button" data-skip style="padding:11px 20px;border:0;border-radius:8px;background:#888;color:#fff;font-weight:bold;cursor:pointer">Not now</button></div></div>`;
+    document.body.appendChild(shade);
+
+    const resume = () => {
+      shade.remove();
+      this._likeTriggerPromptOpen = false;
+      this._paused = false;
+      this._setParticleTimeScale(1);
+      this._pauseBtn?.setVisible(true).setAlpha(75 / 255);
+      this._audio?.resumeMusic?.();
+    };
+    shade.querySelector("[data-skip]").addEventListener("click", resume);
+    shade.querySelector("[data-like]").addEventListener("click", async event => {
+      const button = event.currentTarget;
+      const error = shade.querySelector("[data-error]");
+      button.disabled = true;
+      try {
+        const levelId = window.currentlevel?.[2] || window._onlineLevelId;
+        const result = await window.AccountAPI.setLevelRating(levelId, "like");
+        if (window._selectedLevelData && result) Object.assign(window._selectedLevelData, result);
+        resume();
+      } catch (errorValue) {
+        button.disabled = false;
+        error.textContent = errorValue?.message || "Could not like this level";
+      }
+    });
+  }
+
   _pauseGame() {
     if (!this._paused && !this._menuActive && !this._slideIn && !this._levelWon) {
       this._paused = true;
@@ -8179,6 +8219,7 @@ _buildSettingsPopup() {
     this._level.resetColorTriggers();
     this._level.resetAlphaTriggers();
     this._level.resetRotateTriggers();
+    this._level.resetLikeTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
@@ -8504,6 +8545,7 @@ _buildSettingsPopup() {
     this._level.resetColorTriggers();
     this._level.resetAlphaTriggers();
     this._level.resetRotateTriggers();
+    this._level.resetLikeTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
@@ -9407,6 +9449,7 @@ _buildSettingsPopup() {
     this._level.checkAlphaTriggers(playerX);
     this._level.stepAlphaTriggers(deltaTime / 1000);
     this._level.checkRotateTriggers(playerX);
+    this._level.checkLikeTriggers?.(playerX);
     this._level.stepRotateTriggers(deltaTime / 1000);
     this._level.checkPulseTriggers(playerX);
     this._level.stepPulseTriggers(deltaTime / 1000, this._colorManager);
@@ -11589,7 +11632,7 @@ _applyMirrorEffect() {
     root.add(line);
     rewards.forEach((reward, index) => {
       const x = startX + index * 150;
-      const unlocked = savedXP >= reward.xp;
+      const unlocked = currentXP >= reward.xp;
       const alreadyClaimed = !!claimed[reward.icon];
       const node = this.add.circle(x, 280, 42, unlocked ? 0xffd84d : 0x4d5e70, 1).setStrokeStyle(5, unlocked ? 0xffffff : 0x8190a0, 1);
       const icon = this.add.image(x, 280, "GJ_GameSheetIcons", `${reward.icon}_001.png`).setScale(0.72).setAlpha(unlocked ? 1 : 0.38);
