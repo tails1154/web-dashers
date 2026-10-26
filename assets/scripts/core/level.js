@@ -2196,6 +2196,8 @@ window.LevelObject = class LevelObject {
         portalBackSprite.x = sprite.x;
         portalBackSprite.y = sprite.y;
       }
+      if (objectId === 5063) sprite.setTint(0xff4de1);
+      if (objectId === 5063 && portalBackSprite) portalBackSprite.setTint(0xff4de1);
       this._addVisualSprite(sprite, visualDef);
       sprite._eeWorldX = worldX;
       sprite._eeBaseY = baseY;
