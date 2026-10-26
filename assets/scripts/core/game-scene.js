@@ -8122,6 +8122,8 @@ _buildSettingsPopup() {
     this._newBestShown = false;
     this._hadNewBest = false;
     this._levelWon = false;
+    this._pendingStarReward = 0;
+    this._pendingStarRewardLevelId = null;
     this._endCameraOverride = false;
     this._endCamTween = null;
     this._spaceWasDown = false;
@@ -10049,7 +10051,10 @@ _applyMirrorEffect() {
       const builtInStarRewards = { level_24: 4, level_26: 7 };
       const starReward = window._selectedLevelData?.star_reward ?? builtInStarRewards[window.currentlevel?.[2]] ?? 0;
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
-      if (earnedStars) this._pendingStarReward = earnedStars;
+      if (earnedStars) {
+        this._pendingStarReward = earnedStars;
+        this._pendingStarRewardLevelId = String(window.currentlevel?.[2] || "");
+      }
       this._bestPercent = 100;
       localStorage.setItem("bestPercent_" + (window.currentlevel[2] || "level_1"), 100);
       const completedKey = "gd_completedSet";
@@ -10361,7 +10366,9 @@ _applyMirrorEffect() {
       onUpdate: () => {
         this._endLayerInternal.y = _0x59b9ab.p * 650 - 640;
       },
-      onComplete: () => this._playStarAward()
+      onComplete: () => {
+        if (Number(this._pendingStarReward) > 0) this._playStarAward();
+      }
     });
     const _0x595215 = 712;
     const _0x950c8d = 460;
@@ -10912,8 +10919,13 @@ _applyMirrorEffect() {
     if (!this._endLayerInternal) {
       return;
     }
-    const count = Math.max(0, Math.min(10, Number(this._pendingStarReward) || 0));
+    const currentLevelId = String(window.currentlevel?.[2] || "");
+    const rewardBelongsToCurrentLevel = this._pendingStarRewardLevelId === currentLevelId;
+    const count = rewardBelongsToCurrentLevel
+      ? Math.max(0, Math.min(10, Number(this._pendingStarReward) || 0))
+      : 0;
     this._pendingStarReward = 0;
+    this._pendingStarRewardLevelId = null;
     if (!count) return;
 
     const startX = this._endStarX;
