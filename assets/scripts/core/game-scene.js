@@ -10920,6 +10920,12 @@ _applyMirrorEffect() {
     const startY = this._endStarY + (this._endLayerInternal.y || 0);
     const targetX = screenWidth - 78;
     const targetY = 108;
+    const starCounter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Stars: ${window.WDCoinEconomy?.getStars?.() || 0}`, 24)
+      .setOrigin(1, 0.5)
+      .setScrollFactor(0)
+      .setDepth(221)
+      .setTint(0xfff2a1);
+    this.tweens.add({ targets: starCounter, scale: 1.12, duration: 180, yoyo: true, ease: "Quad.Out" });
     this._audio.playEffect("highscoreGet02");
 
     for (let index = 0; index < count; index++) {
@@ -10949,6 +10955,7 @@ _applyMirrorEffect() {
             ease: "Cubic.In",
             onComplete: () => {
               star.destroy();
+              starCounter.setText(`Stars: ${window.WDCoinEconomy?.getStars?.() || 0}`);
               this._refreshIconCoinHud?.();
             }
           });
