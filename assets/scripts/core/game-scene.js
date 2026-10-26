@@ -562,6 +562,13 @@ class GameScene extends Phaser.Scene {
         this._uncompleteChordArmed = false;
         clearTimeout(this._uncompleteChordTimer);
         this._showUncompleteProgressModal();
+        return;
+      }
+      if (this._uncompleteChordArmed && key === 'c') {
+        event.preventDefault();
+        this._uncompleteChordArmed = false;
+        clearTimeout(this._uncompleteChordTimer);
+        this._showRewardAnimationTest();
       }
     };
     window.addEventListener('keydown', this._uncompleteKeyHandler);
@@ -10233,6 +10240,61 @@ _applyMirrorEffect() {
 
   _showStarRewardAnimation(amount) {
     this._pendingStarReward = Math.max(0, Number(amount) || 0);
+  }
+
+  _showRewardAnimationTest() {
+    if (this._rewardAnimationTestActive) return;
+    this._rewardAnimationTestActive = true;
+    const amount = 3;
+    const oldStars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
+    const oldDiamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
+    localStorage.setItem("wd_stars", String(oldStars + amount));
+    localStorage.setItem("wd_diamonds", String(oldDiamonds + amount));
+
+    const targets = [
+      { icon: "GJ_starsIcon_001.png", y: 108, color: 0xfff2a1, label: `Stars: ${oldStars}` },
+      { icon: "GJ_diamondsIcon_001.png", y: 138, color: 0xd98cff, label: `Diamonds: ${oldDiamonds}` }
+    ];
+    const counters = targets.map(target => this.add.bitmapText(screenWidth - 28, target.y, "goldFont", target.label, 24)
+      .setOrigin(1, 0.5).setScrollFactor(0).setDepth(1250).setTint(target.color));
+    let arrived = 0;
+    const total = targets.length * amount;
+    const finish = () => {
+      localStorage.setItem("wd_stars", String(oldStars));
+      localStorage.setItem("wd_diamonds", String(oldDiamonds));
+      this._refreshIconCoinHud?.();
+      counters.forEach(counter => counter.destroy());
+      this._rewardAnimationTestActive = false;
+    };
+    targets.forEach((target, targetIndex) => {
+      for (let index = 0; index < amount; index++) {
+        const reward = this.add.image(screenWidth / 2 + (targetIndex ? 26 : -26), screenHeight * 0.34, "GJ_GameSheet03", target.icon)
+          .setScale(0.42).setScrollFactor(0).setDepth(1249);
+        this.tweens.add({
+          targets: reward,
+          x: screenWidth / 2 + (index - 1) * 34,
+          y: screenHeight * 0.34 - 60 - Math.random() * 45,
+          angle: 360 + Math.random() * 180,
+          duration: 420 + index * 40,
+          ease: "Bounce.Out",
+          onComplete: () => this.tweens.add({
+            targets: reward,
+            x: screenWidth - 78,
+            y: target.y,
+            scale: 0.22,
+            duration: 650,
+            delay: index * 55,
+            ease: "Cubic.In",
+            onComplete: () => {
+              reward.destroy();
+              arrived += 1;
+              counters[targetIndex].setText(`${targetIndex === 0 ? "Stars" : "Diamonds"}: ${targetIndex === 0 ? oldStars + Math.min(amount, arrived) : oldDiamonds + Math.max(0, arrived - amount)}`);
+              if (arrived >= total) finish();
+            }
+          })
+        });
+      }
+    });
   }
   _showCompleteEffect() {
     this._audio.fadeOutMusic(1500);
