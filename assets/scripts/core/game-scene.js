@@ -10179,24 +10179,55 @@ _applyMirrorEffect() {
 
   _showEndScreenRewardModal(title, message) {
     return new Promise(resolve => {
-      const overlay = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x000000, 0.72)
-        .setOrigin(0).setScrollFactor(0).setDepth(1200).setInteractive();
-      const panel = this.add.nineslice(screenWidth / 2, screenHeight / 2, "GJ_button01", null, 520, 260, 24, 24, 24, 24)
-        .setScrollFactor(0).setDepth(1201);
-      const heading = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 72, "goldFont", title, 34)
+      const rewardAmount = Math.max(1, parseInt(String(message).match(/\+(\d+)/)?.[1] || "1", 10));
+      const currentDiamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
+      const startingDiamonds = Math.max(0, currentDiamonds - rewardAmount);
+      const targetX = screenWidth - 78;
+      const targetY = 138;
+      const counter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Diamonds: ${startingDiamonds}`, 24)
+        .setOrigin(1, 0.5).setScrollFactor(0).setDepth(1202).setTint(0xd98cff);
+      const titleText = this.add.bitmapText(screenWidth / 2, screenHeight * 0.34, "goldFont", title, 32)
         .setOrigin(0.5).setScrollFactor(0).setDepth(1202);
-      const reward = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 18, "bigFont", message, 30)
-        .setOrigin(0.5).setScrollFactor(0).setDepth(1202);
-      const button = this.add.nineslice(screenWidth / 2, screenHeight / 2 + 78, "GJ_button01", null, 190, 58, 20, 20, 20, 20)
-        .setScrollFactor(0).setDepth(1202).setInteractive();
-      const label = this.add.bitmapText(screenWidth / 2, screenHeight / 2 + 77, "goldFont", "CONTINUE", 24)
-        .setOrigin(0.5).setScrollFactor(0).setDepth(1203);
-      const objects = [overlay, panel, heading, reward, button, label];
-      const close = () => {
-        objects.forEach(object => object.destroy());
-        resolve();
+      const stars = [];
+      const count = Math.min(12, rewardAmount);
+      let arrived = 0;
+      const finish = () => {
+        counter.setText(`Diamonds: ${currentDiamonds}`);
+        this._refreshIconCoinHud?.();
+        this.time.delayedCall(350, () => {
+          counter.destroy();
+          titleText.destroy();
+          resolve();
+        });
       };
-      this._makeCompositeBouncyButton(button, [button, label], 1, close, () => true);
+      for (let index = 0; index < count; index++) {
+        const diamond = this.add.image(screenWidth / 2, screenHeight * 0.34, "GJ_GameSheet03", "GJ_diamondsIcon_001.png")
+          .setScale(0.42).setScrollFactor(0).setDepth(1201);
+        stars.push(diamond);
+        this.tweens.add({
+          targets: diamond,
+          x: screenWidth / 2 + (index - (count - 1) / 2) * 30 + (Math.random() * 24 - 12),
+          y: screenHeight * 0.34 - 55 - Math.random() * 45,
+          angle: (Math.random() - 0.5) * 40,
+          duration: 420 + index * 30,
+          ease: "Bounce.Out",
+          onComplete: () => this.tweens.add({
+            targets: diamond,
+            x: targetX,
+            y: targetY,
+            scale: 0.22,
+            duration: 650,
+            delay: index * 45,
+            ease: "Cubic.In",
+            onComplete: () => {
+              diamond.destroy();
+              arrived += 1;
+              counter.setText(`Diamonds: ${Math.min(currentDiamonds, startingDiamonds + arrived)}`);
+              if (arrived >= count) finish();
+            }
+          })
+        });
+      }
     });
   }
 
