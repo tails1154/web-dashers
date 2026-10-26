@@ -6181,6 +6181,8 @@ class LevelEditor {
         this._openEditorSpawnTriggerOptionsPopup(saveObj);
     } else if (this._isEditorZoomTriggerId(saveObj.id)) {
         this._openEditorZoomTriggerOptionsPopup(saveObj);
+    } else if (this._isEditorRotateTriggerId(saveObj.id)) {
+        this._openEditorRotateTriggerOptionsPopup(saveObj);
     } else if (this._isEditorStartPositionId(saveObj.id)) {
         this._openEditorStartPositionOptionsPopup(saveObj);
     } else if (this._isEditorTextObjectId(saveObj.id)) {
@@ -6206,6 +6208,11 @@ class LevelEditor {
   }
 
 
+  _isEditorRotateTriggerId(id) {
+    return parseInt(id ?? 0, 10) === 1346;
+  }
+
+
   _getEditorZoomTriggerValue(saveObj) {
     const value = parseFloat(saveObj?._raw?.[28] ?? saveObj?._raw?.["28"] ?? 1);
     return Number.isFinite(value) ? Phaser.Math.Clamp(value, 0.1, 4) : 1;
@@ -6222,6 +6229,77 @@ class LevelEditor {
     for (const trigger of this._level?._zoomTriggers || []) {
       if (trigger?.uid === linkedId) trigger.targetZoom = zoom;
     }
+  }
+
+
+  _getEditorRotateTriggerNumber(saveObj, key, fallback = 0) {
+    const value = parseFloat(saveObj?._raw?.[key] ?? saveObj?._raw?.[String(key)] ?? fallback);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+
+  _setEditorRotateTriggerNumber(saveObj, key, value, minimum = 0) {
+    if (!saveObj) return;
+    const parsed = parseFloat(value);
+    const normalized = Math.max(minimum, Number.isFinite(parsed) ? parsed : minimum);
+    saveObj._raw = saveObj._raw || {};
+    const formatted = String(Number(normalized.toFixed(3)));
+    saveObj._raw[key] = formatted;
+    saveObj._raw[String(key)] = formatted;
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    for (const trigger of this._level?._rotateTriggers || []) {
+      if (!trigger || trigger.uid !== linkedId) continue;
+      if (String(key) === "68") trigger.degrees = normalized;
+      if (String(key) === "69") trigger.times360 = Math.trunc(normalized);
+      if (String(key) === "10") trigger.duration = normalized;
+    }
+  }
+
+
+  _getEditorRotateCenterGroup(saveObj) {
+    const raw = saveObj?._raw || {};
+    return this._parseEditorSingleGroupId(raw[71] ?? raw["71"], 0);
+  }
+
+
+  _setEditorRotateCenterGroup(saveObj, value) {
+    if (!saveObj) return;
+    const group = Math.max(0, this._parseEditorSingleGroupId(value, 0));
+    saveObj._raw = saveObj._raw || {};
+    saveObj._raw[71] = String(group);
+    saveObj._raw["71"] = String(group);
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    for (const trigger of this._level?._rotateTriggers || []) {
+      if (trigger?.uid === linkedId) trigger.centerGroup = group;
+    }
+  }
+
+
+  _openEditorRotateTriggerOptionsPopup(saveObj) {
+    if (!saveObj) return;
+    const ask = (label, value) => window.prompt(label, String(value));
+    const targetGroup = ask("Target group ID:", this._getEditorTriggerTargetGroup(saveObj));
+    if (targetGroup === null) return;
+    this._setEditorTriggerTargetGroup(saveObj, targetGroup);
+
+    const degrees = ask("Rotation degrees:", this._getEditorRotateTriggerNumber(saveObj, 68));
+    if (degrees === null) return;
+    this._setEditorRotateTriggerNumber(saveObj, 68, degrees, -360);
+
+    const duration = ask("Duration in seconds (0 = instant):", this._getEditorRotateTriggerNumber(saveObj, 10));
+    if (duration === null) return;
+    this._setEditorRotateTriggerNumber(saveObj, 10, duration);
+
+    const turns = ask("Extra full 360-degree turns:", this._getEditorRotateTriggerNumber(saveObj, 69));
+    if (turns === null) return;
+    this._setEditorRotateTriggerNumber(saveObj, 69, turns);
+
+    const centerGroup = ask("Center group ID (0 = rotate in place):", this._getEditorRotateCenterGroup(saveObj));
+    if (centerGroup === null) return;
+    this._setEditorRotateCenterGroup(saveObj, centerGroup);
+
+    const lockRotation = window.confirm("Keep objects upright while rotating?");
+    this._setEditorTriggerBool(saveObj, 70, lockRotation);
   }
 
 
@@ -6304,6 +6382,7 @@ class LevelEditor {
         if (rawKey === "59") trigger.lockY = !!enabled;
         if (rawKey === "302") trigger.lockCameraX = !!enabled;
         if (rawKey === "303") trigger.lockCameraY = !!enabled;
+        if (rawKey === "70") trigger.lockRotation = !!enabled;
       }
     };
     updateList(this._level?._colorTriggers);
@@ -9136,8 +9215,13 @@ LevelEditor.methodNames = [
   "_isEditorMoveTriggerId",
   "_isEditorSpawnTriggerId",
   "_isEditorZoomTriggerId",
+  "_isEditorRotateTriggerId",
   "_getEditorZoomTriggerValue",
   "_setEditorZoomTriggerValue",
+  "_getEditorRotateTriggerNumber",
+  "_setEditorRotateTriggerNumber",
+  "_getEditorRotateCenterGroup",
+  "_setEditorRotateCenterGroup",
   "_parseEditorSingleGroupId",
   "_getEditorTriggerTargetGroup",
   "_setEditorTriggerTargetGroup",
@@ -9154,6 +9238,7 @@ LevelEditor.methodNames = [
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
   "_openEditorZoomTriggerOptionsPopup",
+  "_openEditorRotateTriggerOptionsPopup",
   "_isEditorColorTriggerTouchTriggered",
   "_setEditorColorTriggerTouchTriggered",
   "_isEditorTriggerSpawnTriggered",
