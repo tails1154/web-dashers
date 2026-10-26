@@ -10049,7 +10049,7 @@ _applyMirrorEffect() {
       const builtInStarRewards = { level_24: 4, level_26: 7 };
       const starReward = window._selectedLevelData?.star_reward ?? builtInStarRewards[window.currentlevel?.[2]] ?? 0;
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
-      if (earnedStars) this._showStarRewardAnimation(earnedStars);
+      if (earnedStars) this._pendingStarReward = earnedStars;
       this._bestPercent = 100;
       localStorage.setItem("bestPercent_" + (window.currentlevel[2] || "level_1"), 100);
       const completedKey = "gd_completedSet";
@@ -10173,17 +10173,7 @@ _applyMirrorEffect() {
   }
 
   _showStarRewardAnimation(amount) {
-    const count = Math.max(1, Math.min(10, Number(amount) || 0));
-    const cx = screenWidth / 2;
-    const cy = screenHeight * 0.30;
-    const group = this.add.container(cx, cy).setScrollFactor(0).setDepth(900);
-    const shade = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x081126, 0.28).setInteractive();
-    const star = this.add.image(0, 0, "GJ_GameSheet03", "GJ_starsIcon_001.png").setScale(0.2);
-    const label = this.add.bitmapText(0, 74, "goldFont", `+${count} STAR${count === 1 ? "" : "S"}`, 46).setOrigin(0.5);
-    group.add([shade, star, label]);
-    this.tweens.add({ targets: star, scale: 1.5, angle: 360, duration: 700, ease: "Back.Out" });
-    this.tweens.add({ targets: label, alpha: { from: 0, to: 1 }, y: 58, duration: 450, ease: "Quad.Out" });
-    this.tweens.add({ targets: group, alpha: 0, delay: 1500, duration: 500, onComplete: () => group.destroy(true) });
+    this._pendingStarReward = Math.max(0, Number(amount) || 0);
   }
   _showCompleteEffect() {
     this._audio.fadeOutMusic(1500);
@@ -10922,66 +10912,49 @@ _applyMirrorEffect() {
     if (!this._endLayerInternal) {
       return;
     }
-    const _0x4edc03 = this._endStarX;
-    const _0x5a0e9 = this._endStarY;
-    const _0x453043 = this.add.image(_0x4edc03, _0x5a0e9, "GJ_WebSheet", "GJ_bigStar_001.png").setScale(3).setAlpha(0);
-    this._endLayerInternal.add(_0x453043);
-    this.tweens.add({
-      targets: _0x453043,
-      scale: 0.8,
-      alpha: 1,
-      duration: 300,
-      delay: 0,
-      ease: "Bounce.Out"
-    });
-    this.time.delayedCall(100, () => {
-      this._audio.playEffect("highscoreGet02");
-      const _0x1204d3 = _0x4edc03;
-      const _0x96e3b2 = _0x5a0e9 + this._endLayerInternal.y;
-      this.add.particles(_0x1204d3, _0x96e3b2, "GJ_WebSheet", {
-        frame: "square.png",
-        speed: {
-          min: 200,
-          max: 600
-        },
-        angle: {
-          min: 0,
-          max: 360
-        },
-        scale: {
-          start: 0.5,
-          end: 0
-        },
-        alpha: {
-          start: 1,
-          end: 0
-        },
-        lifespan: {
-          min: 200,
-          max: 600
-        },
-        quantity: 30,
-        stopAfter: 30,
-        blendMode: S,
-        tint: 16776960
-      }).setScrollFactor(0).setDepth(202);
-      const _0x43203f = this.add.graphics().setScrollFactor(0).setDepth(202).setBlendMode(S);
-      const _0x403316 = {
-        t: 0
-      };
+    const count = Math.max(0, Math.min(10, Number(this._pendingStarReward) || 0));
+    this._pendingStarReward = 0;
+    if (!count) return;
+
+    const startX = this._endStarX;
+    const startY = this._endStarY + (this._endLayerInternal.y || 0);
+    const targetX = screenWidth - 78;
+    const targetY = 108;
+    this._audio.playEffect("highscoreGet02");
+
+    for (let index = 0; index < count; index++) {
+      const star = this.add.image(startX, startY, "GJ_WebSheet", "GJ_bigStar_001.png")
+        .setScale(0.42)
+        .setScrollFactor(0)
+        .setDepth(220);
+      const spreadX = (index - (count - 1) / 2) * 26;
+      const bounceX = startX + spreadX + (Math.random() * 34 - 17);
+      const bounceY = startY - 58 - Math.random() * 52;
       this.tweens.add({
-        targets: _0x403316,
-        t: 1,
-        duration: 400,
-        ease: "Quad.Out",
-        onUpdate: () => {
-          _0x43203f.clear();
-          _0x43203f.fillStyle(16776960, 1 - _0x403316.t);
-          _0x43203f.fillCircle(_0x1204d3, _0x96e3b2, 20 + _0x403316.t * 200);
-        },
-        onComplete: () => _0x43203f.destroy()
+        targets: star,
+        x: bounceX,
+        y: bounceY,
+        angle: 360 + Math.random() * 180,
+        duration: 420 + index * 35,
+        ease: "Bounce.Out",
+        onComplete: () => {
+          this.tweens.add({
+            targets: star,
+            x: targetX,
+            y: targetY,
+            scale: 0.22,
+            angle: star.angle + 360,
+            duration: 650,
+            delay: index * 55,
+            ease: "Cubic.In",
+            onComplete: () => {
+              star.destroy();
+              this._refreshIconCoinHud?.();
+            }
+          });
+        }
       });
-    });
+    }
   }
   _openListScene(title, rowHeight, onBack) {
     const sw = screenWidth;
