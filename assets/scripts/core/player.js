@@ -4522,12 +4522,15 @@ if (this.p.isFlying || this.p.isUfo) {
       this.p.queuedHold = false;
       this.p.isMini = !this.p.isMini;
       this._applyPlayerTints();
-      this.p.isJumping = true;
-      this.p.onGround = false;
-      this.p.onCeiling = false;
-      this.p.canJump = false;
-      this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
-      this.runRotateAction();
+      const canJump = this.p.canJump || this.p.onGround || this.p.onCeiling;
+      if (canJump) {
+        this.p.isJumping = true;
+        this.p.onGround = false;
+        this.p.onCeiling = false;
+        this.p.canJump = false;
+        this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
+        this.runRotateAction();
+      }
     }
     if (this.playerIsFalling()) this.p.canJump = false;
     this.p.yVelocity -= p * dt * this.flipMod();
