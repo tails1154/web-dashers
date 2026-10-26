@@ -10248,20 +10248,25 @@ _applyMirrorEffect() {
     const amount = 3;
     const oldStars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
     const oldDiamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
+    const oldCoins = Math.max(0, Number(window.WDCoinEconomy?.getBalance?.() || 0));
     localStorage.setItem("wd_stars", String(oldStars + amount));
     localStorage.setItem("wd_diamonds", String(oldDiamonds + amount));
+    localStorage.setItem("wd_coins", String(oldCoins + amount));
 
     const targets = [
-      { icon: "GJ_starsIcon_001.png", y: 108, color: 0xfff2a1, label: `Stars: ${oldStars}` },
-      { icon: "GJ_diamondsIcon_001.png", y: 138, color: 0xd98cff, label: `Diamonds: ${oldDiamonds}` }
+      { icon: "GJ_starsIcon_001.png", y: 108, color: 0xfff2a1, label: "Stars", value: oldStars },
+      { icon: "GJ_diamondsIcon_001.png", y: 138, color: 0xd98cff, label: "Diamonds", value: oldDiamonds },
+      { icon: "GJ_coinsIcon_001.png", y: 78, color: 0xffd84d, label: "Coins", value: oldCoins }
     ];
-    const counters = targets.map(target => this.add.bitmapText(screenWidth - 28, target.y, "goldFont", target.label, 24)
+    const counters = targets.map(target => this.add.bitmapText(screenWidth - 28, target.y, "goldFont", `${target.label}: ${target.value}`, 24)
       .setOrigin(1, 0.5).setScrollFactor(0).setDepth(1250).setTint(target.color));
+    const arrivedByTarget = targets.map(() => 0);
     let arrived = 0;
     const total = targets.length * amount;
     const finish = () => {
       localStorage.setItem("wd_stars", String(oldStars));
       localStorage.setItem("wd_diamonds", String(oldDiamonds));
+      localStorage.setItem("wd_coins", String(oldCoins));
       this._refreshIconCoinHud?.();
       counters.forEach(counter => counter.destroy());
       this._rewardAnimationTestActive = false;
@@ -10287,8 +10292,9 @@ _applyMirrorEffect() {
             ease: "Cubic.In",
             onComplete: () => {
               reward.destroy();
+              arrivedByTarget[targetIndex] += 1;
               arrived += 1;
-              counters[targetIndex].setText(`${targetIndex === 0 ? "Stars" : "Diamonds"}: ${targetIndex === 0 ? oldStars + Math.min(amount, arrived) : oldDiamonds + Math.max(0, arrived - amount)}`);
+              counters[targetIndex].setText(`${target.label}: ${target.value + arrivedByTarget[targetIndex]}`);
               if (arrived >= total) finish();
             }
           })
