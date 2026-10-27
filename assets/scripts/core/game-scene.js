@@ -1005,10 +1005,14 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const isWeeklyButton = frame === "GJ_weeklyBtn_001.png";
         const isEventButton = frame === "GJ_eventBtn_001.png";
         const isGauntletButton = frame === "GJ_gauntletsBtn_001.png";
+        const isListsButton = frame === "GJ_listsBtn_001.png";
+        const isMapPacksButton = frame === "GJ_mapPacksBtn_001.png";
         if (isMapButton) {
-          // Map is intentionally unavailable until server-side map progression is ready.
-          btn.postFX.addColorMatrix().grayscale(1);
-          btn.setTint(0xafafaf);
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openMapScene();
+          }, () => true);
         } else if (isPathsButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => {
@@ -1140,6 +1144,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
             this._openGauntletsMenu();
+          }, () => true);
+        } else if (isListsButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openListsMenu();
+          }, () => true);
+        } else if (isMapPacksButton) {
+          btn.setInteractive();
+          this._makeBouncyButton(btn, btnScale, () => {
+            this._closeCreatorMenu(true);
+            this._openMapPacksMenu();
           }, () => true);
         } else {
           btn.postFX.addColorMatrix().grayscale(1);
@@ -11909,6 +11925,124 @@ _applyMirrorEffect() {
     root.add(note);
   }
 
+  _openListsMenu() {
+    if (this._listsOverlay) return;
+    const sw = screenWidth, sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    this._listsOverlay = root;
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.98).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 42, "goldFont", "COMMUNITY LISTS", 42).setOrigin(0.5);
+    const status = this.add.bitmapText(sw / 2, sh / 2, "goldFont", "Loading lists...", 24).setOrigin(0.5);
+    const back = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
+    const create = this.add.text(sw - 120, 48, "CREATE LIST", { fontFamily: "Arial", fontSize: "18px", color: "#c1fb3d", backgroundColor: "#123b55", padding: { x: 14, y: 9 } }).setOrigin(0.5).setInteractive();
+    root.add([shade, title, status, back, create]);
+    const close = () => {
+      root.destroy(true);
+      this._listsOverlay = null;
+      this._openCreatorMenu();
+    };
+    this._makeBouncyButton(back, 1, close);
+    this._makeBouncyButton(create, 1, async () => {
+      const name = window.prompt("List name:");
+      if (!name?.trim()) return;
+      const ids = window.prompt("Uploaded level IDs, comma-separated (up to 10):", "")
+        ?.split(",").map(value => value.trim()).filter(Boolean) || [];
+      if (!ids.length) return;
+      try {
+        await window.AccountAPI.createList(name.trim(), "", ids);
+        this._listsOverlay = null;
+        root.destroy(true);
+        this._openListsMenu();
+      } catch (error) {
+        status.setText(error.message || "Could not create list");
+      }
+    });
+    window.AccountAPI.getLists().then(data => {
+      const lists = Array.isArray(data.lists) ? data.lists : [];
+      status.destroy();
+      if (!lists.length) {
+        root.add(this.add.bitmapText(sw / 2, sh / 2, "goldFont", "No community lists yet. Create the first one!", 24).setOrigin(0.5));
+        return;
+      }
+      lists.slice(0, 12).forEach((list, index) => {
+        const y = 120 + index * 54;
+        const button = this.add.nineslice(sw / 2, y, "GJ_button01", null, 650, 46, 18, 18, 18, 18).setInteractive();
+        const label = this.add.bitmapText(sw / 2, y, "goldFont", `${list.name}  •  ${list.owner}  •  ${(list.levels || []).length} levels`, 20).setOrigin(0.5);
+        root.add([button, label]);
+        this._makeCompositeBouncyButton(button, [button, label], 1, () => {
+          root.destroy(true);
+          this._listsOverlay = null;
+          this._openOnlineLevelsScene({ listId: list.id, title: list.name });
+        });
+      });
+    }).catch(error => status.setText(error.message || "Could not load lists"));
+  }
+
+  _openMapPacksMenu() {
+    if (this._mapPacksOverlay) return;
+    const sw = screenWidth, sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    this._mapPacksOverlay = root;
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.98).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 42, "goldFont", "MAP PACKS", 46).setOrigin(0.5);
+    const back = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, title, back]);
+    const packs = [
+      { name: "Stereo Starter", ids: ["level_1", "level_2", "level_3"] },
+      { name: "Rhythm Route", ids: ["level_4", "level_5", "level_6"] },
+      { name: "Speed Circuit", ids: ["level_7", "level_8", "level_9"] },
+      { name: "Advanced Geometry", ids: ["level_10", "level_11", "level_12"] },
+      { name: "Modern Dashers", ids: ["level_13", "level_14", "level_15"] },
+      { name: "Final Challenge", ids: ["level_18", "level_19", "level_20", "level_23"] }
+    ];
+    this._makeBouncyButton(back, 1, () => {
+      root.destroy(true);
+      this._mapPacksOverlay = null;
+      this._openCreatorMenu();
+    });
+    packs.forEach((pack, index) => {
+      const y = 120 + index * 58;
+      const button = this.add.nineslice(sw / 2, y, "GJ_button01", null, 500, 48, 18, 18, 18, 18).setInteractive();
+      const label = this.add.bitmapText(sw / 2, y, "goldFont", `${pack.name}  •  ${pack.ids.length} levels`, 22).setOrigin(0.5);
+      root.add([button, label]);
+      this._makeCompositeBouncyButton(button, [button, label], 1, () => {
+        root.destroy(true);
+        this._mapPacksOverlay = null;
+        this._openMapPackLevelsMenu(pack);
+      });
+    });
+  }
+
+  _openMapPackLevelsMenu(pack) {
+    const sw = screenWidth, sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(900);
+    const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.98).setOrigin(0).setInteractive();
+    const title = this.add.bitmapText(sw / 2, 42, "goldFont", pack.name, 42).setOrigin(0.5);
+    const back = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, title, back]);
+    this._makeBouncyButton(back, 1, () => { root.destroy(true); this._openMapPacksMenu(); });
+    pack.ids.forEach((id, index) => {
+      const level = (window.allLevels || []).find(entry => entry[2] === id);
+      if (!level) return;
+      const y = 120 + index * 72;
+      const button = this.add.nineslice(sw / 2, y, "GJ_button01", null, 610, 58, 20, 20, 20, 20).setInteractive();
+      const label = this.add.bitmapText(sw / 2, y, "goldFont", `${index + 1}. ${level[1]}`, 24).setOrigin(0.5);
+      root.add([button, label]);
+      this._makeCompositeBouncyButton(button, [button, label], 1, () => {
+        root.destroy(true);
+        const levelNumber = String(level[2]).split("_")[1];
+        window.currentlevel = [...level];
+        this.load.text(level[2], `assets/levels/${levelNumber}.txt`);
+        this.load.audio(level[0], `assets/music/${level[4] || level[1].replaceAll(" ", "")}.mp3`);
+        this.load.once("complete", () => {
+          this.game.registry.set("autoStartGame", true);
+          this.scene.restart();
+        });
+        this.load.start();
+      });
+    });
+  }
+
   _openMapScene() {
     if (this._mapOverlay) return;
     const sw = screenWidth;
@@ -12058,12 +12192,13 @@ _applyMirrorEffect() {
     const sh = screenHeight;
     const isFeatured = (params.type === 6);
     const isMap = params.map === true;
+    const isList = params.listId !== undefined && params.listId !== null;
     const shell = this._openListScene(
-      isFeatured ? "" : (isMap ? "Map" : "Online Levels"),
+      params.title || (isFeatured ? "" : (isMap ? "Map" : (isList ? "COMMUNITY LIST" : "Online Levels"))),
       180,
       () => {
         this._onlineLevelsOverlay = null;
-        if (isFeatured || isMap) {
+        if (isFeatured || isMap || isList) {
           this._openCreatorMenu();
         } else {
           this._openSearchMenu();
@@ -12363,10 +12498,11 @@ _applyMirrorEffect() {
           const query = (params.str || params.query || "").trim();
           const searchType = params.type || "0";
           const searchQuery = new URLSearchParams({
-            action: query ? "search" : "list",
+            action: isList ? "lists" : (query ? "search" : "list"),
             type: String(searchType),
             page: String(page)
           });
+          if (isList) searchQuery.set("id", String(params.listId));
           if (query) searchQuery.set("query", query);
           if (params.diff) searchQuery.set("diff", String(params.diff));
           if (params.demonFilter !== undefined && params.demonFilter !== null) {

@@ -306,6 +306,36 @@ window.AccountAPI = {
     return data;
   },
 
+  async getLists(listId = '') {
+    const suffix = listId ? `&id=${encodeURIComponent(String(listId))}` : '';
+    const res = await fetch(`${window._gdProxyUrl}?action=lists${suffix}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load Lists');
+    return data;
+  },
+
+  async createList(name, description, levelIds) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=lists`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, level_ids: levelIds })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not create List');
+    return data;
+  },
+
+  async deleteList(listId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=lists`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delete_id: String(listId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not delete List');
+    return data;
+  },
+
   async getLeaderboard(category = 'stars') {
     const allowed = ['stars', 'diamonds', 'coins'];
     const selected = allowed.includes(category) ? category : 'stars';
