@@ -336,6 +336,35 @@ window.AccountAPI = {
     return data;
   },
 
+  async getMapPacks() {
+    const res = await fetch(`${window._gdProxyUrl}?action=map_packs`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load Map Packs');
+    return data;
+  },
+
+  async createMapPack(name, description, levelIds) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=map_packs`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, level_ids: levelIds })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not create Map Pack');
+    return data;
+  },
+
+  async deleteMapPack(packId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=map_packs`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delete_id: String(packId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not delete Map Pack');
+    return data;
+  },
+
   async getLeaderboard(category = 'stars') {
     const allowed = ['stars', 'diamonds', 'coins'];
     const selected = allowed.includes(category) ? category : 'stars';

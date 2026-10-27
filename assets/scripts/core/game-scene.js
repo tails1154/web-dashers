@@ -963,7 +963,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         "GJ_highscoreBtn_001.png",
         "GJ_challengeBtn_001.png",
         "GJ_versusBtn_001.png",
-        "GJ_mapBtn_001.png",
         "GJ_dailyBtn_001.png",
         "GJ_weeklyBtn_001.png",
         "GJ_eventBtn_001.png",
@@ -993,7 +992,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const btn = this.add.image(bx, by, "GJ_GameSheet04", frame)
           .setScrollFactor(0).setDepth(104).setScale(btnScale);
         const isSearchButton  = frame === "GJ_searchBtn_001.png";
-        const isMapButton = frame === "GJ_mapBtn_001.png";
         const isPathsButton = frame === "GJ_pathsBtn_001.png";
         const isHighscoreButton = frame === "GJ_highscoreBtn_001.png";
         const isQuestButton = frame === "GJ_challengeBtn_001.png";
@@ -1007,13 +1005,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const isGauntletButton = frame === "GJ_gauntletsBtn_001.png";
         const isListsButton = frame === "GJ_listsBtn_001.png";
         const isMapPacksButton = frame === "GJ_mapPacksBtn_001.png";
-        if (isMapButton) {
-          btn.setInteractive();
-          this._makeBouncyButton(btn, btnScale, () => {
-            this._closeCreatorMenu(true);
-            this._openMapScene();
-          }, () => true);
-        } else if (isPathsButton) {
+        if (isPathsButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
@@ -11941,20 +11933,31 @@ _applyMirrorEffect() {
       this._openCreatorMenu();
     };
     this._makeBouncyButton(back, 1, close);
-    this._makeBouncyButton(create, 1, async () => {
-      const name = window.prompt("List name:");
-      if (!name?.trim()) return;
-      const ids = window.prompt("Uploaded level IDs, comma-separated (up to 10):", "")
-        ?.split(",").map(value => value.trim()).filter(Boolean) || [];
-      if (!ids.length) return;
-      try {
-        await window.AccountAPI.createList(name.trim(), "", ids);
-        this._listsOverlay = null;
-        root.destroy(true);
-        this._openListsMenu();
-      } catch (error) {
-        status.setText(error.message || "Could not create list");
-      }
+    this._makeBouncyButton(create, 1, () => {
+      const formShade = document.createElement("div");
+      formShade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+      formShade.innerHTML = `<form style="width:min(460px,calc(100vw - 32px));padding:24px;border:3px solid #f08cff;border-radius:16px;background:linear-gradient(#303050,#11152b);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 16px;color:#f08cff">Create Community List</h2><label style="display:block;margin:10px 0 6px">Name</label><input name="name" maxlength="48" required placeholder="My challenge list" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><label style="display:block;margin:12px 0 6px">Description <span style="color:#aaa">(optional)</span></label><textarea name="description" maxlength="240" rows="3" placeholder="What is this list about?" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial;resize:vertical"></textarea><label style="display:block;margin:12px 0 6px">Uploaded level IDs</label><input name="ids" required placeholder="67676767676797, 67676767676798" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><p data-error style="min-height:20px;color:#ff9b9b"></p><div style="display:flex;justify-content:flex-end;gap:10px"><button type="button" data-cancel style="padding:11px 18px;border:0;border-radius:8px;background:#888;font-weight:bold">Cancel</button><button type="submit" style="padding:11px 18px;border:0;border-radius:8px;background:#f08cff;font-weight:bold">Create List</button></div></form>`;
+      document.body.appendChild(formShade);
+      const form = formShade.querySelector("form");
+      const closeForm = () => formShade.remove();
+      formShade.querySelector("[data-cancel]").addEventListener("click", closeForm);
+      formShade.addEventListener("click", event => { if (event.target === formShade) closeForm(); });
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const data = new FormData(form);
+        const ids = String(data.get("ids") || "").split(",").map(value => value.trim()).filter(Boolean);
+        const error = form.querySelector("[data-error]");
+        try {
+          await window.AccountAPI.createList(String(data.get("name") || "").trim(), String(data.get("description") || "").trim(), ids);
+          closeForm();
+          root.destroy(true);
+          this._listsOverlay = null;
+          this._openListsMenu();
+        } catch (errorValue) {
+          error.textContent = errorValue.message || "Could not create list";
+        }
+      });
+      form.querySelector("[name=name]").focus();
     });
     window.AccountAPI.getLists().then(data => {
       const lists = Array.isArray(data.lists) ? data.lists : [];
@@ -12001,32 +12004,67 @@ _applyMirrorEffect() {
     this._mapPacksOverlay = root;
     const shade = this.add.rectangle(0, 0, sw, sh, 0x071426, 0.98).setOrigin(0).setInteractive();
     const title = this.add.bitmapText(sw / 2, 42, "goldFont", "MAP PACKS", 46).setOrigin(0.5);
+    const subtitle = this.add.bitmapText(sw / 2, 78, "goldFont", "Curated packs • play in any order", 18).setOrigin(0.5).setTint(0xbfeeff);
     const back = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
-    root.add([shade, title, back]);
-    const packs = [
-      { name: "Stereo Starter", ids: ["level_1", "level_2", "level_3"] },
-      { name: "Rhythm Route", ids: ["level_4", "level_5", "level_6"] },
-      { name: "Speed Circuit", ids: ["level_7", "level_8", "level_9"] },
-      { name: "Advanced Geometry", ids: ["level_10", "level_11", "level_12"] },
-      { name: "Modern Dashers", ids: ["level_13", "level_14", "level_15"] },
-      { name: "Final Challenge", ids: ["level_18", "level_19", "level_20", "level_23"] }
-    ];
+    const status = this.add.bitmapText(sw / 2, sh / 2, "goldFont", "Loading packs...", 24).setOrigin(0.5);
+    root.add([shade, title, subtitle, back, status]);
     this._makeBouncyButton(back, 1, () => {
       root.destroy(true);
       this._mapPacksOverlay = null;
       this._openCreatorMenu();
     });
-    packs.forEach((pack, index) => {
-      const y = 120 + index * 58;
-      const button = this.add.nineslice(sw / 2, y, "GJ_button01", null, 500, 48, 18, 18, 18, 18).setInteractive();
-      const label = this.add.bitmapText(sw / 2, y, "goldFont", `${pack.name}  •  ${pack.ids.length} levels`, 22).setOrigin(0.5);
-      root.add([button, label]);
-      this._makeCompositeBouncyButton(button, [button, label], 1, () => {
-        root.destroy(true);
-        this._mapPacksOverlay = null;
-        this._openMapPackLevelsMenu(pack);
+    const isModerator = window.AccountAPI.currentUser?.username === "tails1154";
+    const create = isModerator ? this.add.text(sw - 120, 48, "MOD TOOLS", { fontFamily: "Arial", fontSize: "16px", color: "#ffd84d", backgroundColor: "#4b3b16", padding: { x: 12, y: 8 } }).setOrigin(0.5).setInteractive() : null;
+    if (create) {
+      root.add(create);
+      this._makeBouncyButton(create, 1, () => {
+        const formShade = document.createElement("div");
+        formShade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+        formShade.innerHTML = `<form style="width:min(460px,calc(100vw - 32px));padding:24px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303050,#11152b);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 16px;color:#ffd84d">Create Map Pack</h2><label style="display:block;margin:10px 0 6px">Name</label><input name="name" maxlength="48" required style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><label style="display:block;margin:12px 0 6px">Description</label><textarea name="description" maxlength="180" rows="2" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial;resize:vertical"></textarea><label style="display:block;margin:12px 0 6px">Level IDs</label><input name="ids" required placeholder="level_1, level_2 or uploaded numeric IDs" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><p data-error style="min-height:20px;color:#ff9b9b"></p><div style="display:flex;justify-content:flex-end;gap:10px"><button type="button" data-cancel style="padding:11px 18px;border:0;border-radius:8px;background:#888;font-weight:bold">Cancel</button><button type="submit" style="padding:11px 18px;border:0;border-radius:8px;background:#ffd84d;font-weight:bold">Create Pack</button></div></form>`;
+        document.body.appendChild(formShade);
+        const form = formShade.querySelector("form");
+        const closeForm = () => formShade.remove();
+        formShade.querySelector("[data-cancel]").addEventListener("click", closeForm);
+        formShade.addEventListener("click", event => { if (event.target === formShade) closeForm(); });
+        form.addEventListener("submit", async event => {
+          event.preventDefault();
+          const data = new FormData(form);
+          const ids = String(data.get("ids") || "").split(",").map(value => value.trim()).filter(Boolean);
+          try {
+            await window.AccountAPI.createMapPack(String(data.get("name") || "").trim(), String(data.get("description") || "").trim(), ids);
+            closeForm(); root.destroy(true); this._mapPacksOverlay = null; this._openMapPacksMenu();
+          } catch (error) { form.querySelector("[data-error]").textContent = error.message || "Could not create pack"; }
+        });
+        form.querySelector("[name=name]").focus();
       });
-    });
+    }
+    window.AccountAPI.getMapPacks().then(data => {
+      status.destroy();
+      const packs = Array.isArray(data.packs) ? data.packs : [];
+      if (!packs.length) {
+        root.add(this.add.bitmapText(sw / 2, sh / 2, "goldFont", "No map packs are available yet.", 24).setOrigin(0.5));
+        return;
+      }
+      packs.forEach((pack, index) => {
+        const y = 125 + index * 66;
+        const button = this.add.nineslice(sw / 2, y, "GJ_button01", null, 650, 56, 18, 18, 18, 18).setInteractive();
+        const label = this.add.bitmapText(sw / 2 - 18, y - 8, "goldFont", `${pack.name}  •  ${(pack.level_ids || []).length} levels`, 22).setOrigin(0.5);
+        const desc = this.add.bitmapText(sw / 2 - 18, y + 15, "goldFont", pack.description || "Curated level pack", 14).setOrigin(0.5).setTint(0xbfeeff);
+        root.add([button, label, desc]);
+        this._makeCompositeBouncyButton(button, [button, label, desc], 1, () => {
+          root.destroy(true); this._mapPacksOverlay = null; this._openMapPackLevelsMenu(pack);
+        });
+        if (isModerator) {
+          const del = this.add.text(sw / 2 + 278, y, "DELETE", { fontFamily: "Arial", fontSize: "12px", color: "#ff9b9b", backgroundColor: "#572b3a", padding: { x: 5, y: 3 } }).setOrigin(0.5).setInteractive();
+          root.add(del);
+          this._makeBouncyButton(del, 1, async () => {
+            if (!window.confirm(`Delete the map pack \"${pack.name}\"?`)) return;
+            try { await window.AccountAPI.deleteMapPack(pack.id); root.destroy(true); this._mapPacksOverlay = null; this._openMapPacksMenu(); }
+            catch (error) { status.setText(error.message || "Could not delete pack"); }
+          });
+        }
+      });
+    }).catch(error => status.setText(error.message || "Could not load map packs"));
   }
 
   _openMapPackLevelsMenu(pack) {
