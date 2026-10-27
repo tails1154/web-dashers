@@ -806,12 +806,42 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (this._versusFinished) return;
         this._versusFinished = true;
         this._levelWon = true;
-        this._versusClient?.send({ type: "versus-won" });
+        if (winner === "YOU WIN") {
+          this._versusClient?.send({
+            type: "versus-won",
+            winnerClientId: this._versusClient?.clientId || "",
+            finishedAt: Date.now()
+          });
+        }
         const result = this.add.text(screenWidth / 2, screenHeight / 2, winner, {
           fontFamily: "Arial", fontSize: "58px", color: winner === "YOU WIN" ? "#c1fb3d" : "#ff77bb",
           stroke: "#000000", strokeThickness: 8
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
         this.time.delayedCall(3500, () => result.destroy());
+      };
+      this._updateVersusRemoteIcon = data => {
+        if (!data) return;
+        const playerId = String(data.player || "player_01");
+        const frame = `${playerId}_001.png`;
+        const info = getAtlasFrame(this, frame);
+        if (!this._versusLevelIcon) {
+          this._versusLevelIcon = info
+            ? this.add.image(this._playerWorldX || 0, b(30), info.atlas, info.frame)
+            : addImageToScene(this, this._playerWorldX || 0, b(30), "player_01_001.png");
+          if (this._versusLevelIcon) {
+            this._versusLevelIcon.setVisible(true).setScale(0.9).setDepth(1000);
+            this._level?.topContainer?.add(this._versusLevelIcon);
+          }
+        } else if (info) {
+          this._versusLevelIcon.setTexture(info.atlas, info.frame);
+        }
+        if (this._versusLevelIcon) {
+          this._versusLevelIcon
+            .setTint(Number(data.mainColor) || 0xff55aa)
+            .setVisible(true)
+            .setDepth(1000);
+          this._versusLevelIcon.bringToTop();
+        }
       };
       if (window._tailsConnectClient) {
         this._versusClient = window.getTailsConnectClient(this);
@@ -820,19 +850,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._versusClient.onMessage = data => {
           if (data.type === "versus-hello") {
             this._versusRemote = data;
-            if (!this._menuActive && this._level?.topContainer && !this._versusLevelIcon) {
-              const frame = `${data.player || "player_01"}_001.png`;
-              const info = getAtlasFrame(this, frame);
-              this._versusLevelIcon = info
-                ? this.add.image(this._playerWorldX || 0, b(30), info.atlas, info.frame)
-                : addImageToScene(this, this._playerWorldX || 0, b(30), "player_01_001.png");
-              if (this._versusLevelIcon) {
-                this._versusLevelIcon.setVisible(true)
-                  .setTint(Number(data.mainColor) || 0xff55aa).setScale(0.9).setDepth(1000);
-                this._level.topContainer.add(this._versusLevelIcon);
-                this._versusLevelIcon.bringToTop();
-              }
-            }
+            if (!this._menuActive && this._level?.topContainer) this._updateVersusRemoteIcon(data);
           }
           if (data.type === "versus-position") {
             this._versusRemotePercent = Math.max(0, Math.min(100, Number(data.percent) || 0));
@@ -843,7 +861,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             if (data.dead && !this._versusRemoteDead) this._addVersusLog("Opponent died");
             this._versusRemoteDead = !!data.dead;
           }
-          if (data.type === "versus-won") this._showVersusResult("YOU LOSE");
+          if (data.type === "versus-won" && !this._versusFinished) {
+            this._showVersusResult("YOU LOSE");
+          }
         };
       }
 
@@ -7871,19 +7891,7 @@ _buildSettingsPopup() {
     this._level.container.setVisible(true);
     this._level.topContainer.setVisible(true);
     this._player.setCubeVisible(true);
-    if (this._versusActive && this._versusRemote && !this._versusLevelIcon) {
-      const info = getAtlasFrame(this, `${this._versusRemote.player || "player_01"}_001.png`);
-      this._versusLevelIcon = info
-        ? this.add.image(this._playerWorldX + 100, b(30), info.atlas, info.frame)
-        : addImageToScene(this, this._playerWorldX + 100, b(30), "player_01_001.png");
-      if (this._versusLevelIcon) {
-        this._versusLevelIcon.setVisible(true)
-          .setTint(Number(this._versusRemote.mainColor) || 0xff55aa)
-          .setScale(0.9).setDepth(1000);
-        this._level.topContainer.add(this._versusLevelIcon);
-        this._versusLevelIcon.bringToTop();
-      }
-    }
+    if (this._versusActive && this._versusRemote) this._updateVersusRemoteIcon(this._versusRemote);
     this._player.reset();
     this._isDual = false;
     this._dualPortalCenterY = null;
