@@ -795,6 +795,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._versusLocalBest = 0;
       this._versusRemoteBest = 0;
       this._versusLastRank = null;
+      this._versusHostLevelIndex = 0;
+      this._versusHostLevelId = null;
+      this._versusStartButton = null;
+      this._versusLevelChoiceText = null;
+      this._versusWaitingText = null;
       this._versusLogLines = [];
       this._addVersusLog = message => {
         if (!this._versusLogText) return;
@@ -4516,9 +4521,40 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const status = this.add.text(cx, 565, "Connecting to TailsConnect...", { fontFamily: "Arial", fontSize: "22px", color: "#ffffff" }).setOrigin(0.5).setScrollFactor(0).setDepth(703);
       const hostBtn = this.add.text(cx - 120, 470, "HOST", { fontFamily: "Arial", fontSize: "26px", color: "#c1fb3d", backgroundColor: "#123b55", padding: { x: 24, y: 12 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setInteractive();
       const joinBtn = this.add.text(cx + 120, 470, "JOIN", { fontFamily: "Arial", fontSize: "26px", color: "#9de8ff", backgroundColor: "#123b55", padding: { x: 24, y: 12 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setInteractive();
+      const levelChoices = (window.allLevels || []).filter(level => level?.[2] && !["level_22", "level_24", "level_25", "level_3001"].includes(level[2]));
+      const levelChoice = this.add.text(cx, 405, "Choose a level after hosting", { fontFamily: "Arial", fontSize: "22px", color: "#ffffff", backgroundColor: "#123b55", padding: { x: 18, y: 10 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false);
+      const previousLevel = this.add.text(cx - 180, 405, "<", { fontFamily: "Arial", fontSize: "32px", color: "#9de8ff", backgroundColor: "#123b55", padding: { x: 18, y: 6 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false).setInteractive();
+      const nextLevel = this.add.text(cx + 180, 405, ">", { fontFamily: "Arial", fontSize: "32px", color: "#9de8ff", backgroundColor: "#123b55", padding: { x: 18, y: 6 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false).setInteractive();
+      const startLevel = this.add.text(cx, 470, "START LEVEL", { fontFamily: "Arial", fontSize: "26px", color: "#c1fb3d", backgroundColor: "#123b55", padding: { x: 24, y: 12 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false).setInteractive();
+      const waitingText = this.add.text(cx, 405, "Waiting for the host to choose a level...", { fontFamily: "Arial", fontSize: "22px", color: "#9de8ff" }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false);
+      this._versusLevelChoiceText = levelChoice;
+      this._versusStartButton = startLevel;
+      this._versusWaitingText = waitingText;
+      const refreshHostChoice = () => {
+        if (!levelChoices.length) return;
+        const selected = levelChoices[this._versusHostLevelIndex % levelChoices.length];
+        levelChoice.setText(selected[1]);
+        this._versusHostLevelId = selected[2];
+      };
+      refreshHostChoice();
+      previousLevel.on("pointerup", () => {
+        if (this._versusClient?.role !== "host") return;
+        this._versusHostLevelIndex = (this._versusHostLevelIndex - 1 + levelChoices.length) % levelChoices.length;
+        refreshHostChoice();
+      });
+      nextLevel.on("pointerup", () => {
+        if (this._versusClient?.role !== "host") return;
+        this._versusHostLevelIndex = (this._versusHostLevelIndex + 1) % levelChoices.length;
+        refreshHostChoice();
+      });
+      startLevel.on("pointerup", () => {
+        if (this._versusClient?.role !== "host" || !this._versusHostLevelId) return;
+        this._versusClient.send({ type: "versus-start", levelId: this._versusHostLevelId });
+        this._launchVersusToe(this._versusHostLevelId);
+      });
       const back = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_01_001.png").setScrollFactor(0).setDepth(704).setFlipX(true).setFlipY(true).setRotation(Math.PI).setInteractive();
       this._makeBouncyButton(back, 1, () => { this._versusClient?.close(); this._closeVersusMenu(); });
-      objects.push(overlay, blocker, title, subtitle, status, hostBtn, joinBtn, back);
+      objects.push(overlay, blocker, title, subtitle, status, hostBtn, joinBtn, levelChoice, previousLevel, nextLevel, startLevel, waitingText, back);
 
       const iconFrame = `${window.currentPlayer || "player_01"}_001.png`;
       const localIcon = addImageToScene(this, cx - 175, 300, iconFrame);
@@ -4533,7 +4569,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._versusClient = window.getTailsConnectClient(this);
       this._versusClient.onStatus = text => {
         if (status && status.scene) status.setText(text);
-        if (text === "Opponent connected") this._launchVersusToe();
+        if (text === "Opponent connected") {
+          const isHost = this._versusClient.role === "host";
+          hostBtn.setVisible(!isHost);
+          joinBtn.setVisible(!isHost);
+          levelChoice.setVisible(isHost);
+          previousLevel.setVisible(isHost);
+          nextLevel.setVisible(isHost);
+          startLevel.setVisible(isHost);
+          waitingText.setVisible(!isHost);
+          if (isHost) status.setText("Choose a level, then start the race");
+          else status.setText("Connected — waiting for the host");
+        }
       };
       this._versusClient.onMessage = data => {
         if (data.type === "heartbeat") return;
@@ -4547,6 +4594,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (data.type === "versus-seed") {
           this._versusSeed = Number(data.seed) >>> 0;
           this._launchVersusToe();
+          return;
+        }
+        if (data.type === "versus-start") {
+          this._launchVersusToe(data.levelId);
           return;
         }
         if (data.type === "versus-hello") {
@@ -4571,26 +4622,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const helloTimer = setInterval(() => { if (!this._versusOverlay) return clearInterval(helloTimer); this._versusClient.send(hello); }, 500);
       objects.push(helloTimer);
     };
-    this._launchVersusToe = () => {
+    this._launchVersusToe = (requestedLevelId = "") => {
       if (this._versusToeStarted) return;
-      if (!this._versusSeed) {
-        const myId = this._versusClient?.clientId || "";
-        const opponentId = this._versusRemote?.clientId || "";
-        if (this._versusClient?.role === "join") return;
-        this._versusSeed = (Math.random() * 0xffffffff) >>> 0;
-        this._versusClient?.send({ type: "versus-seed", seed: this._versusSeed });
-      }
       const choices = (window.allLevels || []).filter(level => {
         const id = String(level?.[2] || "");
-        const number = Number(id.split("_")[1]);
-        return (number >= 1 && number <= 9) || id === "level_12";
+        return id.startsWith("level_") && !["level_22", "level_24", "level_25", "level_3001"].includes(id);
       });
-      // Both peers receive the same room code, so use it as the seed instead
-      // of letting each browser pick a different random level.
-      const room = String(this._versusClient?.room || "TAILSCONNECT");
-      let seed = this._versusSeed || 2166136261;
-      for (let i = 0; i < room.length; i++) seed = Math.imul(seed ^ room.charCodeAt(i), 16777619);
-      const selected = choices[(seed >>> 0) % choices.length];
+      const selected = choices.find(level => String(level?.[2]) === String(requestedLevelId)) || null;
       if (!selected) return;
       this._versusToeStarted = true;
       window.currentlevel = [...selected];
@@ -5129,7 +5167,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const arrowL = this.add.image(55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(true).setInteractive();
     const arrowR = this.add.image(sw - 55, cy - 25, "GJ_GameSheet03", "navArrowBtn_001.png").setScrollFactor(0).setDepth(154).setScale(1.1).setFlipX(false).setInteractive();
     const allLevels = window.allLevels || [];
-    const visibleLevels = allLevels.filter(level => !(level && ["level_22", "level_23", "level_25", "level_3001"].includes(level[2])));
+    const visibleLevels = allLevels.filter(level => !(level && ["level_22", "level_25", "level_3001"].includes(level[2])));
     const pageCount = visibleLevels.length + 1;
     let currentPageIndex = visibleLevels.findIndex(l => l[2] === window.currentlevel[2]);
     if (currentPageIndex < 0) currentPageIndex = 0;
@@ -5364,6 +5402,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         "level_20":        "diffIcon_06_btn_001",
         "level_21":        "diffIcon_05_btn_001",
         "level_22":        "diffIcon_05_btn_001",
+        "level_23":        "diffIcon_04_btn_001",
       "level_24":        "diffIcon_03_btn_001",
         "level_26":        "diffIcon_04_btn_001",
         "level_99":        "diffIcon_10_btn_001",
@@ -10100,7 +10139,7 @@ _applyMirrorEffect() {
         window._dailyLevelActive = false;
         window._dailyLevelId = null;
       }
-      const builtInStarRewards = { level_24: 4, level_26: 7 };
+      const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7 };
       const starReward = window._selectedLevelData?.star_reward ?? builtInStarRewards[window.currentlevel?.[2]] ?? 0;
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
       if (earnedStars) {
