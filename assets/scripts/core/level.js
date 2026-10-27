@@ -464,8 +464,8 @@ if (!allObjects[5063]) {
   allObjects[5063] = {
     can_color: false,
     default_base_color_channel: 0,
-    frame: "flip-portal-front.png",
-    glow_frame: "flip-portal-front.png",
+    frame: "size-portal-front.png",
+    glow_frame: "size-portal-front.png",
     gridH: 2.516666650534,
     gridW: 0.791666686534,
     spritesheet: "GJ_GameSheet02-uhd",
@@ -2219,8 +2219,6 @@ window.LevelObject = class LevelObject {
         portalBackSprite.x = sprite.x;
         portalBackSprite.y = sprite.y;
       }
-      if (objectId === 5063) sprite.setTint(0xff4de1);
-      if (objectId === 5063 && portalBackSprite) portalBackSprite.setTint(0xff4de1);
       this._addVisualSprite(sprite, visualDef);
       sprite._eeWorldX = worldX;
       sprite._eeBaseY = baseY;
