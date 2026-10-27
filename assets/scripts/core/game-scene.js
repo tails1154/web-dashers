@@ -12014,7 +12014,8 @@ _applyMirrorEffect() {
       this._openCreatorMenu();
     });
     const isModerator = window.AccountAPI.currentUser?.username === "tails1154";
-    const create = isModerator ? this.add.text(sw - 120, 48, "MOD TOOLS", { fontFamily: "Arial", fontSize: "16px", color: "#ffd84d", backgroundColor: "#4b3b16", padding: { x: 12, y: 8 } }).setOrigin(0.5).setInteractive() : null;
+    const canCreate = !!window.AccountAPI.currentUser;
+    const create = canCreate ? this.add.text(sw - 120, 48, isModerator ? "MOD TOOLS" : "CREATE PACK", { fontFamily: "Arial", fontSize: "16px", color: "#ffd84d", backgroundColor: "#4b3b16", padding: { x: 12, y: 8 } }).setOrigin(0.5).setInteractive() : null;
     if (create) {
       root.add(create);
       this._makeBouncyButton(create, 1, () => {
@@ -12048,13 +12049,15 @@ _applyMirrorEffect() {
       packs.forEach((pack, index) => {
         const y = 125 + index * 66;
         const button = this.add.nineslice(sw / 2, y, "GJ_button01", null, 650, 56, 18, 18, 18, 18).setInteractive();
-        const label = this.add.bitmapText(sw / 2 - 18, y - 8, "goldFont", `${pack.name}  •  ${(pack.level_ids || []).length} levels`, 22).setOrigin(0.5);
+        const ownerLabel = pack.owner ? `  •  by ${pack.owner}` : "  •  official";
+        const label = this.add.bitmapText(sw / 2 - 18, y - 8, "goldFont", `${pack.name}  •  ${(pack.level_ids || []).length} levels${ownerLabel}`, 22).setOrigin(0.5);
         const desc = this.add.bitmapText(sw / 2 - 18, y + 15, "goldFont", pack.description || "Curated level pack", 14).setOrigin(0.5).setTint(0xbfeeff);
         root.add([button, label, desc]);
         this._makeCompositeBouncyButton(button, [button, label, desc], 1, () => {
           root.destroy(true); this._mapPacksOverlay = null; this._openMapPackLevelsMenu(pack);
         });
-        if (isModerator) {
+        const canDelete = isModerator || (window.AccountAPI.currentUser?.id && String(window.AccountAPI.currentUser.id) === String(pack.owner_id));
+        if (canDelete) {
           const del = this.add.text(sw / 2 + 278, y, "DELETE", { fontFamily: "Arial", fontSize: "12px", color: "#ff9b9b", backgroundColor: "#572b3a", padding: { x: 5, y: 3 } }).setOrigin(0.5).setInteractive();
           root.add(del);
           this._makeBouncyButton(del, 1, async () => {
