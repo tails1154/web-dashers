@@ -1033,7 +1033,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
-            this._startProceduralRun();
+            this._openVersusMenu();
           }, () => true);
         } else if (isWeeklyButton || isEventButton) {
           btn.setInteractive();
@@ -11886,58 +11886,6 @@ _applyMirrorEffect() {
     });
     const note = this.add.bitmapText(sw / 2, sh - 82, "bigFont", `Weekly path: ${weekKey}  •  progress resets each week`, 21).setOrigin(0.5).setTint(0xbfeeff);
     root.add(note);
-  }
-
-  _buildProceduralLevelString(seed) {
-    let state = (Number(seed) >>> 0) || 1;
-    const random = () => {
-      state = (1664525 * state + 1013904223) >>> 0;
-      return state / 0x100000000;
-    };
-    const settings = "kS29,1_40_2_62_3_255_4_0_5_0,kS30,1_0_2_19_3_200_4_0_5_0,kS31,1_255_2_255_3_255_4_0_5_0,kA13,0,kA15,0,kA16,0,kA14,,kA6,0,kA7,0,kA2,0,kA3,0,kA8,0,kA4,0,kA9,0,kA10,0,kA11,0";
-    const objects = [];
-    const add = (id, x, y, extra = "") => objects.push(`1,${id},2,${Math.round(x)},3,${Math.round(y)}${extra}`);
-    for (let startX = 0; startX < 330; startX += 30) add(1, startX, 15);
-    let x = 300;
-    let height = 15;
-    let coinCount = 0;
-    const chunks = 180;
-    for (let i = 0; i < chunks; i++) {
-      const gap = i > 4 && random() < 0.16;
-      const width = 4 + Math.floor(random() * 7);
-      if (!gap) {
-        for (let block = 0; block < width; block++) add(1, x + block * 30, height);
-        if (random() < 0.25) add(1, x + 30, height + 30);
-        if (i > 5 && random() < 0.28) add(8, x + Math.max(30, width * 30 - 30), height + 30);
-        if (coinCount < 3 && random() < 0.3) {
-          add(142, x + Math.max(30, width * 15), height + 60);
-          coinCount++;
-        }
-      }
-      if (!gap && random() < 0.55) add(8, x + Math.max(30, width * 30 - 45), height + 30);
-      x += (width + (gap ? 3 + Math.floor(random() * 3) : 1)) * 30;
-      height = 15 + Math.floor(random() * 3) * 30;
-    }
-    const raw = `${settings};${objects.join(";")}`;
-    const compressed = pako.gzip(raw);
-    let binary = "";
-    for (let i = 0; i < compressed.length; i++) binary += String.fromCharCode(compressed[i]);
-    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  }
-
-  _startProceduralRun() {
-    const seed = (Date.now() ^ ((this._proceduralRunCount = (this._proceduralRunCount || 0) + 1) * 2654435761)) >>> 0;
-    const levelId = `procedural_${seed}`;
-    window._proceduralMode = true;
-    window._onlineLevelString = this._buildProceduralLevelString(seed);
-    window._onlineLevelId = levelId;
-    window._onlineLevelName = "Procedural Run";
-    window._onlineSongBuffer = null;
-    window._onlineSongKey = null;
-    window.currentlevel = ["stereo_madness", "Procedural Run", levelId, ["Procedural", "RobTop"]];
-    window.currentlevel.songStartOffset = 0;
-    this.game.registry.set("autoStartGame", true);
-    this.scene.restart();
   }
 
   _openMapScene() {
