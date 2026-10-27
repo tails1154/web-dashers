@@ -11974,6 +11974,23 @@ _applyMirrorEffect() {
           this._listsOverlay = null;
           this._openOnlineLevelsScene({ listId: list.id, title: list.name });
         });
+        const currentUserId = window.AccountAPI.currentUser?.id;
+        const canDelete = currentUserId && (String(currentUserId) === String(list.owner_id) || window.AccountAPI.currentUser?.username === "tails1154");
+        if (canDelete) {
+          const deleteButton = this.add.text(sw / 2 + 278, y, "DELETE", { fontFamily: "Arial", fontSize: "13px", color: "#ff9b9b", backgroundColor: "#572b3a", padding: { x: 6, y: 4 } }).setOrigin(0.5).setInteractive();
+          root.add(deleteButton);
+          this._makeBouncyButton(deleteButton, 1, async () => {
+            if (!window.confirm(`Delete the list \"${list.name}\"?`)) return;
+            try {
+              await window.AccountAPI.deleteList(list.id);
+              root.destroy(true);
+              this._listsOverlay = null;
+              this._openListsMenu();
+            } catch (error) {
+              status.setText(error.message || "Could not delete list");
+            }
+          });
+        }
       });
     }).catch(error => status.setText(error.message || "Could not load lists"));
   }
