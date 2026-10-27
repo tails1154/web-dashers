@@ -1367,6 +1367,72 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const practicePctText = this.add.bitmapText(centerX, practiceBarY, "bigFont", _bestPractice + "%", 30)
         .setScrollFactor(0).setDepth(504).setOrigin(0.5).setScale(0.7);
       this._playOverlayObjects.push(practiceLabel, practiceBarBg, practiceBarFg, practicePctText);
+
+      const showAddToListDialog = async () => {
+        if (document.querySelector("[data-wd-add-to-list]")) return;
+        const levelId = String(lvl.id || "").replace(/^online_/, "").trim();
+        const shade = document.createElement("div");
+        shade.dataset.wdAddToList = "1";
+        shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
+        shade.innerHTML = `<div style="width:min(560px,calc(100vw - 32px));max-height:min(680px,calc(100vh - 32px));display:flex;flex-direction:column;gap:12px;padding:22px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0;color:#ffd84d;text-align:center">Add to List</h2><p data-status style="margin:0;text-align:center;color:#ccc">Choose one of your lists for this level.</p><div data-list-options style="display:grid;gap:8px;max-height:390px;overflow:auto"></div><button type="button" data-close style="padding:10px 16px;border:0;border-radius:8px;background:#888;font-weight:bold;cursor:pointer">Close</button></div>`;
+        document.body.appendChild(shade);
+        const options = shade.querySelector("[data-list-options]");
+        const status = shade.querySelector("[data-status]");
+        const close = () => shade.remove();
+        shade.querySelector("[data-close]").addEventListener("click", close);
+        shade.addEventListener("click", event => { if (event.target === shade) close(); });
+        const keyboardGuard = event => { if (shade.contains(event.target)) event.stopPropagation(); };
+        document.addEventListener("keydown", keyboardGuard, true);
+        shade.addEventListener("remove", () => document.removeEventListener("keydown", keyboardGuard, true), { once: true });
+        if (!/^\d+$/.test(levelId)) {
+          status.textContent = "Only uploaded levels can be added to lists.";
+          return;
+        }
+        try {
+          const session = window.AccountAPI.currentUser || await window.AccountAPI.checkSession();
+          if (!session) throw new Error("Login required");
+          const data = await window.AccountAPI.getLists();
+          const mine = (data.lists || []).filter(list => String(list.owner_id) === String(session.id));
+          if (!mine.length) {
+            status.textContent = "You do not have any lists yet. Create one from Create → Lists first.";
+            return;
+          }
+          options.innerHTML = "";
+          mine.forEach(list => {
+            const row = document.createElement("div");
+            row.style.cssText = "display:flex;align-items:center;gap:10px;padding:10px 12px;border:2px solid #555;border-radius:8px;background:#191919";
+            const label = document.createElement("span");
+            label.style.cssText = "flex:1;min-width:0;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+            label.textContent = `${list.name || "Untitled List"} (${(list.levels || []).length}/10)`;
+            const add = document.createElement("button");
+            add.type = "button";
+            add.style.cssText = "padding:8px 14px;border:0;border-radius:7px;background:#ffd84d;font-weight:bold;cursor:pointer";
+            const already = (list.levels || []).some(level => String(level.id) === levelId);
+            add.textContent = already ? "ADDED" : "ADD";
+            add.disabled = already;
+            if (already) { add.style.background = "#666"; add.style.color = "#ccc"; }
+            add.addEventListener("click", async () => {
+              add.disabled = true;
+              add.textContent = "...";
+              try {
+                await window.AccountAPI.addLevelToList(list.id, levelId);
+                add.textContent = "ADDED";
+                add.style.background = "#666";
+                add.style.color = "#ccc";
+                status.textContent = `Added to ${list.name || "your list"}.`;
+              } catch (errorValue) {
+                add.disabled = false;
+                add.textContent = "ADD";
+                status.textContent = errorValue.message || "Could not add level to list.";
+              }
+            });
+            row.append(label, add);
+            options.appendChild(row);
+          });
+        } catch (errorValue) {
+          status.textContent = errorValue.message || "Could not load your lists.";
+        }
+      };
       const sideBtnX = sw - 55;
       const sideBtnGap = sh * 0.16;
       const sideBtnY0 = sh * 0.08 - 100;
@@ -1480,6 +1546,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           finally { form.querySelectorAll("button").forEach(button => { button.disabled = false; }); }
         });
       });
+
+      const addToListBtn = this.add.nineslice(sideBtnX - 78, sideBtnY0 + sideBtnGap * 3, "GJ_button01", null, 125, 48, 16, 16, 16, 16)
+        .setScrollFactor(0).setDepth(504).setOrigin(0.5).setInteractive();
+      const addToListLabel = this.add.bitmapText(sideBtnX - 78, sideBtnY0 + sideBtnGap * 3, "bigFont", "ADD TO LIST", 16)
+        .setScrollFactor(0).setDepth(505).setOrigin(0.5);
+      this._makeBouncyButton(addToListBtn, 1, showAddToListDialog);
 
       let moderatorBtn = null;
       let ownerDeleteBtn = null;
@@ -1639,7 +1711,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         shade.querySelector("[data-dislike]").addEventListener("click", () => choose(false));
       });
 
-      this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, leaderboardBtn, likeBtn, likeLabel);
+      this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, addToListBtn, addToListLabel, leaderboardBtn, likeBtn, likeLabel);
       if (moderatorBtn) this._playOverlayObjects.push(moderatorBtn);
       const songBoxW = sw * 0.55;
       const songBoxH = 190;

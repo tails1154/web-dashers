@@ -325,6 +325,17 @@ window.AccountAPI = {
     return data;
   },
 
+  async addLevelToList(listId, levelId) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=lists`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ list_id: String(listId || ''), add_level_id: String(levelId || '') })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not add level to List');
+    return data;
+  },
+
   async deleteList(listId) {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
     const res = await fetch(`${window._gdProxyUrl}?action=lists`, {
