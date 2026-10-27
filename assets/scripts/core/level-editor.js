@@ -241,12 +241,12 @@ class LevelEditor {
     this.input.keyboard.on('keydown-Q', (event) => {
         if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
         event?.preventDefault?.();
-        this._rotateObject(-90);
+        this._rotateObject(event.shiftKey ? -45 : -90);
     });
     this.input.keyboard.on('keydown-E', (event) => {
         if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
         event?.preventDefault?.();
-        this._rotateObject(90);
+        this._rotateObject(event.shiftKey ? 45 : 90);
     });
 
     this._createEditorGui();
