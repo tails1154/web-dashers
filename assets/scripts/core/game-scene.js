@@ -801,11 +801,30 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._versusLevelChoiceText = null;
       this._versusWaitingText = null;
       this._versusLogLines = [];
+      this._renderVersusLog = prefix => {
+        if (!this._versusLogText?.scene) return;
+        try {
+          const lines = prefix ? [prefix, ...this._versusLogLines] : this._versusLogLines;
+          this._versusLogText.setText(lines.join("\n"));
+        } catch (_) {
+          this._versusLogText = null;
+        }
+      };
       this._addVersusLog = message => {
-        if (!this._versusLogText) return;
         this._versusLogLines.push(message);
         this._versusLogLines = this._versusLogLines.slice(-6);
-        this._versusLogText.setText(this._versusLogLines.join("\n"));
+        this._renderVersusLog();
+      };
+      this._stopVersusSession = () => {
+        this._versusActive = false;
+        this._versusFinished = true;
+        this._versusClient?.close?.();
+        this._versusClient = null;
+        if (window._tailsConnectClient) window._tailsConnectClient = null;
+        this._versusLevelIcon?.destroy?.();
+        this._versusLevelIcon = null;
+        this._versusLogText?.destroy?.();
+        this._versusLogText = null;
       };
       this._showVersusResult = winner => {
         if (this._versusFinished) return;
@@ -5975,6 +5994,7 @@ _buildPauseOverlay() {
         { frame: "GJ_playBtn2_001.png", atlas: "GJ_WebSheet", action: () => this._resumeGame() },
         { frame: "GJ_menuBtn_001.png", atlas: "GJ_WebSheet", action: () => {
             this._audio.playEffect("quitSound_01");
+            this._stopVersusSession?.();
             this._queueGameplayLevelViewReturn();
             this.game.registry.remove("autoStartGame");
             window.isEditor = false;
@@ -8920,7 +8940,7 @@ _buildSettingsPopup() {
         this._versusLastRank = rank;
         this._addVersusLog(`You are in ${rank} place`);
       }
-      this._versusLogText?.setText(`YOU ${rawPercent.toFixed(0)}%  |  OPPONENT ${this._versusRemotePercent.toFixed(0)}%\n${this._versusLogLines.join("\n")}`);
+      this._renderVersusLog(`YOU ${rawPercent.toFixed(0)}%  |  OPPONENT ${this._versusRemotePercent.toFixed(0)}%`);
     }
     let displayValue;
     if (this._levelWon) {
@@ -10630,6 +10650,7 @@ _applyMirrorEffect() {
       dx: 200,
       action: () => {
         this._audio.playEffect("quitSound_01");
+        this._stopVersusSession?.();
         this._audio.stopMusic();
         this.game.registry.set("fadeInFromBlack", true);
         this.cameras.main.fadeOut(400, 0, 0, 0, (_0x53bf86, _0x15310d) => {
