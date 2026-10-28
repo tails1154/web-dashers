@@ -594,8 +594,8 @@ window.AccountAPI = {
     });
   },
 
-  async findProfilePrompt() {
-    const profile = await this.profilePrompt();
+  async findProfilePrompt(username = '') {
+    const profile = username ? await this.searchProfile(username) : await this.profilePrompt();
     if (!profile) return null;
     const shade = document.createElement('div');
     shade.style.cssText = 'position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:rgba(0,0,0,.76);font-family:Arial,sans-serif;color:#fff;';

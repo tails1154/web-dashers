@@ -711,7 +711,8 @@ this._menuFsBtn = this.add.image(33, 33, "GJ_WebSheet", _0x28fa5b ? "toggleFulls
       .setOrigin(0.5).setScrollFactor(0).setDepth(30).setTint(0xffe45c).setInteractive();
     this._makeBouncyButton(this._menuAccountBtn, 1, () => {
       if (window.AccountAPI?.currentUser) {
-        window.alert(`Signed in as ${window.AccountAPI.currentUser.username}`);
+        window.AccountAPI.findProfilePrompt?.(window.AccountAPI.currentUser.username)
+          .catch(error => window.alert(error.message || "Profile not found"));
       } else {
         window.AccountAPI?.signInPrompt?.().then(user => {
           if (this._menuAccountBtn?.active) this._menuAccountBtn.setText(user?.username || "SIGN IN");
@@ -1297,6 +1298,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const authorText = this.add.bitmapText(centerX, nameText.y + 42, "goldFont", "By " + (lvl.author || "Unknown"), 36)
         .setScrollFactor(0).setDepth(503).setOrigin(0.5);
       this._fitBitmapText(authorText, sw * 0.6);
+      const authorName = String(lvl.author || "").trim();
+      if (authorName && authorName.toLowerCase() !== "unknown") {
+        authorText.setInteractive({ useHandCursor: true });
+        authorText.on("pointerup", () => {
+          window.AccountAPI?.findProfilePrompt?.(authorName).catch(error => window.alert(error.message || "Profile not found"));
+        });
+      }
       this._playOverlayObjects.push(authorText);
 
       const playBtnY = sh * 0.36 - 15;
