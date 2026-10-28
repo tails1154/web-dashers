@@ -4664,6 +4664,18 @@ if (this.p.isFlying || this.p.isUfo) {
     return false;
   }
 
+  _isHeadBlockOverhead(playerWorldX, playerWorldY, playerSize) {
+    if (this.p.isFlying || this.p.isWave || this.p.isUfo || this.p.isBall) return false;
+    const zones = this._gameLayer?._headBlocks;
+    if (!Array.isArray(zones) || !zones.length) return false;
+    return zones.some(zone => {
+      const halfW = Math.max(1, Number(zone.width) || 30) / 2;
+      const halfH = Math.max(1, Number(zone.height) || 30) / 2;
+      return Math.abs(playerWorldX - zone.x) <= halfW + playerSize &&
+        Math.abs(playerWorldY - zone.y) <= halfH + playerSize;
+    });
+  }
+
   checkCollisions(_0x2f5078) {
     this.noclipStats.totalFrames++;
     this.p.diedThisFrame = false;
@@ -5380,6 +5392,10 @@ if (this.p.isFlying || this.p.isUfo) {
           const _0xLandTop = (this.p.yVelocity >= 0 || this.p.onGround) && (_0x3e7199 <= top || _0x135a9d <= top);
           const isstandingOnAPlatform = this.p.gravityFlipped ? _0xLandTop : _0xLandBot;
           if (iscolliding && !isstandingOnAPlatform) {
+            const isOverheadHit = this.p.gravityFlipped ? _0xLandBot : _0xLandTop;
+            if (isOverheadHit && this._isHeadBlockOverhead(pieceWidth, playersY, playerSize)) {
+              continue;
+            }
             if (this._tryVectorWallTurn(gameObj, pieceWidth, playerSize)) {
               _boostedThisStep = true;
               continue;

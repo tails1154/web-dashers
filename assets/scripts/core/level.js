@@ -380,6 +380,7 @@ const flyPortal = "fly";
 const cubePortal = "cube";
 const portalWaveType = "portal_wave";
 const portalUfoType = "portal_ufo";
+const headBlockType = "head_block";
 const allObjects = window.allobjects();
 if (!allObjects[745]) {
   allObjects[745] = {
@@ -488,6 +489,23 @@ if (!allObjects[5064]) {
     z: 2,
     default_detail_color_channel: -1,
     default_base_color_channel: 0
+  };
+}
+if (!allObjects[5065]) {
+  allObjects[5065] = {
+    can_color: false,
+    frame: null,
+    editorFrame: null,
+    defaultText: "H",
+    textObject: true,
+    editorOnly: true,
+    gridH: 1,
+    gridW: 1,
+    type: headBlockType,
+    z: 2,
+    default_detail_color_channel: -1,
+    default_z_layer: 5,
+    default_z_order: 2
   };
 }
 const _extraSpeedPortalIds = [5000, 5001, 5002, 5003, 5004];
@@ -720,6 +738,7 @@ window.LevelObject = class LevelObject {
     this._activeRotateTweens = [];
     this._likeTriggers = [];
     this._likeTriggerIdx = 0;
+    this._headBlocks = [];
     this._pulseTriggers = [];
     this._pulseTriggerIdx = 0;
     this._activePulses = [];
@@ -1747,7 +1766,14 @@ window.LevelObject = class LevelObject {
     const textSize = Math.max(1, Math.round(baseSize));
     let textSprite = null;
 
-    if (scene.cache?.bitmapFont?.has && scene.cache.bitmapFont.has("bigFont")) {
+    if (objectDef?.editorOnly && window.isEditor) {
+      textSprite = scene.add.container(worldX, worldY);
+      const block = scene.add.rectangle(0, 0, 48, 48, 0xffffff).setStrokeStyle(3, 0x222222, 1);
+      const label = scene.cache?.bitmapFont?.has && scene.cache.bitmapFont.has("bigFont")
+        ? scene.add.bitmapText(0, 0, "bigFont", rawText, textSize).setOrigin(0.5).setTint(0x111111)
+        : scene.add.text(0, 0, rawText, { fontFamily: "Arial", fontSize: `${textSize}px`, color: "#111111", fontStyle: "bold" }).setOrigin(0.5);
+      textSprite.add([block, label]);
+    } else if (scene.cache?.bitmapFont?.has && scene.cache.bitmapFont.has("bigFont")) {
       textSprite = scene.add.bitmapText(worldX, worldY, "bigFont", rawText, textSize).setOrigin(0.5);
     } else {
       textSprite = scene.add.text(worldX, worldY, rawText, {
@@ -1907,6 +1933,17 @@ window.LevelObject = class LevelObject {
   }
   if (window.enableLDM && ldm_object.has(parseInt(levelObj?.id ?? 0, 10))) {
     return null;
+  }
+
+  if (objectDef && objectDef.type === headBlockType) {
+    this._headBlocks.push({
+      x: Number(levelObj.x || 0) * 2,
+      y: Number(levelObj.y || 0) * 2,
+      width: (objectDef.gridW || 1) * 30,
+      height: (objectDef.gridH || 1) * 30,
+      rotation: Number(levelObj.rot || 0) || 0
+    });
+    if (!window.isEditor) return objectDef;
   }
 
   if (objectDef && objectDef.type === triggerType) {

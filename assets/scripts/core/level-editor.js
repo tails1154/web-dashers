@@ -1658,7 +1658,7 @@ class LevelEditor {
 
     if (!frameName && objectDef.textObject) {
         const preview = this.add.container(x, y);
-        let label = this.add.bitmapText(-3, -3, "bigFont", "A", 60).setOrigin(0.5);
+        let label = this.add.bitmapText(-3, -3, "bigFont", objectDef.defaultText || "A", 60).setOrigin(0.5);
         preview.add(label);
         preview.setScale(0.85);
         return preview;
@@ -1909,7 +1909,7 @@ class LevelEditor {
         { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco"] },
         { id: "slopes",  icon: "tab6", types: ["slope"] },
         { id: "hazards", icon: "tab2", types: ["hazard", "spike"] },
-        { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin"] },
+        { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin", "head_block"] },
         { id: "pixel",   icon: "tab7", types: ["pixel"] },
         { id: "particle", icon: "tab8", types: ["particle"] },
         { id: "deco",    icon: "tab4", types: ["deco"] },
@@ -2000,6 +2000,12 @@ class LevelEditor {
             const likeTrigger = getObjectFromId(5064);
             if (likeTrigger && !itemsForGrid.some(item => item.id === 5064)) {
                 itemsForGrid.push({ type: "object", id: 5064, frame: likeTrigger.frame });
+            }
+        }
+        if (activeCatDef?.types?.includes("head_block")) {
+            const headBlock = getObjectFromId(5065);
+            if (headBlock && !itemsForGrid.some(item => item.id === 5065)) {
+                itemsForGrid.push({ type: "object", id: 5065, frame: headBlock.frame });
             }
         }
     } else if (this._editorTab === "edit") {
