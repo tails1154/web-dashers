@@ -1403,7 +1403,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             row.style.cssText = "display:flex;align-items:center;gap:10px;padding:10px 12px;border:2px solid #555;border-radius:8px;background:#191919";
             const label = document.createElement("span");
             label.style.cssText = "flex:1;min-width:0;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
-            label.textContent = `${list.name || "Untitled List"} (${(list.levels || []).length}/10)`;
+            label.textContent = `${list.name || "Untitled List"} (${(list.levels || []).length}/50)`;
             const add = document.createElement("button");
             add.type = "button";
             add.style.cssText = "padding:8px 14px;border:0;border-radius:7px;background:#ffd84d;font-weight:bold;cursor:pointer";
@@ -12030,7 +12030,7 @@ _applyMirrorEffect() {
     this._makeBouncyButton(create, 1, () => {
       const formShade = document.createElement("div");
       formShade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
-      formShade.innerHTML = `<form style="width:min(460px,calc(100vw - 32px));padding:24px;border:3px solid #f08cff;border-radius:16px;background:linear-gradient(#303050,#11152b);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 16px;color:#f08cff">Create Community List</h2><label style="display:block;margin:10px 0 6px">Name</label><input name="name" maxlength="48" required placeholder="My challenge list" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><label style="display:block;margin:12px 0 6px">Description <span style="color:#aaa">(optional)</span></label><textarea name="description" maxlength="240" rows="3" placeholder="What is this list about?" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial;resize:vertical"></textarea><label style="display:block;margin:12px 0 6px">Uploaded level IDs</label><input name="ids" required placeholder="67676767676797, 67676767676798" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><p data-error style="min-height:20px;color:#ff9b9b"></p><div style="display:flex;justify-content:flex-end;gap:10px"><button type="button" data-cancel style="padding:11px 18px;border:0;border-radius:8px;background:#888;font-weight:bold">Cancel</button><button type="submit" style="padding:11px 18px;border:0;border-radius:8px;background:#f08cff;font-weight:bold">Create List</button></div></form>`;
+      formShade.innerHTML = `<form style="width:min(460px,calc(100vw - 32px));padding:24px;border:3px solid #f08cff;border-radius:16px;background:linear-gradient(#303050,#11152b);box-shadow:0 8px 0 #000,0 18px 50px #000b"><h2 style="margin:0 0 16px;color:#f08cff">Create Community List</h2><label style="display:block;margin:10px 0 6px">Name</label><input name="name" maxlength="48" required placeholder="My challenge list" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial"><label style="display:block;margin:12px 0 6px">Description <span style="color:#aaa">(optional)</span></label><textarea name="description" maxlength="240" rows="3" placeholder="What is this list about?" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font:16px Arial;resize:vertical"></textarea><p style="margin:12px 0;color:#bbb;font-size:14px">Create the empty list first, then use <b>Add to List</b> on any uploaded level to fill it.</p><p data-error style="min-height:20px;color:#ff9b9b"></p><div style="display:flex;justify-content:flex-end;gap:10px"><button type="button" data-cancel style="padding:11px 18px;border:0;border-radius:8px;background:#888;font-weight:bold">Cancel</button><button type="submit" style="padding:11px 18px;border:0;border-radius:8px;background:#f08cff;font-weight:bold">Create List</button></div></form>`;
       document.body.appendChild(formShade);
       const form = formShade.querySelector("form");
       const closeForm = () => formShade.remove();
@@ -12039,7 +12039,7 @@ _applyMirrorEffect() {
       form.addEventListener("submit", async event => {
         event.preventDefault();
         const data = new FormData(form);
-        const ids = String(data.get("ids") || "").split(",").map(value => value.trim()).filter(Boolean);
+        const ids = [];
         const error = form.querySelector("[data-error]");
         try {
           await window.AccountAPI.createList(String(data.get("name") || "").trim(), String(data.get("description") || "").trim(), ids);
