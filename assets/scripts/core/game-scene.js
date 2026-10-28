@@ -843,6 +843,33 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
         this.time.delayedCall(3500, () => result.destroy());
       };
+      this._showVersusCheatResult = (playerName, localCheater) => {
+        if (this._versusFinished) return;
+        this._versusFinished = true;
+        const safeName = String(playerName || "PLAYER").trim().slice(0, 24) || "PLAYER";
+        const message = `${safeName} TRIED USING HACKS!\n${localCheater ? "OPPONENT WINS" : "YOU WIN"}`;
+        const result = this.add.text(screenWidth / 2, screenHeight / 2, message, {
+          fontFamily: "Arial", fontSize: "42px", color: localCheater ? "#ff5577" : "#c1fb3d",
+          stroke: "#000000", strokeThickness: 8, align: "center"
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
+        this._versusClient?.send?.({
+          type: "versus-cheat-result",
+          playerName: safeName,
+          loserClientId: this._versusClient?.clientId || ""
+        });
+        this.time.delayedCall(3500, () => {
+          result.destroy();
+          this._stopVersusSession?.();
+          this._audio.stopMusic();
+          this.game.registry.set("fadeInFromBlack", true);
+          this.scene.restart();
+        });
+      };
+      this._disqualifyVersusForCheating = () => {
+        if (!this._versusActive || this._versusFinished) return;
+        const playerName = window.AccountAPI?.currentUser?.username || window.playerName || "PLAYER";
+        this._showVersusCheatResult(playerName, true);
+      };
       this._updateVersusRemoteIcon = data => {
         if (!data) return;
         const playerId = String(data.player || "player_01");
@@ -887,6 +914,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           }
           if (data.type === "versus-won" && !this._versusFinished) {
             this._showVersusResult("YOU LOSE");
+          }
+          if (data.type === "versus-cheat-result" && !this._versusFinished) {
+            const localClientId = this._versusClient?.clientId || "";
+            this._showVersusCheatResult(data.playerName || "PLAYER", String(data.loserClientId || "") === String(localClientId));
           }
         };
       }
@@ -8985,12 +9016,22 @@ _buildSettingsPopup() {
     }
 
     if (this._versusActive && !this._menuActive) {
-      window.noClip = false;
-      window.macroBot = false;
-      if (this._macroBot?.playing || this._macroBot?.recording) this._macroBot.resetAll();
       for (const layer of this._player?._allLayers || []) layer?.sprite?.setDepth?.(1001);
           this._versusLevelIcon?.setDepth(1000);
           this._level?.topContainer?.bringToTop?.(this._versusLevelIcon);
+    }
+
+    if (this._versusActive && !this._versusFinished && (
+      this._practicedMode?.practiceMode ||
+      window.noClip ||
+      window.macroBot ||
+      this._macroBot?.playing ||
+      this._macroBot?.recording ||
+      Number(window.speedHack || 0) > 1 ||
+      this._startPosIndex !== -1
+    )) {
+      this._disqualifyVersusForCheating?.();
+      return;
     }
 
     // Any assist invalidates this run.  Invalid runs still play normally, but
