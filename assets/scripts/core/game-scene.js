@@ -10239,12 +10239,15 @@ _applyMirrorEffect() {
         window._dailyLevelId = null;
       }
       const completedLevelId = String(window.currentlevel?.[2] || "");
+      const isChallengeLevel = completedLevelId === "level_3001";
+      const challengeStarsClaimed = localStorage.getItem("challenge_30stars_claimed") === "1";
       const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7 };
-      const starReward = completedLevelId === "level_3001"
-        ? 30
+      const starReward = isChallengeLevel
+        ? (challengeStarsClaimed ? 0 : 30)
         : (window._selectedLevelData?.star_reward ?? builtInStarRewards[completedLevelId] ?? 0);
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
       if (earnedStars) {
+        if (isChallengeLevel) localStorage.setItem("challenge_30stars_claimed", "1");
         this._pendingStarReward = earnedStars;
         this._pendingStarRewardLevelId = String(window.currentlevel?.[2] || "");
         this._pendingStarRewardStartCount = Math.max(0, (window.WDCoinEconomy?.getStars?.() || 0) - earnedStars);
