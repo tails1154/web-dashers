@@ -3154,6 +3154,24 @@ class LevelEditor {
         if (foundObjectIndex !== -1) break;
     }
 
+    if (foundObjectIndex === -1 && Array.isArray(window.levelObjects)) {
+        const zoom = this._editorZoom || 1;
+        const worldPointerX = (pointer.x + this._cameraX) / zoom;
+        const worldPointerY = (pointer.y + this._cameraY) / zoom;
+        for (let saveIndex = window.levelObjects.length - 1; saveIndex >= 0; saveIndex--) {
+            const saveObj = window.levelObjects[saveIndex];
+            if (!saveObj || !this._editorObjectMatchesActiveLayer(saveObj)) continue;
+            const objectId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : -1;
+            if (objectId < 0) continue;
+            const objectWorldX = Number(saveObj.x || 0) * 2;
+            const objectWorldY = typeof b === "function" ? b(Number(saveObj.y || 0) * 2) : Number(saveObj.y || 0) * 2;
+            if (Math.abs(worldPointerX - objectWorldX) <= 42 && Math.abs(worldPointerY - objectWorldY) <= 42) {
+                foundObjectIndex = objectId;
+                break;
+            }
+        }
+    }
+
     if (foundObjectIndex === -1) return;
 
     const saveIndex = this._getEditorSaveIndexForObjectId(foundObjectIndex);
