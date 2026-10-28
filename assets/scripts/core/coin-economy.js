@@ -139,7 +139,7 @@
     getStars() { return readNumber(STARS_KEY); },
     awardLevelStars(levelId, amount, scene) {
       const level = String(levelId || "unknown");
-      const reward = Math.max(0, Math.min(10, Math.floor(Number(amount) || 0)));
+      const reward = Math.max(0, Math.min(30, Math.floor(Number(amount) || 0)));
       if (!reward || getCheatFlags(scene).length) return 0;
       const claimed = readJson(CLAIMED_STARS_KEY, {});
       if (claimed[level]) return 0;

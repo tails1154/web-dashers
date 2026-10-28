@@ -10238,8 +10238,11 @@ _applyMirrorEffect() {
         window._dailyLevelActive = false;
         window._dailyLevelId = null;
       }
+      const completedLevelId = String(window.currentlevel?.[2] || "");
       const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7 };
-      const starReward = window._selectedLevelData?.star_reward ?? builtInStarRewards[window.currentlevel?.[2]] ?? 0;
+      const starReward = completedLevelId === "level_3001"
+        ? 30
+        : (window._selectedLevelData?.star_reward ?? builtInStarRewards[completedLevelId] ?? 0);
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
       if (earnedStars) {
         this._pendingStarReward = earnedStars;
