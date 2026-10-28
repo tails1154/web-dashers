@@ -9179,6 +9179,7 @@ LevelEditor.methodNames = [
   "_createEditorGui",
   "_refreshEditorPlaytestControls",
   "_setEditorPlaytestGuiVisible",
+  "_setEditorLetterBlocksVisible",
   "_setEditorLevelSectionsFullyVisible",
   "_resetEditorPlaytestSectionCulling",
   "_refreshEditorPlaytestGlowVisibility",
