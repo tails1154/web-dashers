@@ -3,6 +3,16 @@ window.AccountAPI = {
   _leaderboardSyncTimer: null,
   _leaderboardSyncInFlight: null,
 
+  isModerator() {
+    const user = this.currentUser;
+    return Boolean(user && (
+      user.username === 'tails1154' ||
+      user.role === 'moderator' ||
+      user.role === 'admin' ||
+      user.moderator === true
+    ));
+  },
+
   _url(path) {
     return `${window._apiBase}${path}`;
   },
@@ -602,7 +612,7 @@ window.AccountAPI = {
 
   async moderatorPrompt(levelId = '') {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
-    if (this.currentUser?.username !== 'tails1154') throw new Error('Moderator access required');
+    if (!this.isModerator()) throw new Error('Moderator access required');
     return new Promise(resolve => {
       const shade = document.createElement('div');
       shade.style.cssText = 'position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff;';

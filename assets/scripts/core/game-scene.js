@@ -1556,7 +1556,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       let moderatorBtn = null;
       let ownerDeleteBtn = null;
       let openModeratorMenuNext = false;
-      if (window.AccountAPI?.currentUser?.username === "tails1154") {
+      if (window.AccountAPI?.isModerator?.()) {
         moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
           .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
         this._makeBouncyButton(moderatorBtn, sideBtnScale, () => {
@@ -1599,7 +1599,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       likeBtn.setTint(lvl.liked ? 0xffe45c : 0xffffff);
       likeLabel.setTint(lvl.liked ? 0xffe45c : 0xffffff);
       this._makeBouncyButton(likeBtn, 1, async () => {
-        const isModerator = window.AccountAPI?.currentUser?.username === "tails1154";
+        const isModerator = window.AccountAPI?.isModerator?.();
         if (isModerator && openModeratorMenuNext) {
           openModeratorMenuNext = false;
           if (document.querySelector("[data-wd-mod-menu]")) return;
@@ -12071,7 +12071,7 @@ _applyMirrorEffect() {
           this._openOnlineLevelsScene({ listId: list.id, title: list.name });
         });
         const currentUserId = window.AccountAPI.currentUser?.id;
-        const canDelete = currentUserId && (String(currentUserId) === String(list.owner_id) || window.AccountAPI.currentUser?.username === "tails1154");
+        const canDelete = currentUserId && (String(currentUserId) === String(list.owner_id) || window.AccountAPI.isModerator?.());
         if (canDelete) {
           const deleteButton = this.add.text(sw / 2 + 278, y, "DELETE", { fontFamily: "Arial", fontSize: "13px", color: "#ff9b9b", backgroundColor: "#572b3a", padding: { x: 6, y: 4 } }).setOrigin(0.5).setInteractive();
           root.add(deleteButton);
@@ -12107,7 +12107,7 @@ _applyMirrorEffect() {
       this._mapPacksOverlay = null;
       this._openCreatorMenu();
     });
-    const isModerator = window.AccountAPI.currentUser?.username === "tails1154";
+    const isModerator = window.AccountAPI.isModerator?.();
     const canCreate = !!window.AccountAPI.currentUser;
     const create = canCreate ? this.add.text(sw - 120, 48, isModerator ? "MOD TOOLS" : "CREATE PACK", { fontFamily: "Arial", fontSize: "16px", color: "#ffd84d", backgroundColor: "#4b3b16", padding: { x: 12, y: 8 } }).setOrigin(0.5).setInteractive() : null;
     if (create) {
