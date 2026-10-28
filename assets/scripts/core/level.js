@@ -1969,6 +1969,14 @@ window.LevelObject = class LevelObject {
     });
     if (!window.isEditor) return objectDef;
   }
+  if (objectDef && (objectDef.type === headBlockType || objectDef.type === letterBlockType)) {
+    if (this._nextObjectId === undefined) this._nextObjectId = 0;
+    const linkedObjectId = this._nextObjectId++;
+    levelObj._eeObjectId = linkedObjectId;
+    if (levelObj._raw) delete levelObj._raw._eeObjectId;
+    this._spawnTextObject(levelObj, objectDef, linkedObjectId);
+    return objectDef;
+  }
 
   if (objectDef && objectDef.type === triggerType) {
     if (this._nextObjectId === undefined) {
