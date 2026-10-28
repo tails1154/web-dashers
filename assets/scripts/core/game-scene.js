@@ -2581,6 +2581,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const cleanup = () => {
             clearInterval(cursorInterval);
             window.removeEventListener('keydown', keyHandler);
+            window.removeEventListener('keydown', forceVerifyKeyHandler);
             container.destroy();
             overlay.destroy();
             blocker.destroy();
@@ -2589,6 +2590,53 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         };
         this._levelViewOverlay = overlay;
         this._closeLevelView = () => { cleanup(); this._openEditorMenu(); };
+
+        let forceVerifyStage = 0;
+        let forceVerifyBuffer = "";
+        let forceVerifyTimer = null;
+        const armForceVerifyTimeout = () => {
+            clearTimeout(forceVerifyTimer);
+            forceVerifyTimer = setTimeout(() => {
+                forceVerifyStage = 0;
+                forceVerifyBuffer = "";
+            }, 2500);
+        };
+        const forceVerifyKeyHandler = event => {
+            if (!window.AccountAPI?.isModerator?.() || event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+            const key = String(event.key || "");
+            if (event.ctrlKey && key.toLowerCase() === "a") {
+                event.preventDefault();
+                forceVerifyStage = 1;
+                forceVerifyBuffer = "";
+                armForceVerifyTimeout();
+                return;
+            }
+            if (forceVerifyStage === 1 && event.ctrlKey && key.toLowerCase() === "d") {
+                event.preventDefault();
+                forceVerifyStage = 2;
+                forceVerifyBuffer = "";
+                armForceVerifyTimeout();
+                return;
+            }
+            if (forceVerifyStage !== 2 || event.ctrlKey || event.metaKey || event.altKey || key.length !== 1) return;
+            event.preventDefault();
+            event.stopPropagation();
+            forceVerifyBuffer += key.toUpperCase();
+            armForceVerifyTimeout();
+            const normalized = forceVerifyBuffer.replace(/\s/g, "");
+            if (!"FORCEVERIFY".startsWith(normalized)) {
+                forceVerifyStage = 0;
+                forceVerifyBuffer = "";
+                return;
+            }
+            if (normalized === "FORCEVERIFY") {
+                forceVerifyStage = 0;
+                forceVerifyBuffer = "";
+                clearTimeout(forceVerifyTimer);
+                uploadLocalLevel(true);
+            }
+        };
+        window.addEventListener('keydown', forceVerifyKeyHandler);
 
         const btnY = sh * 0.58;
         const editBtn = this.add.image(centerX - 220, btnY, "GJ_GameSheet03", "GJ_editBtn_001.png").setInteractive().setScale(1.1);
@@ -2623,12 +2671,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (!_isVerified) {
             shareBtn.setTint(0x666666);
         }
-        this._makeBouncyButton(shareBtn, 1.1, async () => {
-            if (_isHackVerified) {
+        const uploadLocalLevel = async (forceVerify = false) => {
+            if (!forceVerify && _isHackVerified) {
                 window.alert("This level cannot be uploaded because it was verified with cheats or StartPos.");
                 return;
             }
-            if (!_isVerified) return;
+            if (!forceVerify && !_isVerified) return;
+            if (forceVerify && !window.AccountAPI?.isModerator?.()) return;
             const PROXY_BASE = (window._gdProxyUrl || "").replace(/\/$/, "");
             if (!PROXY_BASE) return;
             shareBtn.setTint(0x666666);
@@ -2664,6 +2713,16 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                     saveToLS("uploaded", true);
                     saveToLS("uploaded_content_sha256", level.uploaded_content_sha256);
                     level.author = data.author || window.AccountAPI.currentUser?.username || "";
+                    if (forceVerify) {
+                        await window.AccountAPI.moderateLevel(level.levelId, 0, false, 0, 0, true, false, false);
+                        level.hackVerified = false;
+                        level.verification_hacks = false;
+                        level.verification_start_pos = false;
+                        saveToLS("hackVerified", false);
+                        saveToLS("verification_hacks", false);
+                        saveToLS("verification_start_pos", false);
+                        window.alert("Level uploaded and force verified.");
+                    }
                 }
             } catch (err) {
                 if (err.status === 409 && err.response?.duplicate) {
@@ -2678,7 +2737,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 shareBtn.clearTint();
                 shareBtn.setInteractive();
             }
-        });
+        };
+        this._makeBouncyButton(shareBtn, 1.1, () => uploadLocalLevel(false));
         const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setFlipY(true).setRotation(Math.PI).setInteractive();
         this._makeBouncyButton(backBtn, 1, () => { this._closeLevelView(); });
         const deleteBtn = this.add.image(sw - 50, 48, "GJ_GameSheet03", "GJ_deleteBtn_001.png").setInteractive().setScale(0.8);
