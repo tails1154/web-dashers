@@ -534,13 +534,13 @@ allObjects[5050] = {
   speedValue: SpeedPortal.FIFTY_TIMES
 };
 allObjects[5051] = {
-  can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png",
+  can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
   default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
   speedValue: SpeedPortal.QUARTER_TIMES
 };
 allObjects[5052] = {
-  can_color: false, frame: "speed001-portal.png", glow_frame: "speed001-portal.png",
+  can_color: false, frame: "speed001-portal.png", glow_frame: "speed001-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
   default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
   speedValue: SpeedPortal.HUNDREDTH_TIMES
@@ -1455,7 +1455,7 @@ window.LevelObject = class LevelObject {
         dy: realHeight / 2 - (sourceY + frameHeight / 2)
       };
     }(scene, frameName);
-    if (objectData.flipX) {
+    if (objectData.flipX || colorData?.autoFlipX) {
       sprite.setFlipX(true);
       offsetX = -offsetX;
     }

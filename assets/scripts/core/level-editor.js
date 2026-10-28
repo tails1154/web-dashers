@@ -478,6 +478,18 @@ class LevelEditor {
             obj.setVisible(visible);
         }
     }
+    this._setEditorLetterBlocksVisible(visible);
+  }
+
+  _setEditorLetterBlocksVisible(visible) {
+    const letterIds = new Set([5065, 5066, 5067, 5068, 5069]);
+    for (const saveObj of (window.levelObjects || [])) {
+        if (!saveObj || !letterIds.has(parseInt(saveObj.id, 10))) continue;
+        const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : -1;
+        for (const sprite of (this._level?.objectSprites?.[linkedId] || [])) {
+            sprite?.setVisible?.(visible);
+        }
+    }
   }
 
 
@@ -1205,6 +1217,7 @@ class LevelEditor {
         this._audio.pauseMusic();
         this._setEditorPlaytestGuiVisible(true);
         this._setEditorLevelSectionsFullyVisible();
+        this._setEditorLetterBlocksVisible(true);
         this._refreshEditorPlaytestControls();
         return;
     }
