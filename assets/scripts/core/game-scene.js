@@ -864,7 +864,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             .setTint(Number(data.mainColor) || 0xff55aa)
             .setVisible(true)
             .setDepth(1000);
-          this._versusLevelIcon.bringToTop();
+          this._level?.topContainer?.bringToTop?.(this._versusLevelIcon);
         }
       };
       if (window._tailsConnectClient) {
@@ -8989,7 +8989,8 @@ _buildSettingsPopup() {
       window.macroBot = false;
       if (this._macroBot?.playing || this._macroBot?.recording) this._macroBot.resetAll();
       for (const layer of this._player?._allLayers || []) layer?.sprite?.setDepth?.(1001);
-      this._versusLevelIcon?.setDepth(1000).bringToTop();
+          this._versusLevelIcon?.setDepth(1000);
+          this._level?.topContainer?.bringToTop?.(this._versusLevelIcon);
     }
 
     // Any assist invalidates this run.  Invalid runs still play normally, but
