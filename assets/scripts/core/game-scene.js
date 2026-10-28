@@ -11819,7 +11819,7 @@ _applyMirrorEffect() {
       "The vault requires a serious diamond collection."
     ];
     this._diamondGuardMessageIndex = (this._diamondGuardMessageIndex || 0) + 1;
-    const challengeLocked = localStorage.getItem("wd_challenge_completed") === "1";
+    let challengeLocked = localStorage.getItem("wd_challenge_completed") === "1";
     const message = canEnter
       ? (challengeLocked ? "The guardian watches in silence." : "The guard steps aside. Enter a vault code.")
       : lockedMessages[this._diamondGuardMessageIndex % lockedMessages.length];
@@ -11844,7 +11844,23 @@ _applyMirrorEffect() {
       const codeInput = shade.querySelector("[data-vault-code]");
       const error = shade.querySelector("[data-vault-error]");
       const enter = () => {
-        const code = String(codeInput.value || "").trim().toLowerCase();
+        const rawCode = String(codeInput.value || "").trim();
+        if (rawCode === "UNDO IT ALL") {
+          localStorage.removeItem("wd_challenge_completed");
+          localStorage.removeItem("wd_challenge_guardian_pending");
+          try {
+            const achievements = JSON.parse(localStorage.getItem("gd_achievements") || "{}");
+            delete achievements.challenge_survivor;
+            localStorage.setItem("gd_achievements", JSON.stringify(achievements));
+          } catch (_) {
+            // The completion flag is still reset even if old achievement data is malformed.
+          }
+          challengeLocked = false;
+          error.textContent = "The Challenge has been reset.";
+          codeInput.value = "";
+          return;
+        }
+        const code = rawCode.toLowerCase();
         if (code === "featured") {
           close();
           this._openOnlineLevelsScene({ type: 6 });
