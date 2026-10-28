@@ -381,6 +381,7 @@ const cubePortal = "cube";
 const portalWaveType = "portal_wave";
 const portalUfoType = "portal_ufo";
 const headBlockType = "head_block";
+const letterBlockType = "letter_block";
 const allObjects = window.allobjects();
 if (!allObjects[745]) {
   allObjects[745] = {
@@ -491,17 +492,25 @@ if (!allObjects[5064]) {
     default_base_color_channel: 0
   };
 }
-if (!allObjects[5065]) {
-  allObjects[5065] = {
+const _letterBlockDefs = [
+  [5065, "H", headBlockType],
+  [5066, "D", letterBlockType],
+  [5067, "J", letterBlockType],
+  [5068, "S", letterBlockType],
+  [5069, "F", letterBlockType]
+];
+for (const [letterId, letter, letterType] of _letterBlockDefs) {
+  if (!allObjects[letterId]) allObjects[letterId] = {
     can_color: false,
     frame: null,
     editorFrame: null,
-    defaultText: "H",
+    defaultText: letter,
     textObject: true,
     editorOnly: true,
     gridH: 1,
     gridW: 1,
-    type: headBlockType,
+    type: letter === "H" ? headBlockType : letterType,
+    letter,
     z: 2,
     default_detail_color_channel: -1,
     default_z_layer: 5,
@@ -739,6 +748,7 @@ window.LevelObject = class LevelObject {
     this._likeTriggers = [];
     this._likeTriggerIdx = 0;
     this._headBlocks = [];
+    this._letterBlocks = [];
     this._pulseTriggers = [];
     this._pulseTriggerIdx = 0;
     this._activePulses = [];
@@ -1936,12 +1946,26 @@ window.LevelObject = class LevelObject {
   }
 
   if (objectDef && objectDef.type === headBlockType) {
-    this._headBlocks.push({
+    const headBlock = {
       x: Number(levelObj.x || 0) * 2,
       y: Number(levelObj.y || 0) * 2,
       width: (objectDef.gridW || 1) * 30,
       height: (objectDef.gridH || 1) * 30,
-      rotation: Number(levelObj.rot || 0) || 0
+      rotation: Number(levelObj.rot || 0) || 0,
+      letter: "H"
+    };
+    this._headBlocks.push(headBlock);
+    this._letterBlocks.push(headBlock);
+    if (!window.isEditor) return objectDef;
+  }
+  if (objectDef && objectDef.type === letterBlockType) {
+    this._letterBlocks.push({
+      x: Number(levelObj.x || 0) * 2,
+      y: Number(levelObj.y || 0) * 2,
+      width: (objectDef.gridW || 1) * 30,
+      height: (objectDef.gridH || 1) * 30,
+      rotation: Number(levelObj.rot || 0) || 0,
+      letter: objectDef.letter || ""
     });
     if (!window.isEditor) return objectDef;
   }

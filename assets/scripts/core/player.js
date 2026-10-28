@@ -3490,6 +3490,14 @@ if (this.p.isFlying || this.p.isUfo) {
     }
   }
   _checkSnapJump(_0x1f801b) {
+    if (_0x1f801b && this._letterBlockAt("J", _0x1f801b.x, _0x1f801b.y, 30)) {
+      this.p.queuedHold = false;
+      this.p.upKeyPressed = false;
+      this.p._jBlockSuppress = true;
+      this._lastLandObject = _0x1f801b;
+      this._lastXOffset = this._scene._playerWorldX - _0x1f801b.x;
+      return;
+    }
     const _0x483058 = [{
       dx: 240,
       dy: 60
@@ -3703,6 +3711,7 @@ if (this.p.isFlying || this.p.isUfo) {
     }
   }
   updateJump(_0x3d1c6f) {
+    if (!this.p.upKeyDown) this.p._jBlockSuppress = false;
     if (this.p.pendingVelocity !== null) {
       this.p.yVelocity = this.p.pendingVelocity;
       this.p.pendingVelocity = null;
@@ -3738,7 +3747,7 @@ if (this.p.isFlying || this.p.isUfo) {
       this._updateVectorJump(_0x3d1c6f);
     } else if (this.p.isRobot) {
       this._updateRobotJump(_0x3d1c6f);
-    } else if (this.p.upKeyDown && this.p.canJump) {
+    } else if (this.p.upKeyDown && this.p.canJump && !this.p._jBlockSuppress) {
       this.p.isJumping = true;
       this.p.onGround = false;
       this.p.canJump = false;
@@ -4676,6 +4685,18 @@ if (this.p.isFlying || this.p.isUfo) {
     });
   }
 
+  _letterBlockAt(letter, playerWorldX, playerWorldY, playerSize) {
+    const zones = this._gameLayer?._letterBlocks;
+    if (!Array.isArray(zones)) return null;
+    return zones.find(zone => {
+      if (zone.letter !== letter) return false;
+      const halfW = Math.max(1, Number(zone.width) || 30) / 2;
+      const halfH = Math.max(1, Number(zone.height) || 30) / 2;
+      return Math.abs(playerWorldX - zone.x) <= halfW + playerSize &&
+        Math.abs(playerWorldY - zone.y) <= halfH + playerSize;
+    }) || null;
+  }
+
   checkCollisions(_0x2f5078) {
     this.noclipStats.totalFrames++;
     this.p.diedThisFrame = false;
@@ -4689,6 +4710,16 @@ if (this.p.isFlying || this.p.isUfo) {
     const playerSize = this.p.isMini ? 18 : 30;
     const waveHitSize = this.p.isMini ? 6 : 9;
     const pieceWidth = _0x2f5078 + centerX;
+    const dashStopBlock = this._letterBlockAt("S", pieceWidth, this.p.y, playerSize);
+    if (dashStopBlock) {
+      this.p.isDashing = false;
+      this.p.dashYVelocity = 0;
+    }
+    for (const zone of (this._gameLayer?._letterBlocks || [])) {
+      if (zone.letter === "F" && zone._triggered && !this._letterBlockAt("F", pieceWidth, this.p.y, playerSize)) {
+        zone._triggered = false;
+      }
+    }
     const previousWorldX = Number.isFinite(this._lastCollisionWorldX) ? this._lastCollisionWorldX : pieceWidth;
     const playersY = this.p.y;
     const playersLastY = this.p.lastY;
@@ -5393,6 +5424,17 @@ if (this.p.isFlying || this.p.isUfo) {
           const isstandingOnAPlatform = this.p.gravityFlipped ? _0xLandTop : _0xLandBot;
           if (iscolliding && !isstandingOnAPlatform) {
             const isOverheadHit = this.p.gravityFlipped ? _0xLandBot : _0xLandTop;
+            if (this.p.isWave && this._letterBlockAt("D", pieceWidth, playersY, waveHitSize)) {
+              continue;
+            }
+            const flipBlock = isOverheadHit && this._letterBlockAt("F", pieceWidth, playersY, playerSize);
+            if (flipBlock && !flipBlock._triggered) {
+              flipBlock._triggered = true;
+              this.flipGravity(!this.p.gravityFlipped, 1);
+              this._syncOtherDualGravityForBlueBoost?.();
+              this.runRotateAction();
+              continue;
+            }
             if (isOverheadHit && this._isHeadBlockOverhead(pieceWidth, playersY, playerSize)) {
               continue;
             }
