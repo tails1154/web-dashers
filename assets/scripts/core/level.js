@@ -3969,7 +3969,9 @@ window.LevelObject = class LevelObject {
   }
 
   stepNineCirclesEffect(dt) {
-    if (!this._nineCirclesEnabled || window.enableLDM) return;
+    // This is gameplay behavior, not optional decoration. Low-detail mode
+    // must not silently disable the trigger after it has been activated.
+    if (!this._nineCirclesEnabled) return;
     // Nine Circles is a traveling four-bar flash: each connected-looking
     // diagonal band alternates between a bright neon block and a near-black
     // block, then the ON bar advances to the next band.
