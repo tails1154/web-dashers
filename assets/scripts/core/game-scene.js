@@ -5353,78 +5353,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       localStorage.removeItem("wd_challenge_guardian_pending");
       this.time.delayedCall(350, () => this._showChallengeGuardianSpeech());
     }
-    this._updateCheckTimer = this.time.addEvent({
-      delay: 60000,
-      loop: true,
-      callback: () => this._checkForUpdates()
-    });
-    this._checkForUpdates();
-    this.events.once("shutdown", () => this._updateCheckTimer?.remove?.());
-  }
-
-  _checkForUpdates() {
-    if (this._updateCheckInFlight || this._updatePrompt) return;
-    const localCommit = "7e7bea6";
-    this._updateCheckInFlight = true;
-    fetch("https://api.github.com/repos/tails1154/web-dashers/commits/main?per_page=1", {
-      cache: "no-store",
-      headers: { Accept: "application/vnd.github+json" }
-    }).then(response => {
-      if (!response.ok) throw new Error(`GitHub returned ${response.status}`);
-      return response.json();
-    }).then(commit => {
-      const remoteCommit = String(commit?.sha || "").trim();
-      if (!remoteCommit || remoteCommit.startsWith(localCommit)) return;
-      // "Later" is intentionally session-scoped. A dismissed update should
-      // not permanently hide future releases for this user.
-      if (sessionStorage.getItem("wd_update_deferred_commit") === remoteCommit) return;
-      this._pendingUpdateCommit = remoteCommit;
-      if (this._menuActive || this._state?.isDead || this._levelWon) {
-        this._showUpdatePrompt(remoteCommit);
-      }
-    }).catch(() => {
-      // Update checks are optional and must never interrupt gameplay.
-    }).finally(() => {
-      this._updateCheckInFlight = false;
-    });
-  }
-
-  _showUpdatePrompt(remoteCommit) {
-    if (this._updatePrompt || !remoteCommit) return;
-    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(3100);
-    this._updatePrompt = root;
-    const shade = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.78)
-      .setInteractive();
-    const panelW = Math.min(600, screenWidth - 40);
-    const panelH = 260;
-    const panel = this._drawScale9(screenWidth / 2, screenHeight / 2, panelW, panelH, "GJ_square01", 24, 0xffffff, 1);
-    const title = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 78, "goldFont", "UPDATE AVAILABLE", 38).setOrigin(0.5);
-    const body = this.add.text(screenWidth / 2, screenHeight / 2 - 18,
-      "A newer version of Web Dashers is available.\nUpdate now to refresh the latest code.", {
-        fontFamily: "Arial", fontSize: "20px", color: "#ffffff", align: "center", lineSpacing: 8
-      }).setOrigin(0.5);
-    root.add([shade, panel, title, body]);
-
-    const finishLater = () => {
-      sessionStorage.setItem("wd_update_deferred_commit", remoteCommit);
-      root.destroy(true);
-      this._updatePrompt = null;
-    };
-    const makeButton = (x, label, color, callback) => {
-      const button = this.add.rectangle(x, screenHeight / 2 + 78, 170, 52, color, 1)
-        .setStrokeStyle(3, 0xffffff, 0.8).setInteractive({ useHandCursor: true });
-      const text = this.add.bitmapText(x, screenHeight / 2 + 78, "bigFont", label, 23).setOrigin(0.5);
-      root.add([button, text]);
-      this._makeBouncyButton(button, 1, callback);
-    };
-    makeButton(screenWidth / 2 - 100, "UPDATE", 0x61d66f, () => {
-      localStorage.setItem("wd_update_seen_commit", remoteCommit);
-      const nextUrl = new URL(window.location.href);
-      nextUrl.searchParams.set("wd_update", Date.now().toString());
-      window.location.replace(nextUrl.toString());
-    });
-    makeButton(screenWidth / 2 + 100, "LATER", 0x777777, finishLater);
-    shade.on("pointerdown", finishLater);
   }
 
   _parseLevelColors(levelId) {
@@ -9587,9 +9515,6 @@ _buildSettingsPopup() {
       return;
     }
     if (this._state.isDead) {
-      if (this._pendingUpdateCommit && !this._updatePrompt) {
-        this._showUpdatePrompt(this._pendingUpdateCommit);
-      }
       if (this._versusActive && !this._versusLocalDead) this._addVersusLog("You died");
       this._versusLocalDead = true;
       if (!this._deathSoundPlayed) {
