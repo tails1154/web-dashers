@@ -6252,6 +6252,42 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._runTimerLabel.setText(`${minutes}:${seconds}`).setVisible(true);
     }
   }
+  _updateMilestoneToasts() {
+    if (!window.milestoneToasts || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) return;
+    const endX = Number(this._level?.endXPos || 0);
+    if (endX <= 0) return;
+    const current = Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100)));
+    this._milestonesShown = this._milestonesShown instanceof Set ? this._milestonesShown : new Set();
+    const milestone = [75, 50, 25].find(value => current >= value && !this._milestonesShown.has(value));
+    if (milestone === undefined) return;
+    this._milestonesShown.add(milestone);
+    if (this._milestoneToast) {
+      this.tweens.killTweensOf(this._milestoneToast);
+      this._milestoneToast.destroy(true);
+    }
+    const toast = this.add.container(screenWidth / 2, 114).setScrollFactor(0).setDepth(95);
+    const background = this.add.rectangle(0, 0, 270, 58, 0x172a3f, 0.94).setStrokeStyle(3, 0x8ee8ff, 1);
+    const label = this.add.bitmapText(0, 0, "bigFont", `${milestone}% REACHED!`, 26).setOrigin(0.5).setTint(0x8ee8ff);
+    toast.add([background, label]);
+    toast.alpha = 0;
+    toast.y -= 12;
+    this._milestoneToast = toast;
+    this.tweens.add({
+      targets: toast,
+      alpha: 1,
+      y: 114,
+      duration: 180,
+      ease: "Back.Out",
+      hold: 900,
+      yoyo: true,
+      onComplete: () => {
+        if (this._milestoneToast === toast) {
+          toast.destroy(true);
+          this._milestoneToast = null;
+        }
+      }
+    });
+  }
   _updateBestSplit() {
     if (!window.bestSplit || window.isEditor || this._menuActive || this._levelWon) {
       if (this._bestSplitLabel) this._bestSplitLabel.setVisible(false);
@@ -6790,6 +6826,7 @@ _buildSettingsPopup() {
         "Replay Ghost": "Shows a translucent replay of your previous attempt after you die. It never affects physics or rewards.",
         "Run Timer": "Shows the active attempt duration and pauses while the game is paused or the player is dead.",
         "Best Split": "Shows whether your current progress is ahead of or behind your saved best percentage.",
+        "Milestone Toasts": "Shows a short celebration when you pass 25%, 50%, or 75% of a level during an attempt.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
         "Show FPS": "Shows the frames per second your game is running at.",
@@ -7083,6 +7120,21 @@ _buildSettingsPopup() {
             true,
             "Best Split"
         );
+        createToggle(container, column1X, startY + (spacingY * 6), "Milestone Toasts",
+            () => !!window.milestoneToasts,
+            (v) => {
+                window.milestoneToasts = !!v;
+                if (!v && this._milestoneToast) {
+                    this.tweens.killTweensOf(this._milestoneToast);
+                    this._milestoneToast.destroy(true);
+                    this._milestoneToast = null;
+                }
+            },
+            undefined,
+            22,
+            true,
+            "Milestone Toasts"
+        );
     };
 
     const buildVisualPage = (container) => {
@@ -7301,6 +7353,7 @@ _buildSettingsPopup() {
         runTimer: !!window.runTimer,
         inputHistory: !!window.inputHistory,
         bestSplit: !!window.bestSplit,
+        milestoneToasts: !!window.milestoneToasts,
         replayGhostOpacity: Number(window.replayGhostOpacity) || 0.34,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
@@ -7340,6 +7393,7 @@ _buildSettingsPopup() {
         runTimer: false,
         inputHistory: false,
         bestSplit: false,
+        milestoneToasts: false,
         replayGhostOpacity: 0.34,
         showGlow: true,
         showEditorGlow: false,
@@ -7373,6 +7427,7 @@ _buildSettingsPopup() {
     window.runTimer = !!data.runTimer;
     window.inputHistory = !!data.inputHistory;
     window.bestSplit = !!data.bestSplit;
+    window.milestoneToasts = !!data.milestoneToasts;
     window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(data.replayGhostOpacity) || 0.34));
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
@@ -8501,6 +8556,12 @@ _buildSettingsPopup() {
   }
   _startGame() {
     this._resetRunTimer();
+    this._milestonesShown = new Set();
+    if (this._milestoneToast) {
+      this.tweens.killTweensOf(this._milestoneToast);
+      this._milestoneToast.destroy(true);
+      this._milestoneToast = null;
+    }
     if (!this._menuActive) {
       return;
     }
@@ -9604,6 +9665,7 @@ _buildSettingsPopup() {
     this._updateReplayGhost(deltaTime);
     this._updateDeathTimeline();
     this._updateRunTimer(deltaTime);
+    this._updateMilestoneToasts();
     this._updateInputHistory();
     this._updateBestSplit();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
