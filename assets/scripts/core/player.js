@@ -3542,10 +3542,18 @@ if (this.p.isFlying || this.p.isUfo) {
     const nativeSlopeMultiplier = Math.min(1.12 / angleRad, 1.54);
     let tangentVelocity = slopeYVelocity * nativeSlopeMultiplier * this.flipMod();
     if (slopeObj.slopeFlipY) tangentVelocity = -tangentVelocity;
+    if (this.p.isBall && surfaceA && surfaceB && Math.abs(surfaceB.x - surfaceA.x) > 0.001) {
+      // Ball exits follow the actual transformed ramp tangent. The cached
+      // slope velocity is only a normalized tracking value and can point in
+      // the wrong gravity direction when the ball leaves a rotated slope.
+      const surfaceGradient = (surfaceB.y - surfaceA.y) / (surfaceB.x - surfaceA.x);
+      const travelDirection = pieceWidth >= contactX ? 1 : -1;
+      tangentVelocity = surfaceGradient * playerSpeed * travelDirection;
+    }
     // Ships need the full tangent impulse from the slope geometry. The cached
     // slope velocity is a normalized tracking value and is too small to launch
     // a ship when it replaces this calculated impulse.
-    if (!this.p.isFlying && Number.isFinite(this._slopeVelocity) && this._slopeVelocity !== 0) {
+    if (!this.p.isFlying && !this.p.isBall && Number.isFinite(this._slopeVelocity) && this._slopeVelocity !== 0) {
       tangentVelocity = this._slopeVelocity;
     }
     const maxSlopeLaunch = this.p.isFlying ? 16 : 22.360064;
@@ -4091,9 +4099,15 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.upKeyPressed = false;
         this.p.queuedHold = false;
         this.p.yVelocity = _0x47d739 * 22.360064 * (this.p.isMini ? 0.8 : 1);
-        // Ball gravity flips with its normal jump impulse. Do not add the
-        // slope's cached travel velocity here: touching a ramp must not turn
-        // a regular ball jump into an extra launch.
+        if (Number(this._slopeVelocity) * this.flipMod() > 0) {
+          // Native ball mode uses the signed slope velocity for this boost,
+          // then flips gravity and applies the normal ball 0.6 multiplier.
+          const slopeJumpCap = this.p.yVelocity * 1.4;
+          this.p.yVelocity += Number(this._slopeVelocity) * 0.25;
+          this.p.yVelocity = this.p.gravityFlipped
+            ? Math.max(this.p.yVelocity, slopeJumpCap)
+            : Math.min(this.p.yVelocity, slopeJumpCap);
+        }
         this.flipGravity(!this.p.gravityFlipped);
         this.p.onGround = false;
         this.p.canJump = false;
