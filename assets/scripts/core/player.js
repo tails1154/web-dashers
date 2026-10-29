@@ -4091,15 +4091,9 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.upKeyPressed = false;
         this.p.queuedHold = false;
         this.p.yVelocity = _0x47d739 * 22.360064 * (this.p.isMini ? 0.8 : 1);
-        if (Number(this._slopeVelocity) * this.flipMod() > 0) {
-          // Native ball mode uses the signed slope velocity for this boost,
-          // then flips gravity and applies the normal ball 0.6 multiplier.
-          const slopeJumpCap = this.p.yVelocity * 1.4;
-          this.p.yVelocity += Number(this._slopeVelocity) * 0.25;
-          this.p.yVelocity = this.p.gravityFlipped
-            ? Math.max(this.p.yVelocity, slopeJumpCap)
-            : Math.min(this.p.yVelocity, slopeJumpCap);
-        }
+        // Ball gravity flips with its normal jump impulse. Do not add the
+        // slope's cached travel velocity here: touching a ramp must not turn
+        // a regular ball jump into an extra launch.
         this.flipGravity(!this.p.gravityFlipped);
         this.p.onGround = false;
         this.p.canJump = false;
