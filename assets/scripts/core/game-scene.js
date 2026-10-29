@@ -6190,10 +6190,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._replayGhostPlaybackClock = 0;
     this._replayGhostWasDead = false;
     if (this._replayGhostGraphics) this._replayGhostGraphics.clear().setVisible(false);
+    this._replayGhostDeltaLabel?.setVisible(false);
   }
   _updateReplayGhost(deltaTime = 0) {
     if (!window.replayGhost || window.isEditor || this._menuActive) {
       if (this._replayGhostGraphics) this._replayGhostGraphics.setVisible(false);
+      this._replayGhostDeltaLabel?.setVisible(false);
       return;
     }
     const levelId = String(window.currentlevel?.[2] || "level_1");
@@ -6209,6 +6211,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       }
       this._replayGhostWasDead = true;
       this._replayGhostGraphics.clear().setVisible(false);
+      this._replayGhostDeltaLabel?.setVisible(false);
       return;
     }
     if (this._replayGhostWasDead) {
@@ -6230,6 +6233,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const point = this._replayGhostLast?.[this._replayGhostIndex];
     if (!point) {
       this._replayGhostGraphics.clear().setVisible(false);
+      this._replayGhostDeltaLabel?.setVisible(false);
       return;
     }
     const ghostScreenX = Number(point.x || 0) - Number(this._cameraX || 0);
@@ -6237,6 +6241,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const y = typeof b === "function" ? b(point.y) + Number(this._cameraY || 0) : screenHeight / 2;
     const opacity = Math.max(0.05, Math.min(1, Number(window.replayGhostOpacity) || 0.34));
     this._replayGhostGraphics.clear().fillStyle(0x9de8ff, opacity).fillCircle(x, y, 13).lineStyle(2, Math.min(1, opacity + 0.35)).strokeCircle(x, y, 16).setVisible(true);
+    if (!this._replayGhostDeltaLabel) {
+      this._replayGhostDeltaLabel = this.add.bitmapText(screenWidth - 12, 140, "bigFont", "", 16)
+        .setOrigin(1, 0)
+        .setScrollFactor(0)
+        .setDepth(90);
+    }
+    const deltaX = Number(this._playerWorldX || 0) - Number(point.x || 0);
+    const ahead = deltaX >= 0;
+    this._replayGhostDeltaLabel
+      .setText(`GHOST ${ahead ? "AHEAD" : "BEHIND"} ${Math.abs(Math.round(deltaX))}px`)
+      .setTint(ahead ? 0x86f5b2 : 0xff9d9d)
+      .setVisible(true);
   }
   _recordDeathTimelinePoint() {
     if (!window.deathTimeline || window.isEditor) return;
