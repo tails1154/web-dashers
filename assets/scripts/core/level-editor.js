@@ -354,6 +354,8 @@ class LevelEditor {
     this._deselectBtn = this.add.image(0, 150, "GJ_GameSheet03", "GJ_deSelBtn2_001.png").setInteractive().setScale(1);
     this._sendToTopBtn = this.add.image(0, 225, "GJ_GameSheet03", "GJ_arrow_02_001.png")
         .setInteractive().setScale(0.75);
+    this._inspectObjectBtn = this.add.image(0, 350, "GJ_GameSheet03", "GJ_infoIcon_001.png")
+        .setInteractive().setScale(0.72);
 
     this._editorLayerSelector = this.add.container(-75, 275);
     this._editorLayerFirstBtn = this.add.image(-90, 0, "GJ_GameSheet03", "GJ_arrow_02_001.png").setInteractive().setScale(0.45).setAlpha(0.5);
@@ -371,11 +373,12 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
     });
+    this._makeBouncyButton(this._inspectObjectBtn, 0.72, () => this._openSelectedEditorInspector(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
 
     this._makeBouncyButton(this._editObjectBtn, 1, () => {
         this._openSelectedEditorObjectOptions();
@@ -6342,6 +6345,20 @@ class LevelEditor {
     });
   }
 
+  _openSelectedEditorInspector() {
+    const selected = this._getSelectedEditorSaveObjects();
+    if (!selected.length) return;
+    const lines = selected.slice(0, 8).map((object, index) => {
+      const groups = this._getEditorObjectGroupIds(object).join(".") || "-";
+      return `${index + 1}. ID ${object.id}  X ${Number(object.x || 0).toFixed(1)}  Y ${Number(object.y || 0).toFixed(1)}  R ${Number(object.rot || 0)}°  S ${Number(object.scale || 1).toFixed(2)}  G ${groups}`;
+    });
+    const suffix = selected.length > 8 ? `\n…and ${selected.length - 8} more selected objects.` : "";
+    window.showNativePhaserDialog(this, {
+      title: "OBJECT INSPECTOR",
+      message: `${selected.length} object${selected.length === 1 ? "" : "s"} selected.\n${lines.join("\n")}${suffix}`
+    });
+  }
+
   _openSelectedEditorObjectOptions() {
     const saveObj = this._getSelectedEditorSaveObject();
     if (!saveObj) return;
@@ -9618,6 +9635,10 @@ LevelEditor.methodNames = [
   "_updateEditorPlaytestCameraY",
   "_updateEditorPlaytestBackground",
   "_setEditorZoomInstant",
+  "_editorCameraBookmarkKey",
+  "_saveEditorCameraBookmark",
+  "_restoreEditorCameraBookmark",
+  "_clearEditorCameraBookmark",
   "_clearEditorPlaytestMarks",
   "_ensureEditorPlaytestTrail",
   "_drawEditorPlaytestTrailPoint",
@@ -9751,6 +9772,7 @@ LevelEditor.methodNames = [
   "_setEditorObjectZOrder",
   "_openSelectedEditorGroupPopup",
   "_openSelectedEditorObjectOptions",
+  "_openSelectedEditorInspector",
   "_isEditorMoveTriggerId",
   "_isEditorSpawnTriggerId",
   "_isEditorZoomTriggerId",
