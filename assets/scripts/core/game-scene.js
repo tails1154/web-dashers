@@ -6242,6 +6242,22 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const seconds = (this._runTimerSeconds % 60).toFixed(2).padStart(5, "0");
     this._runTimerLabel.setText(`${minutes}:${seconds}`).setVisible(true);
   }
+  _updateBestSplit() {
+    if (!window.bestSplit || window.isEditor || this._menuActive || this._levelWon) {
+      if (this._bestSplitLabel) this._bestSplitLabel.setVisible(false);
+      return;
+    }
+    if (!this._bestSplitLabel) {
+      this._bestSplitLabel = this.add.text(screenWidth / 2, 84, "", {
+        fontFamily: "Arial", fontSize: "17px", color: "#ffffff", stroke: "#000000", strokeThickness: 4
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(90);
+    }
+    const endX = Number(this._level?.endXPos || 0);
+    const current = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
+    const best = Number(this._bestPercent || 0);
+    const delta = current - best;
+    this._bestSplitLabel.setText(best > 0 ? `BEST ${best}%  ${delta >= 0 ? "+" : ""}${delta}%` : "BEST --").setTint(delta >= 0 ? 0x9effc2 : 0xffb0a8).setVisible(true);
+  }
   _recordInputHistory(type) {
     if (!window.inputHistory || window.isEditor) return;
     this._inputHistory = Array.isArray(this._inputHistory) ? this._inputHistory : [];
@@ -6723,6 +6739,7 @@ _buildSettingsPopup() {
         "Hitboxes on Death": "Shows hitboxes upon death in both normal and practice mode.",
         "Replay Ghost": "Shows a translucent replay of your previous attempt after you die. It never affects physics or rewards.",
         "Run Timer": "Shows the active attempt duration and pauses while the game is paused or the player is dead.",
+        "Best Split": "Shows whether your current progress is ahead of or behind your saved best percentage.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
         "Show FPS": "Shows the frames per second your game is running at.",
@@ -7005,6 +7022,17 @@ _buildSettingsPopup() {
             true,
             "Run Timer"
         );
+        createToggle(container, column2X, startY + (spacingY * 5), "Best Split",
+            () => !!window.bestSplit,
+            (v) => {
+                window.bestSplit = !!v;
+                if (!v && this._bestSplitLabel) this._bestSplitLabel.setVisible(false);
+            },
+            undefined,
+            22,
+            true,
+            "Best Split"
+        );
     };
 
     const buildVisualPage = (container) => {
@@ -7215,6 +7243,7 @@ _buildSettingsPopup() {
         deathTimeline: !!window.deathTimeline,
         runTimer: !!window.runTimer,
         inputHistory: !!window.inputHistory,
+        bestSplit: !!window.bestSplit,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -7252,6 +7281,7 @@ _buildSettingsPopup() {
         deathTimeline: false,
         runTimer: false,
         inputHistory: false,
+        bestSplit: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -7283,6 +7313,7 @@ _buildSettingsPopup() {
     window.deathTimeline = !!data.deathTimeline;
     window.runTimer = !!data.runTimer;
     window.inputHistory = !!data.inputHistory;
+    window.bestSplit = !!data.bestSplit;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
@@ -9514,6 +9545,7 @@ _buildSettingsPopup() {
     this._updateDeathTimeline();
     this._updateRunTimer(deltaTime);
     this._updateInputHistory();
+    this._updateBestSplit();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
       if (_liveCoinCheatFlags.length && !this._coinCheatWarningShown) {
