@@ -6536,6 +6536,11 @@ _buildPauseOverlay() {
     this._pauseContainer.add(this._macroBtn);
     this._makeBouncyButton(this._macroBtn, 0.4, () => this._buildMacroPopup());
 
+    const runNoteButton = this.add.nineslice(textureY - 150, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const runNoteLabel = this.add.bitmapText(textureY - 150, 80, "bigFont", "NOTE", 17).setOrigin(0.5);
+    this._pauseContainer.add([runNoteButton, runNoteLabel]);
+    this._makeCompositeBouncyButton(runNoteButton, [runNoteButton, runNoteLabel], 0.7, () => this._openRunNoteDialog());
+
     this._pauseContainer.add(this.add.bitmapText(textureY, 65, "bigFont", window.currentlevel[1], 40).setOrigin(0.5, 0.5));
 
     const _0x21dacf = 170;
@@ -6642,6 +6647,27 @@ _buildPauseOverlay() {
         localStorage.setItem("userSfxVol", v);
     });
  }
+  _openRunNoteDialog() {
+    const endX = Number(this._level?.endXPos || 0);
+    const percent = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
+    window.showNativePhaserDialog(this, {
+      title: "RUN NOTE",
+      message: `Add a note at ${percent}% on ${window.currentlevel?.[1] || "this level"}.`,
+      input: true,
+      placeholder: "What should you remember?",
+      confirmLabel: "SAVE",
+      cancelLabel: "CANCEL",
+      onConfirm: value => {
+        const text = String(value || "").trim();
+        if (!text) return;
+        let notes = [];
+        try { notes = JSON.parse(localStorage.getItem("wd_run_notes") || "[]"); } catch (_) {}
+        if (!Array.isArray(notes)) notes = [];
+        notes.push({ levelId: String(window.currentlevel?.[2] || "level_1"), percent, text, timestamp: Date.now() });
+        localStorage.setItem("wd_run_notes", JSON.stringify(notes.slice(-500)));
+      }
+    });
+  }
 _buildSettingsPopup() {
     if (this._settingsPopup) return;
 
