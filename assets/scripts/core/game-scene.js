@@ -6651,6 +6651,15 @@ _buildSettingsPopup() {
             true,
             "Practice Music Bypass"
         );
+
+        createToggle(container, column2X, startY + (spacingY * 2), "Fast Reset",
+            () => !!window.fastReset,
+            (v) => window.fastReset = !!v,
+            null,
+            25,
+            true,
+            "Fast Reset"
+        );
     };
 
     const buildVisualPage = (container) => {
@@ -6831,6 +6840,7 @@ _buildSettingsPopup() {
         speedHack: window.speedHack,
         macroBot: window.macroBot,
         practiceMusicSync: window.practiceMusicSync,
+        fastReset: !!window.fastReset,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -6862,6 +6872,7 @@ _buildSettingsPopup() {
         speedHack: 1.0,
         macroBot: false,
         practiceMusicSync: false,
+        fastReset: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -6887,6 +6898,7 @@ _buildSettingsPopup() {
     window.speedHack = data.speedHack;
     window.macroBot = data.macroBot;
     window.practiceMusicSync = !!data.practiceMusicSync;
+    window.fastReset = !!data.fastReset;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
@@ -9505,7 +9517,7 @@ _buildSettingsPopup() {
         }
       }
       this._deathTimer += deltaTime;
-      const fastReset = parseInt(window.settingsMap?.wdFastReset || "0", 10) === 1;
+      const fastReset = !!window.fastReset;
       let _0x237728 = fastReset ? 500 : (this._hadNewBest ? 1400 : 1000);
       if (this._deathTimer > _0x237728) {
         if (this._practicedMode.practiceMode) {

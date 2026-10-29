@@ -4129,8 +4129,7 @@ class LevelEditor {
         { label: "Mini Mode", key: "kA3" },
         { label: "Flip Gravity", key: "kA11" },
         { label: "Dual Mode", key: "kA8" },
-        { label: "Mirror Mode", key: "kA28" },
-        { label: "Fast Reset", key: "wdFastReset" }
+        { label: "Mirror Mode", key: "kA28" }
     ];
 
     const makeToggle = (label, key, y) => {
