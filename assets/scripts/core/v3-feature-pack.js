@@ -33,30 +33,74 @@
     const label = scene.add.bitmapText(screenWidth / 2, 92, "goldFont", text, 22).setOrigin(0.5).setScrollFactor(0).setDepth(9000);
     scene.tweens.add({ targets: label, alpha: 0, delay: 1300, duration: 350, onComplete: () => label.destroy() });
   };
+  const notice = (scene, title, message) => {
+    if (window.showNativePhaserDialog) return window.showNativePhaserDialog({ title, message, notice: true });
+    toast(scene, `${title}: ${message}`);
+  };
+  const copyText = (scene, value) => {
+    if (!navigator.clipboard?.writeText) return notice(scene, "COPY", "Clipboard access was unavailable.");
+    Promise.resolve(navigator.clipboard.writeText(value)).catch(() => notice(scene, "COPY", "Clipboard access was unavailable."));
+  };
+  const downloadJson = (filename, value) => {
+    const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
   const commandHandlers = {
     restart_level: scene => scene._restartLevel?.(),
     toggle_practice: scene => scene._practicedMode?.togglePracticeMode?.(),
     open_settings: scene => scene._buildSettingsPopup?.(),
     open_icon_kit: scene => scene._openIconSelector?.(),
-    show_run_stats: scene => scene._showRunStats?.(),
-    copy_level_id: scene => navigator.clipboard?.writeText?.(String(window.currentlevel?.[2] || "")),
-    copy_report_id: scene => navigator.clipboard?.writeText?.(String(window._wdLastCrashReport?.id || "")),
+    show_run_stats: scene => {
+      const level = window.currentlevel || [];
+      notice(scene, "RUN STATISTICS", `Attempts: ${scene._levelAttempts || 0}\nBest: ${scene._bestPercent || 0}%\nLevel: ${level[1] || "Unknown"}`);
+    },
+    copy_level_id: scene => copyText(scene, String(window.currentlevel?.[2] || "")),
+    copy_report_id: scene => copyText(scene, String(window._wdLastCrashReport?.id || "")),
     take_screenshot: scene => scene.game.renderer.snapshot(image => { const link = document.createElement("a"); link.download = "web-dashers-screenshot.png"; link.href = image.src; link.click(); }),
     reset_checkpoint: scene => scene._practicedMode?.deleteLastCheckpoint?.(),
-    toggle_fullscreen: scene => scene._toggleFullscreen?.(),
+    toggle_fullscreen: scene => {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+      else document.documentElement.requestFullscreen?.().catch?.(() => notice(scene, "FULLSCREEN", "Fullscreen was blocked by the browser."));
+    },
     replay_last_attempt: scene => scene._restartLevel?.(),
     open_level_info: scene => scene.levelstats?.(),
-    open_achievements: scene => window.GDAchievements?.showPanel?.(),
-    open_update_log: scene => scene._buildUpdateLogPopup?.(),
     open_audio_browser: scene => scene._openEditorLevelSettingsPopup?.(),
     save_editor_level: scene => scene._saveEditorLevel?.(),
     play_editor_level: scene => scene._startEditorPlaytest?.(),
     toggle_editor_grid: scene => scene._editorGridGraphics?.setVisible?.(!scene._editorGridGraphics.visible),
     focus_editor_camera: scene => { scene._cameraX = 0; scene._cameraY = 0; },
-    clear_editor_selection: scene => scene._deselectEditorObject?.()
+    clear_editor_selection: scene => scene._deselectEditorObject?.(),
+    open_update_log: scene => scene._buildUpdateLogPopup?.(),
+    open_achievements: scene => window.GDAchievements?.showPanel?.() || notice(scene, "ACHIEVEMENTS", "The achievements panel is unavailable here."),
+    diagnostics_level_validation_report: scene => {
+      const objects = Array.isArray(window.levelObjects) ? window.levelObjects.filter(Boolean) : [];
+      const invalid = objects.filter(object => !Number.isFinite(Number(object.id)) || !Number.isFinite(Number(object.x)) || !Number.isFinite(Number(object.y)));
+      notice(scene, "LEVEL VALIDATION", `Objects: ${objects.length}\nInvalid objects: ${invalid.length}\nStatus: ${invalid.length ? "Needs attention" : "Valid"}`);
+    },
+    diagnostics_save_integrity_check: scene => {
+      try {
+        const levels = JSON.parse(localStorage.getItem("created_levels") || "[]");
+        const broken = levels.filter(level => !level || !level.createdId || typeof level.levelString !== "string");
+        notice(scene, "SAVE INTEGRITY", `Created levels: ${levels.length}\nInvalid records: ${broken.length}`);
+      } catch (_) { notice(scene, "SAVE INTEGRITY", "The local level save could not be parsed."); }
+    },
+    progression_export_statistics: scene => {
+      downloadJson("web-dashers-statistics.json", {
+        exportedAt: new Date().toISOString(),
+        attempts: scene._attempts || 0,
+        levelAttempts: scene._levelAttempts || 0,
+        levelId: window.currentlevel?.[2] || null,
+        featureState: state
+      });
+      notice(scene, "STATISTICS", "Your statistics export has started.");
+    }
   };
   const toggleHandlers = {
-    accessibility_high_contrast_mode: (scene, on) => { document.body.style.filter = on ? "contrast(1.22) saturate(1.08)" : ""; },
+    accessibility_high_contrast_mode: (_scene, on) => { window.wdHighContrast = on; },
     accessibility_reduced_motion: (_scene, on) => { window.wdReducedMotion = on; },
     accessibility_disable_screen_shake: (_scene, on) => { window.wdDisableScreenShake = on; },
     accessibility_photosensitivity_dimmer: (_scene, on) => { window.wdPhotosensitivityDimmer = on; },
@@ -70,7 +114,71 @@
     input_left_handed_controls: (_scene, on) => { window.wdLeftHandedControls = on; },
     diagnostics_fps_limiter: (_scene, on) => { window.wdFpsLimiter = on ? 60 : 0; },
     visuals_particle_density_slider: (_scene, on) => { window.wdParticleDensity = on ? 0.65 : 1; },
-    visuals_glow_quality_slider: (_scene, on) => { window.wdGlowQuality = on ? 0.65 : 1; }
+    visuals_glow_quality_slider: (_scene, on) => { window.wdGlowQuality = on ? 0.65 : 1; },
+    gameplay_auto_restart: (_scene, on) => { window.wdAutoRestart = on; },
+    gameplay_death_marker: (_scene, on) => { window.wdDeathMarker = on; },
+    gameplay_best_percent_toast: (_scene, on) => { window.wdBestPercentToast = on; },
+    gameplay_completion_confetti: (_scene, on) => { window.wdCompletionConfetti = on; },
+    movement_coyote_time: (_scene, on) => { window.wdCoyoteTime = on; },
+    movement_jump_buffer: (_scene, on) => { window.wdJumpBuffer = on; },
+    movement_dual_camera_lock: (_scene, on) => { window.wdDualCameraLock = on; },
+    editor_selection_count: (_scene, on) => { window.wdEditorSelectionCount = on; },
+    editor_selection_outline: (_scene, on) => { window.wdEditorSelectionOutline = on; },
+    editor_smart_object_spacing: (_scene, on) => { window.wdEditorSmartSpacing = on; },
+    editor_duplicate_offset_memory: (_scene, on) => { window.wdEditorDuplicateMemory = on; },
+    visuals_camera_bounds_guide: (_scene, on) => { window.wdCameraBoundsGuide = on; },
+    visuals_wave_angle_guide: (_scene, on) => { window.wdWaveAngleGuide = on; },
+    visuals_trail_quality_slider: (_scene, on) => { window.wdTrailQuality = on ? 0.65 : 1; },
+    accessibility_disable_flashes: (_scene, on) => { window.wdDisableFlashes = on; },
+    accessibility_colorblind_green_filter: (_scene, on) => { window.wdColorFilter = on ? "green" : ""; },
+    accessibility_colorblind_red_filter: (_scene, on) => { window.wdColorFilter = on ? "red" : ""; },
+    accessibility_colorblind_blue_filter: (_scene, on) => { window.wdColorFilter = on ? "blue" : ""; },
+    accessibility_input_key_display: (_scene, on) => { window.wdInputKeyDisplay = on; },
+    input_input_latency_meter: (_scene, on) => { window.wdInputLatencyMeter = on; },
+    input_input_buffer_display: (_scene, on) => { window.wdInputBufferDisplay = on; },
+    audio_beat_pulse: (_scene, on) => { window.wdBeatPulse = on; },
+    audio_beat_grid: (_scene, on) => { window.wdBeatGrid = on; },
+    audio_offset_calibration: (_scene, on) => { window.wdOffsetCalibration = on; },
+    audio_practice_metronome: (_scene, on) => { window.wdPracticeMetronome = on; },
+    audio_death_sound_toggle: (_scene, on) => { window.wdDeathSound = on; },
+    audio_portal_sound_toggle: (_scene, on) => { window.wdPortalSound = on; },
+    audio_music_ducking: (_scene, on) => { window.wdMusicDucking = on; },
+    online_song_browser_cache: (_scene, on) => { window.wdSongBrowserCache = on; },
+    online_search_history: (_scene, on) => { window.wdSearchHistory = on; },
+    online_favorite_songs: (_scene, on) => { window.wdFavoriteSongs = on; },
+    online_favorite_levels: (_scene, on) => { window.wdFavoriteLevels = on; },
+    online_download_progress: (_scene, on) => { window.wdDownloadProgress = on; },
+    online_retry_failed_downloads: (_scene, on) => { window.wdRetryFailedDownloads = on; },
+    progression_run_history: (_scene, on) => { window.wdRunHistory = on; },
+    progression_death_heatmap: (_scene, on) => { window.wdDeathHeatmap = on; },
+    progression_progress_graph: (_scene, on) => { window.wdProgressGraph = on; },
+    progression_personal_records: (_scene, on) => { window.wdPersonalRecords = on; },
+    progression_export_statistics: (_scene, on) => { window.wdExportStatistics = on; },
+    diagnostics_memory_estimate: (_scene, on) => { window.wdMemoryEstimate = on; },
+    diagnostics_asset_load_log: (_scene, on) => { window.wdAssetLoadLog = on; },
+    diagnostics_network_request_log: (_scene, on) => { window.wdNetworkRequestLog = on; },
+    diagnostics_level_validation_report: (_scene, on) => { window.wdLevelValidationReport = on; },
+    diagnostics_object_count_warning: (_scene, on) => { window.wdObjectCountWarning = on; },
+    diagnostics_song_availability_check: (_scene, on) => { window.wdSongAvailabilityCheck = on; },
+    diagnostics_save_integrity_check: (_scene, on) => { window.wdSaveIntegrityCheck = on; }
+  };
+  const screenW = () => Number(window.screenWidth || window.innerWidth || 960);
+  const screenH = () => Number(window.screenHeight || window.innerHeight || 540);
+  const ensureLabel = (scene, key, x, y, style = {}) => {
+    if (!scene[key]) scene[key] = scene.add.text(x, y, "", {
+      fontFamily: "Arial", fontSize: "16px", color: "#ffffff", stroke: "#000000", strokeThickness: 4, ...style
+    }).setScrollFactor(0).setDepth(9000);
+    return scene[key];
+  };
+  const refreshFilter = () => {
+    const filters = [];
+    if (window.wdHighContrast) filters.push("contrast(1.22) saturate(1.08)");
+    if (window.wdColorFilter === "green") filters.push("hue-rotate(80deg)");
+    if (window.wdColorFilter === "red") filters.push("hue-rotate(290deg)");
+    if (window.wdColorFilter === "blue") filters.push("hue-rotate(170deg)");
+    if (window.wdPhotosensitivityDimmer) filters.push("brightness(.72)");
+    if (window.wdReducedMotion) filters.push("saturate(.82)");
+    document.body.style.filter = filters.join(" ");
   };
   window.WDV3 = {
     version: 3,
@@ -92,6 +200,23 @@
       }
       if (this.isEnabled("accessibility_pause_on_focus_loss") && document.hidden && !scene._menuActive && !scene._paused) scene._pauseGame?.();
       if (this.isEnabled("audio_mute_menu_music") && scene._menuActive && scene._audio?.isplaying?.()) scene._audio.stopMusic?.();
+      refreshFilter();
+      if (this.isEnabled("editor_selection_count") && window.isEditor && scene._levelEditor) {
+        const selected = scene._levelEditor._getCurrentSelectedEditorObjectIds?.() || [];
+        ensureLabel(scene, "_v3SelectionLabel", 14, 104).setText(`Selected objects: ${selected.length}`).setVisible(true);
+      } else if (scene._v3SelectionLabel) scene._v3SelectionLabel.setVisible(false);
+      if (this.isEnabled("diagnostics_object_count_warning") && window.isEditor) {
+        const count = Array.isArray(window.levelObjects) ? window.levelObjects.filter(Boolean).length : 0;
+        ensureLabel(scene, "_v3ObjectCountLabel", screenW() - 14, 104, { align: "right" }).setOrigin(1, 0).setText(`Objects: ${count}${count > 1000 ? "  HIGH" : ""}`).setTint(count > 1000 ? 0xff7777 : 0xffffff).setVisible(true);
+      } else if (scene._v3ObjectCountLabel) scene._v3ObjectCountLabel.setVisible(false);
+      if (this.isEnabled("accessibility_input_key_display") && !scene._menuActive) {
+        ensureLabel(scene, "_v3InputLabel", 14, screenH() - 28).setText("INPUT DISPLAY ON").setVisible(true);
+      } else if (scene._v3InputLabel) scene._v3InputLabel.setVisible(false);
+      if (this.isEnabled("diagnostics_memory_estimate") && !scene._menuActive) {
+        const used = window.performance?.memory?.usedJSHeapSize;
+        const value = used ? `${Math.round(used / 1048576)} MB` : "browser unavailable";
+        ensureLabel(scene, "_v3MemoryLabel", screenW() - 14, screenH() - 28, { align: "right" }).setOrigin(1, 0).setText(`Memory: ${value}`).setVisible(true);
+      } else if (scene._v3MemoryLabel) scene._v3MemoryLabel.setVisible(false);
     },
     run(id, scene = window._wdGameScene) {
       const feature = features.find(item => item.id === id);
@@ -105,6 +230,9 @@
     },
     install(scene) {
       if (scene._v3FeatureKeyHandler) return;
+      features.forEach(feature => {
+        if (feature.kind === "toggle" && this.isEnabled(feature.id)) toggleHandlers[feature.id]?.(scene, true);
+      });
       scene._v3FeatureKeyHandler = event => {
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "p") {
           event.preventDefault();

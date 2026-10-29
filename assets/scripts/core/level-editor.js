@@ -2976,8 +2976,9 @@ class LevelEditor {
     const worldX = (this.input.activePointer.x + this._cameraX) / this._editorZoom;
     const worldY = (this.input.activePointer.y + this._cameraY) / this._editorZoom;
 
-    const snapX = Math.floor(worldX / 60) * 60;
-    const snapY = Math.floor((worldY + 20) / 60) * 60;
+    const useV3Snap = window.wdEditorSnapToGrid !== false;
+    const snapX = useV3Snap ? Math.floor(worldX / 60) * 60 : worldX;
+    const snapY = useV3Snap ? Math.floor((worldY + 20) / 60) * 60 : worldY;
 
     const transformedX = (snapX / 2) + 15;
     const transformedY = -(snapY / 2) + 225;
