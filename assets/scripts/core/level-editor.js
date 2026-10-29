@@ -96,6 +96,9 @@ class LevelEditor {
     this._editorBoxSelectMoved = false;
     this._editorBoxSelectStart = null;
     this._editorBoxSelectGraphics = null;
+    this._editorMeasureMode = false;
+    this._editorMeasureStart = null;
+    this._editorMeasureGraphics = this.add.graphics().setScrollFactor(0).setDepth(2001);
     this._currentSelectedObjectIds = [];
     this._lockedEditorObjectIds = this._loadEditorLockedObjectIds();
     this._editorTab = "build";
@@ -152,6 +155,11 @@ class LevelEditor {
     });
     this.input.on('pointerdown', (pointer) => {
         if (this._editorPlaytestActive && !this._editorPlaytestPaused) return;
+        if (this._editorMeasureMode) {
+            this._editorMeasureStart = { x: pointer.x, y: pointer.y };
+            this._updateEditorMeasure(pointer);
+            return;
+        }
         this._clickStartPos.x = pointer.x;
         this._clickStartPos.y = pointer.y;
         this._cameraStartX = this._cameraX;
@@ -163,6 +171,10 @@ class LevelEditor {
     });
     this.input.on('pointermove', (pointer) => {
         if (this._editorPlaytestActive && !this._editorPlaytestPaused) return;
+        if (this._editorMeasureStart) {
+            this._updateEditorMeasure(pointer);
+            return;
+        }
         if (this._editorBoxSelectActive) {
             this._updateEditorBoxSelect(pointer);
         }
@@ -173,6 +185,11 @@ class LevelEditor {
             this._lastSwipeGridY = -1;
             this._isDragging = false;
             this._isDraggingSlider = false;
+            return;
+        }
+        if (this._editorMeasureStart) {
+            this._updateEditorMeasure(pointer);
+            this._editorMeasureStart = null;
             return;
         }
         if (this._editorBoxSelectActive) {
@@ -261,6 +278,14 @@ class LevelEditor {
         event.preventDefault();
         if (event?.ctrlKey) this._openEditorObjectSearch();
         else this._focusEditorSelection();
+    });
+    this.input.keyboard.on('keydown-M', (event) => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+        event.preventDefault();
+        this._editorMeasureMode = !this._editorMeasureMode;
+        this._editorMeasureStart = null;
+        this._editorMeasureGraphics?.clear();
+        this._editorCoordinateReadout?.setTint(this._editorMeasureMode ? 0xffd76e : 0xb9d8ff);
     });
 
     this._createEditorGui();
@@ -543,7 +568,8 @@ class LevelEditor {
         this._sideButtons,
         this._timelineContainer,
         this._zoomText,
-        this._editorCoordinateReadout
+        this._editorCoordinateReadout,
+        this._editorMeasureGraphics
     ];
 
     for (const obj of guiObjects) {
@@ -3034,6 +3060,23 @@ class LevelEditor {
       Number(this._cameraX || 0) + centerX - screenWidth / 2,
       Number(this._cameraY || 0) + centerY - screenHeight / 2
     );
+  }
+
+  _updateEditorMeasure(pointer) {
+    if (!this._editorMeasureMode || !this._editorMeasureStart || !this._editorMeasureGraphics) return;
+    const start = this._editorMeasureStart;
+    const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+    const dx = (pointer.x - start.x) / zoom;
+    const dy = (pointer.y - start.y) / zoom;
+    const distance = Math.hypot(dx, dy);
+    const grid = Math.max(1, Number(this._editorGridSize || 60));
+    this._editorMeasureGraphics.clear();
+    this._editorMeasureGraphics.lineStyle(3, 0xffd76e, 0.95);
+    this._editorMeasureGraphics.lineBetween(start.x, start.y, pointer.x, pointer.y);
+    this._editorMeasureGraphics.fillStyle(0xffd76e, 1);
+    this._editorMeasureGraphics.fillCircle(start.x, start.y, 5);
+    this._editorMeasureGraphics.fillCircle(pointer.x, pointer.y, 5);
+    this._editorCoordinateReadout?.setText(`MEASURE  ${Math.round(distance)}px  •  ${(distance / grid).toFixed(2)} GRID  •  Δ ${Math.round(dx)},${Math.round(dy)}`);
   }
 
   _duplicateSelectedObjectsMirrored(axis) {
@@ -10402,6 +10445,7 @@ LevelEditor.methodNames = [
   "_duplicateSelectedObject",
   "_sendSelectedEditorObjectsToTop",
   "_focusEditorSelection",
+  "_updateEditorMeasure",
   "_duplicateSelectedObjectsMirrored",
   "_deleteSelectedObject",
   "_updateEditorActionButtons",
