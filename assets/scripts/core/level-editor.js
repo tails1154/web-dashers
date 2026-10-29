@@ -6741,11 +6741,28 @@ class LevelEditor {
       searchButton.disableInteractive();
       status.setText("Searching Newgrounds Audio...").setColor("#b9d4f5");
       try {
+        const cacheKey = `wd_v3_ng_audio_${term.toLowerCase()}`;
+        if (window.WDV3?.isEnabled?.("online_song_browser_cache")) {
+          try {
+            const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+            if (Array.isArray(cached)) { renderResults(cached); return; }
+          } catch (_) {}
+        }
         const base = (window._gdProxyUrl || "").replace(/\/$/, "");
         const response = await fetch(`${base}?action=ng_audio_search&q=${encodeURIComponent(term)}`, { credentials: "omit" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Newgrounds search failed");
-        renderResults(Array.isArray(data.songs) ? data.songs : []);
+        const songs = Array.isArray(data.songs) ? data.songs : [];
+        renderResults(songs);
+        if (window.WDV3?.isEnabled?.("online_song_browser_cache")) localStorage.setItem(cacheKey, JSON.stringify(songs));
+        if (window.WDV3?.isEnabled?.("online_search_history")) {
+          let history = [];
+          try { history = JSON.parse(localStorage.getItem("wd_v3_song_search_history") || "[]"); } catch (_) {}
+          if (!Array.isArray(history)) history = [];
+          history = history.filter(item => item !== term);
+          history.push(term);
+          localStorage.setItem("wd_v3_song_search_history", JSON.stringify(history.slice(-20)));
+        }
       } catch (error) {
         results.removeAll(true);
         status.setText(error.message || "Newgrounds search failed").setColor("#ff9b9b");
