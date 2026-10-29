@@ -3,7 +3,8 @@
     ["restart_level", "Restart level"], ["toggle_practice", "Toggle practice mode"], ["open_settings", "Open settings"], ["open_icon_kit", "Open icon kit"], ["show_run_stats", "Show run statistics"],
     ["copy_level_id", "Copy level ID"], ["copy_report_id", "Copy crash report ID"], ["take_screenshot", "Take screenshot"], ["reset_checkpoint", "Reset checkpoint"], ["toggle_fullscreen", "Toggle fullscreen"],
     ["replay_last_attempt", "Replay last attempt"], ["open_level_info", "Open level info"], ["open_achievements", "Open achievements"], ["open_update_log", "Open update log"], ["open_audio_browser", "Open audio browser"],
-    ["save_editor_level", "Save editor level"], ["play_editor_level", "Play editor level"], ["toggle_editor_grid", "Toggle editor grid"], ["focus_editor_camera", "Center editor camera"], ["clear_editor_selection", "Clear editor selection"], ["reset_v3_preferences", "Reset V3 preferences"]
+    ["save_editor_level", "Save editor level"], ["play_editor_level", "Play editor level"], ["toggle_editor_grid", "Toggle editor grid"], ["focus_editor_camera", "Center editor camera"], ["clear_editor_selection", "Clear editor selection"], ["reset_v3_preferences", "Reset V3 preferences"],
+    ["open_quests", "Open quests"], ["open_paths", "Open paths"], ["open_shop", "Open diamond shop"], ["open_leaderboards", "Open leaderboards"], ["open_gauntlets", "Open gauntlets"], ["open_lists", "Open saved lists"], ["open_map_packs", "Open map packs"], ["open_creator", "Open creator"], ["open_level_search", "Open level search"], ["open_versus", "Open versus"], ["open_vault", "Open vault"], ["open_account", "Open account"]
   ].map(([id, name]) => ({ id, name, kind: "command" }));
   const togglesByCategory = {
     Gameplay: ["Auto restart", "Death marker", "Attempt counter", "Best percent toast", "Level timer", "Session timer", "Completion confetti", "Coin route hints", "Practice ghost", "Practice split timer"],
@@ -86,6 +87,18 @@
       save();
       notice(scene, "V3 PREFERENCES", "All V3 toggles were reset.");
     },
+    open_quests: scene => scene._showQuestPanel?.(),
+    open_paths: scene => scene._openPathsScene?.(),
+    open_shop: scene => scene._openDiamondShop?.(true),
+    open_leaderboards: scene => scene._openLeaderboardScene?.(),
+    open_gauntlets: scene => scene._openGauntletsMenu?.(),
+    open_lists: scene => scene._openListsMenu?.(),
+    open_map_packs: scene => scene._openMapPacksMenu?.(),
+    open_creator: scene => scene._openCreatorMenu?.(),
+    open_level_search: scene => scene._openSearchMenu?.(),
+    open_versus: scene => scene._openVersusMenu?.(),
+    open_vault: scene => scene._openVaultMenu?.(),
+    open_account: scene => scene._buildAccountPopup?.(),
     open_update_log: scene => scene._buildUpdateLogPopup?.(),
     open_achievements: scene => window.GDAchievements?.showPanel?.() || notice(scene, "ACHIEVEMENTS", "The achievements panel is unavailable here."),
     diagnostics_level_validation_report: scene => {
