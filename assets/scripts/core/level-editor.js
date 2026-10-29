@@ -329,6 +329,10 @@ class LevelEditor {
     const gridSizeLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 170, "bigFont", "GRID", 15).setOrigin(0.5);
     this._toolbox.add([gridSizeButton, gridSizeLabel]);
     this._makeCompositeBouncyButton(gridSizeButton, [gridSizeButton, gridSizeLabel], 0.78, () => this._openEditorGridSizeDialog());
+    const overviewButton = this.add.nineslice(screenWidth - 104, screenHeight - 122, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
+    const overviewLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 122, "bigFont", "MAP", 15).setOrigin(0.5);
+    this._toolbox.add([overviewButton, overviewLabel]);
+    this._makeCompositeBouncyButton(overviewButton, [overviewButton, overviewLabel], 0.78, () => this._openEditorOverviewPopup());
 
     const tabX = (screenWidth / 2) - 475;
     const tabYStart = screenHeight - 150;
@@ -665,6 +669,90 @@ class LevelEditor {
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
     this._updateEditorGrid();
     this._updateEditorTimeline();
+  }
+
+  _openEditorOverviewPopup() {
+    if (this._editorOverviewPopup) return;
+
+    const popup = this.add.container(0, 0).setScrollFactor(0).setDepth(2400);
+    const dim = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.7).setInteractive();
+    popup.add(dim);
+
+    const panelWidth = Math.min(screenWidth - 80, 920);
+    const panelHeight = Math.min(screenHeight - 90, 520);
+    const panel = this.add.container(screenWidth / 2, screenHeight / 2);
+    const corner = this.textures.get("GJ_square01").source[0].width * 0.325;
+    const panelBg = this._drawScale9(0, 0, panelWidth, panelHeight, "GJ_square01", corner, 0xffffff, 1);
+    panel.add(panelBg);
+    popup.add(panel);
+
+    const title = this.add.bitmapText(0, -panelHeight / 2 + 34, "bigFont", "LEVEL OVERVIEW", 30).setOrigin(0.5);
+    panel.add(title);
+    const close = this.add.image(-panelWidth / 2 + 26, -panelHeight / 2 + 26, "GJ_WebSheet", "GJ_closeBtn_001.png").setScale(0.72).setInteractive();
+    panel.add(close);
+    this._makeBouncyButton(close, 0.72, () => this._closeEditorOverviewPopup());
+
+    const mapWidth = panelWidth - 54;
+    const mapHeight = panelHeight - 112;
+    const mapLeft = -mapWidth / 2;
+    const mapTop = -mapHeight / 2 + 22;
+    const worldWidth = Math.max(screenWidth, this._getEditorLevelWidth?.() || screenWidth);
+    const worldHeight = Math.max(360, Number(this._level?.height || 720));
+    const mapScale = Math.min(mapWidth / worldWidth, mapHeight / worldHeight);
+    const originX = mapLeft + (mapWidth - worldWidth * mapScale) / 2;
+    const originY = mapTop + (mapHeight - worldHeight * mapScale) / 2;
+    const mapBg = this.add.rectangle(originX + worldWidth * mapScale / 2, originY + worldHeight * mapScale / 2, worldWidth * mapScale, worldHeight * mapScale, 0x101b2e, 1).setStrokeStyle(2, 0x5a7394, 1).setInteractive();
+    panel.add(mapBg);
+
+    const mapGraphics = this.add.graphics();
+    mapGraphics.setDepth(1);
+    const objects = Array.isArray(window.levelObjects) ? window.levelObjects : [];
+    for (const object of objects) {
+      if (!object) continue;
+      const worldX = Math.max(0, (Number(object.x) - 15) * 2);
+      const worldY = Phaser.Math.Clamp(worldHeight - (Number(object.y) || 0) * 2, 0, worldHeight);
+      const color = Number(object.id) >= 5000 ? 0xffc45c : 0x7dd9ff;
+      const size = Math.max(2, Math.min(8, 8 * mapScale));
+      mapGraphics.fillStyle(color, 0.85);
+      mapGraphics.fillRect(originX + worldX * mapScale - size / 2, originY + worldY * mapScale - size / 2, size, size);
+    }
+    panel.add(mapGraphics);
+
+    const viewport = this.add.rectangle(0, 0, 1, 1).setStrokeStyle(2, 0xffffff, 0.9).setFillStyle(0xffffff, 0.06);
+    panel.add(viewport);
+    const refreshViewport = () => {
+      const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+      const viewWidth = Math.min(worldWidth, screenWidth / zoom);
+      const viewHeight = Math.min(worldHeight, screenHeight / zoom);
+      const centerWorldX = Number(this._cameraX || 0) + screenWidth / (2 * zoom);
+      const centerWorldY = Number(this._cameraY || 0) + screenHeight / (2 * zoom);
+      viewport.setPosition(
+        originX + Phaser.Math.Clamp(centerWorldX, 0, worldWidth) * mapScale,
+        originY + Phaser.Math.Clamp(worldHeight - centerWorldY, 0, worldHeight) * mapScale
+      );
+      viewport.setSize(Math.max(3, viewWidth * mapScale), Math.max(3, viewHeight * mapScale));
+    };
+    refreshViewport();
+
+    mapBg.on("pointerdown", pointer => {
+      const localX = Phaser.Math.Clamp((pointer.x - panel.x - originX) / mapScale, 0, worldWidth);
+      const localY = Phaser.Math.Clamp((pointer.y - panel.y - originY) / mapScale, 0, worldHeight);
+      const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+      const cameraX = localX - screenWidth / (2 * zoom);
+      const cameraY = (worldHeight - localY) - screenHeight / (2 * zoom);
+      this._setEditorZoomInstant(zoom, cameraX, cameraY);
+      refreshViewport();
+    });
+
+    const hint = this.add.bitmapText(0, panelHeight / 2 - 34, "bigFont", "CLICK THE MAP TO JUMP", 17).setOrigin(0.5).setTint(0xb9d8ff);
+    panel.add(hint);
+    this._editorOverviewPopup = popup;
+  }
+
+  _closeEditorOverviewPopup() {
+    if (!this._editorOverviewPopup) return;
+    this._editorOverviewPopup.destroy(true);
+    this._editorOverviewPopup = null;
   }
 
 
@@ -1185,6 +1273,7 @@ class LevelEditor {
     this._closeEditorLevelSettingsPopup();
     this._closeEditorHorizontalOptionPopup();
     this._closeEditorColorPickerPopup();
+    this._closeEditorOverviewPopup();
     this._closeEditorStartOptionsPopup();
     this._closeEditorObjectOptionsPopup();
     this._clearEditorIsolation();
@@ -10135,6 +10224,8 @@ LevelEditor.methodNames = [
   "_closeEditorLevelSettingsPopup",
   "_closeEditorHorizontalOptionPopup",
   "_closeEditorColorPickerPopup",
+  "_openEditorOverviewPopup",
+  "_closeEditorOverviewPopup",
   "_closeEditorObjectOptionsPopup",
   "_editorSettingsToMap",
   "_editorMapToSettings",

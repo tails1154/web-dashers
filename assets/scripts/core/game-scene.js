@@ -5324,6 +5324,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._closeEditorColorPickerPopup();
           return;
       }
+      if (this._editorOverviewPopup) {
+          this._closeEditorOverviewPopup();
+          return;
+      }
       if (this._editorHorizontalOptionPopup) {
           this._closeEditorHorizontalOptionPopup();
           return;
