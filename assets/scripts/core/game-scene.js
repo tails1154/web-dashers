@@ -6670,6 +6670,10 @@ _buildPauseOverlay() {
     const runHistoryLabel = this.add.bitmapText(textureY - 280, 80, "bigFont", "RUNS", 17).setOrigin(0.5);
     this._pauseContainer.add([runHistoryButton, runHistoryLabel]);
     this._makeCompositeBouncyButton(runHistoryButton, [runHistoryButton, runHistoryLabel], 0.7, () => this._openRunHistoryDialog());
+    const performanceButton = this.add.nineslice(textureY - 400, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const performanceLabel = this.add.bitmapText(textureY - 400, 80, "bigFont", "PERF", 17).setOrigin(0.5);
+    this._pauseContainer.add([performanceButton, performanceLabel]);
+    this._makeCompositeBouncyButton(performanceButton, [performanceButton, performanceLabel], 0.7, () => this._openPerformanceDialog());
     const snapshotButton = this.add.nineslice(textureY + 110, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
     const snapshotLabel = this.add.bitmapText(textureY + 110, 80, "bigFont", "SHOT", 17).setOrigin(0.5);
     this._pauseContainer.add([snapshotButton, snapshotLabel]);
@@ -7013,6 +7017,30 @@ _buildPauseOverlay() {
           this._segmentSplitToast = null;
         }
       }
+    });
+  }
+  _updatePerformanceSamples() {
+    if (window.isEditor || this._menuActive || this._paused || this._state?.isDead) return;
+    const now = Number(this.time?.now || globalThis.performance?.now?.() || Date.now());
+    if (now - Number(this._performanceSampleAt || 0) < 500) return;
+    this._performanceSampleAt = now;
+    const fps = Number(this.game?.loop?.actualFps || this.game?.loop?.fps || 0);
+    if (!Number.isFinite(fps) || fps <= 0) return;
+    const activeObjects = (this._level?.objectSprites || []).reduce((count, sprites) => count + (Array.isArray(sprites) ? sprites.filter(sprite => sprite?.active).length : 0), 0);
+    this._performanceSamples = Array.isArray(this._performanceSamples) ? this._performanceSamples : [];
+    this._performanceSamples.push({ fps, activeObjects });
+    this._performanceSamples = this._performanceSamples.slice(-30);
+  }
+  _openPerformanceDialog() {
+    const samples = Array.isArray(this._performanceSamples) ? this._performanceSamples : [];
+    const fpsValues = samples.map(sample => Number(sample.fps)).filter(value => Number.isFinite(value) && value > 0);
+    const average = fpsValues.length ? fpsValues.reduce((sum, value) => sum + value, 0) / fpsValues.length : 0;
+    const minimum = fpsValues.length ? Math.min(...fpsValues) : 0;
+    const maximum = fpsValues.length ? Math.max(...fpsValues) : 0;
+    const activeObjects = samples.length ? samples[samples.length - 1].activeObjects : 0;
+    window.showNativePhaserDialog(this, {
+      title: "PERFORMANCE",
+      message: `FPS average: ${average.toFixed(1)}\nFPS range: ${minimum.toFixed(1)}–${maximum.toFixed(1)}\nActive objects: ${activeObjects}\nSamples: ${samples.length}`
     });
   }
   _saveRunSnapshot() {
@@ -9019,6 +9047,8 @@ _buildSettingsPopup() {
   }
   _startGame() {
     this._resetRunTimer();
+    this._performanceSamples = [];
+    this._performanceSampleAt = 0;
     this._milestonesShown = new Set();
     if (this._milestoneToast) {
       this.tweens.killTweensOf(this._milestoneToast);
@@ -10156,6 +10186,7 @@ _buildSettingsPopup() {
     this._updateRunGoal();
     this._updateSegmentSplits();
     this._updateInputHistory();
+    this._updatePerformanceSamples();
     this._updateBestSplit();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
