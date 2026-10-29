@@ -6288,6 +6288,20 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       }
     });
   }
+  _showDeathSummary() {
+    if (!window.deathSummary || window.streamMode || this._deathSummaryContainer) return;
+    const summary = this.add.container(screenWidth / 2, 128).setScrollFactor(0).setDepth(96);
+    const background = this.add.rectangle(0, 0, 360, 92, 0x1d2433, 0.94).setStrokeStyle(3, 0xffc857, 1);
+    const time = Number(this._playTime || 0);
+    const minutes = Math.floor(time / 60);
+    const seconds = (time % 60).toFixed(2).padStart(5, "0");
+    const text = this.add.bitmapText(0, 0, "bigFont", `DIED AT ${this._lastPercent || 0}%\n${minutes}:${seconds}  •  ${this._levelJumps || 0} JUMPS`, 22)
+      .setOrigin(0.5).setCenterAlign().setTint(0xffe4a3);
+    summary.add([background, text]);
+    summary.alpha = 0;
+    this._deathSummaryContainer = summary;
+    this.tweens.add({ targets: summary, alpha: 1, duration: 160, ease: "Quad.Out" });
+  }
   _updateBestSplit() {
     if (!window.bestSplit || window.streamMode || window.isEditor || this._menuActive || this._levelWon) {
       if (this._bestSplitLabel) this._bestSplitLabel.setVisible(false);
@@ -6935,6 +6949,7 @@ _buildSettingsPopup() {
         "Run Timer": "Shows the active attempt duration and pauses while the game is paused or the player is dead.",
         "Best Split": "Shows whether your current progress is ahead of or behind your saved best percentage.",
         "Milestone Toasts": "Shows a short celebration when you pass 25%, 50%, or 75% of a level during an attempt.",
+        "Death Summary": "Shows your attempt time, progress, and jump count briefly after dying.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
         "Stream Mode": "Hides gameplay HUD elements so the game is ready for Chromebook screen sharing or browser capture.",
@@ -7378,6 +7393,20 @@ _buildSettingsPopup() {
             true,
             "Crash Reporting"
         );
+        createToggle(container, column1X, startY + spacingY, "Death Summary",
+            () => !!window.deathSummary,
+            (v) => {
+                window.deathSummary = !!v;
+                if (!v && this._deathSummaryContainer) {
+                    this._deathSummaryContainer.destroy(true);
+                    this._deathSummaryContainer = null;
+                }
+            },
+            undefined,
+            22,
+            true,
+            "Death Summary"
+        );
         createToggle(container, column2X, startY, "Input History",
             () => !!window.inputHistory,
             (v) => {
@@ -7475,6 +7504,7 @@ _buildSettingsPopup() {
         bestSplit: !!window.bestSplit,
         milestoneToasts: !!window.milestoneToasts,
         streamMode: !!window.streamMode,
+        deathSummary: !!window.deathSummary,
         replayGhostOpacity: Number(window.replayGhostOpacity) || 0.34,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
@@ -7516,6 +7546,7 @@ _buildSettingsPopup() {
         bestSplit: false,
         milestoneToasts: false,
         streamMode: false,
+        deathSummary: false,
         replayGhostOpacity: 0.34,
         showGlow: true,
         showEditorGlow: false,
@@ -7551,6 +7582,7 @@ _buildSettingsPopup() {
     window.bestSplit = !!data.bestSplit;
     window.milestoneToasts = !!data.milestoneToasts;
     window.streamMode = !!data.streamMode;
+    window.deathSummary = !!data.deathSummary;
     window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(data.replayGhostOpacity) || 0.34));
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
@@ -9156,6 +9188,11 @@ _buildSettingsPopup() {
     this._deathTimer = 0;
     this._deathSoundPlayed = false;
     this._newBestShown = false;
+    this._deathSummaryShown = false;
+    if (this._deathSummaryContainer) {
+      this._deathSummaryContainer.destroy(true);
+      this._deathSummaryContainer = null;
+    }
     this._hadNewBest = false;
     this._levelWon = false;
     this._pendingStarReward = 0;
@@ -10178,6 +10215,10 @@ _buildSettingsPopup() {
         let _0x435587 = this._level.endXPos || 6000;
         let _0x169d53 = this._playerWorldX;
         this._lastPercent = Math.min(99, Math.max(0, Math.floor(_0x169d53 / _0x435587 * 100)));
+        if (!this._deathSummaryShown) {
+          this._deathSummaryShown = true;
+          this._showDeathSummary();
+        }
         if (this._lastPercent > this._bestPercent && !this._practicedMode.practiceMode && !this._runDisqualified) {
           this._bestPercent = this._lastPercent;
           localStorage.setItem("bestPercent_" + (window.currentlevel[2] || "level_1"), this._bestPercent);
