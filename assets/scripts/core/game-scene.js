@@ -10282,9 +10282,7 @@ _buildSettingsPopup() {
     if (this._versusActive && !this._versusFinished && (
       this._practicedMode?.practiceMode ||
       window.noClip ||
-      window.macroBot ||
-      this._macroBot?.playing ||
-      this._macroBot?.recording ||
+      this._macroBot?.playing === true ||
       Number(window.speedHack || 0) > 1 ||
       this._startPosIndex !== -1
     )) {
@@ -10294,7 +10292,7 @@ _buildSettingsPopup() {
 
     // Any assist invalidates this run.  Invalid runs still play normally, but
     // never write normal/practice percentage progress or completion rewards.
-    if (window.noClip || window.macroBot || Number(window.speedHack || 0) > 1 || this._startPosIndex !== -1) {
+    if (window.noClip || this._macroBot?.playing === true || Number(window.speedHack || 0) > 1 || this._startPosIndex !== -1) {
       this._runDisqualified = true;
       window._gdAchievementsBlocked = true;
       const currentId = String(window.currentlevel?.[2] || "");
@@ -10304,7 +10302,7 @@ _buildSettingsPopup() {
           const record = levels.find(level => String(level?.createdId) === currentId);
           if (record) {
             record.hackVerified = true;
-            record.verification_hacks = Boolean(window.noClip || window.macroBot || Number(window.speedHack || 0) > 1);
+            record.verification_hacks = Boolean(window.noClip || this._macroBot?.playing === true || Number(window.speedHack || 0) > 1);
             record.verification_start_pos = this._startPosIndex !== -1;
             localStorage.setItem("created_levels", JSON.stringify(levels));
           }
