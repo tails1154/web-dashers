@@ -6146,6 +6146,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     if (clearLast) this._replayGhostLast = [];
     this._replayGhostIndex = 0;
     this._replayGhostSampleClock = 0;
+    this._replayGhostPlaybackClock = 0;
     this._replayGhostWasDead = false;
     if (this._replayGhostGraphics) this._replayGhostGraphics.clear().setVisible(false);
   }
@@ -6173,19 +6174,25 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._replayGhostWasDead = false;
       this._replayGhostCurrent = [];
       this._replayGhostSampleClock = 0;
+      this._replayGhostPlaybackClock = 0;
     }
     this._replayGhostSampleClock += Math.max(0, Number(deltaTime) || 0);
     if (this._replayGhostSampleClock >= 50) {
       this._replayGhostSampleClock = 0;
       this._replayGhostCurrent.push({ x: Number(this._playerWorldX || 0), y: Number(this._state?.y || 0) });
     }
+    this._replayGhostPlaybackClock += Math.max(0, Number(deltaTime) || 0);
+    while (this._replayGhostPlaybackClock >= 50) {
+      this._replayGhostPlaybackClock -= 50;
+      this._replayGhostIndex += 1;
+    }
     const point = this._replayGhostLast?.[this._replayGhostIndex];
     if (!point) {
       this._replayGhostGraphics.clear().setVisible(false);
       return;
     }
-    this._replayGhostIndex += 1;
-    const x = this._getMirrorXOffset ? this._getMirrorXOffset(320) : 320;
+    const ghostScreenX = Number(point.x || 0) - Number(this._cameraX || 0);
+    const x = this._getMirrorXOffset ? this._getMirrorXOffset(ghostScreenX) : ghostScreenX;
     const y = typeof b === "function" ? b(point.y) + Number(this._cameraY || 0) : screenHeight / 2;
     this._replayGhostGraphics.clear().fillStyle(0x9de8ff, 0.34).fillCircle(x, y, 13).lineStyle(2, 0xffffff, 0.7).strokeCircle(x, y, 16).setVisible(true);
   }
