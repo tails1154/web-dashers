@@ -231,6 +231,24 @@ class LevelEditor {
         if (this._editorTextInputFocused) return;
         this._setEditorTab("delete");
     });
+    const categoryShortcutKeys = [
+        ["FOUR", "pinned"],
+        ["FIVE", "recent"],
+        ["SIX", "all"],
+        ["SEVEN", "blocks"],
+        ["EIGHT", "slopes"],
+        ["NINE", "hazards"],
+        ["ZERO", "triggers"]
+    ];
+    for (const [key, category] of categoryShortcutKeys) {
+        this.input.keyboard.on(`keydown-${key}`, () => {
+            if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+            this._setEditorTab("build");
+            this._currentBuildCategory = category;
+            this._editorPage = 0;
+            this._buildObjectGrid();
+        });
+    }
 
     const moveSelectedObjectsWithKey = (dx, dy) => {
         if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
