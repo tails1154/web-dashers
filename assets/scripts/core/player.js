@@ -3320,6 +3320,18 @@ if (this.p.isFlying || this.p.isUfo) {
     const surfaceY = gameObj.getSlopeSurfaceY(contactX);
     if (surfaceY === null) return { landed: false, died: false };
     const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
+    const waveTouchesSlope = (centerX, centerY) => {
+      if (!this.p.isWave) return false;
+      const points = [
+        [0, 0], [hitSize, 0], [-hitSize, 0],
+        [0, hitSize], [0, -hitSize],
+        [hitSize, hitSize], [hitSize, -hitSize],
+        [-hitSize, hitSize], [-hitSize, -hitSize]
+      ];
+      return points.some(([dx, dy]) => gameObj.isSlopeSolidAtExact
+        ? gameObj.isSlopeSolidAtExact(centerX + dx, centerY + dy)
+        : gameObj.isSlopeSolidAt(centerX + dx, centerY + dy, this.p.gravityFlipped));
+    };
     const footProbe = playersY - hitSize + gamemodeAddition;
     const lastFootProbe = playersLastY - hitSize + gamemodeAddition;
     const headProbe = playersY + hitSize - gamemodeAddition;
@@ -3411,7 +3423,9 @@ if (this.p.isFlying || this.p.isUfo) {
       // The wave does not ride solid surfaces in GD; touching a slope is the
       // same lethal collision as touching a block (D-block behavior is a
       // separate object modifier and is not represented by these colliders).
-      if (this.p.isWave) return { landed: false, died: true };
+      if (this.p.isWave) return waveTouchesSlope(pieceWidth, playersY)
+        ? { landed: false, died: true }
+        : { landed: false, died: false };
       candidate.gameObj = gameObj;
       return { landed: true, died: false, candidate };
     }
@@ -3422,17 +3436,7 @@ if (this.p.isFlying || this.p.isUfo) {
       // A slope is triangular, not a full rectangle. Test the wave's small
       // hitbox against the actual solid half so the empty half of the slope
       // remains traversable instead of acting like an invisible block.
-      const wavePoints = [
-        [0, 0],
-        [hitSize, 0], [-hitSize, 0],
-        [0, hitSize], [0, -hitSize],
-        [hitSize, hitSize], [hitSize, -hitSize],
-        [-hitSize, hitSize], [-hitSize, -hitSize]
-      ];
-      const waveTouchesSolid = gameObj.slopeIsFilled || wavePoints.some(([dx, dy]) =>
-        gameObj.isSlopeSolidAt(pieceWidth + dx, playersY + dy, this.p.gravityFlipped)
-      );
-      if (waveTouchesSolid) return { landed: false, died: true };
+      if (waveTouchesSlope(pieceWidth, playersY)) return { landed: false, died: true };
       return { landed: false, died: false };
     }
     if (overlapping && !this.p.isWave && !onSlopeSurface) {
