@@ -1035,6 +1035,17 @@ window.LevelObject = class LevelObject {
       settings: settingslist
     } = parseLevel(levelData);
     levelObjects = this._normalizeTeleportPortals(levelObjects);
+    // Gameplay triggers must come from the parsed level data, independently
+    // of whether their editor sprite/object definition can be rendered.
+    this._nineCirclesTriggers = levelObjects
+      .filter(levelObj => levelObj && (Number(levelObj.id) === 5070 || Number(levelObj.id) === 5071))
+      .map(levelObj => ({
+        x: Number(levelObj.x || 0) * 2,
+        enabled: Number(levelObj.id) === 5070
+      }))
+      .sort((a, b) => a.x - b.x);
+    this._nineCirclesTriggerIdx = 0;
+    this._nineCirclesEnabled = false;
     this._sourceLevelObjects = levelObjects;
     this._spawnLevelObjects(levelObjects);
     this._setUpSettings(settingslist);
@@ -2157,14 +2168,6 @@ window.LevelObject = class LevelObject {
       this._likeTriggers.push({
         ...triggerBase,
         x: levelObj.x * 2
-      });
-    }
-
-    if (isNineCirclesTrigger) {
-      this._nineCirclesTriggers.push({
-        ...triggerBase,
-        x: Number(levelObj.x || 0) * 2,
-        enabled: Number(levelObj.id) === 5070
       });
     }
 
