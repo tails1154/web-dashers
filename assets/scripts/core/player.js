@@ -3239,10 +3239,14 @@ if (this.p.isFlying || this.p.isUfo) {
     const contactRadius = this._getSlopeContactRadius(gameObj, hitSize);
     const minY = gameObj.y - gameObj.h / 2;
     const maxY = gameObj.y + gameObj.h / 2;
-    if (!gameObj.slopeFlipY) {
-      return Math.max(minY, Math.min(surfaceY + contactRadius, maxY + contactRadius));
-    }
-    return Math.max(minY - contactRadius, Math.min(surfaceY - contactRadius, maxY));
+    // The native routine offsets the player from the collision line according
+    // to the side that is solid for the current gravity. Using slopeFlipY
+    // directly breaks inverted slopes after gravity changes and is most
+    // visible with the mini hitbox.
+    const targetY = surfaceY + (useFloorLanding ? contactRadius : -contactRadius);
+    return useFloorLanding
+      ? Math.max(minY, Math.min(targetY, maxY + contactRadius))
+      : Math.max(minY - contactRadius, Math.min(targetY, maxY));
   }
   _getModifiedSlopeYVelocity() {
     const slopeYVelocity = Number(this._slopeYVelocity) || 0;
@@ -3350,30 +3354,6 @@ if (this.p.isFlying || this.p.isUfo) {
     const useFloorLanding = gameObj.usesFloorLanding(this.p.gravityFlipped);
     const contactTargetY = this._getSlopeContactY(gameObj, surfaceY, hitSize, useFloorLanding);
     const onSlopeSurface = Math.abs(playersY - contactTargetY) < Math.max(14, hitSize * 0.45);
-
-    // Flying modes do not ride the underside of a slope. The native game
-    // treats a real contact there as a collision; snapping the ship to the
-    // line every frame turns a ceiling ramp into a zipline. Only report death
-    // when one of the ship's actual hitbox points is inside the solid side.
-    const isFlyingMode = this.p.isFlying || this.p.isUfo;
-    if (isFlyingMode && !useFloorLanding && inXRange) {
-      const points = [
-        [pieceWidth, playersY],
-        [pieceWidth - hitSize, playersY],
-        [pieceWidth + hitSize, playersY],
-        [pieceWidth, playersY - hitSize],
-        [pieceWidth, playersY + hitSize],
-        [pieceWidth - hitSize, playersY - hitSize],
-        [pieceWidth - hitSize, playersY + hitSize],
-        [pieceWidth + hitSize, playersY - hitSize],
-        [pieceWidth + hitSize, playersY + hitSize]
-      ];
-      const touchesCeilingSlope = points.some(([x, y]) => gameObj.slopeIsFilled
-        ? x >= left && x <= right && y >= top && y <= bottom
-        : gameObj.isSlopeSolidAt(x, y, this.p.gravityFlipped));
-      if (touchesCeilingSlope) return { landed: false, died: true };
-      return { landed: false, died: false };
-    }
     const wasOnThisSlope = this._prevSlopeObj === gameObj;
     const wasOnAnotherSlope = !!this._prevSlopeObj && !wasOnThisSlope;
     // Adjacent native slope pieces are commonly separate objects. Preserve
