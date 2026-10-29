@@ -2094,12 +2094,38 @@ class LevelEditor {
     });
   }
 
+  _editorRecentObjectsKey() {
+    return "wd_editor_recent_objects";
+  }
+
+  _readEditorRecentObjectIds() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this._editorRecentObjectsKey()) || "[]");
+      return Array.isArray(parsed)
+        ? parsed.map(value => Number(value)).filter(value => Number.isInteger(value) && value > 0 && value !== 749).slice(0, 18)
+        : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  _rememberEditorObject(objectId) {
+    const parsedId = Number(objectId);
+    if (!Number.isInteger(parsedId) || parsedId <= 0 || parsedId === 749) return;
+    const recent = this._readEditorRecentObjectIds().filter(id => id !== parsedId);
+    recent.unshift(parsedId);
+    try {
+      localStorage.setItem(this._editorRecentObjectsKey(), JSON.stringify(recent.slice(0, 18)));
+    } catch (_) {}
+  }
+
   _buildObjectGrid() {
     if (this._gridContainer) this._gridContainer.destroy();
     if (this._pageDotsContainer) this._pageDotsContainer.destroy();
     if (this._categoryContainer) this._categoryContainer.destroy();
 
     const OBJECT_CATEGORIES = [
+        { id: "recent",  icon: "tab3", types: null },
         { id: "all",     icon: "tab3", types: null },
         { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco"] },
         { id: "slopes",  icon: "tab6", types: ["slope"] },
@@ -2152,15 +2178,18 @@ class LevelEditor {
             return framesToCheck.some(frame => typeof frame === "string" && frame.toLowerCase().includes("slope"));
         };
 
-        const objectIds = Object.keys(allObjectsData)
-            .map(id => parseInt(id, 10))
-            .filter(id => Number.isInteger(id) && id > 0 && id !== 749)
-            .sort((a, b) => a - b);
+        const recentMode = activeCatDef?.id === "recent";
+        const objectIds = recentMode
+            ? this._readEditorRecentObjectIds()
+            : Object.keys(allObjectsData)
+                .map(id => parseInt(id, 10))
+                .filter(id => Number.isInteger(id) && id > 0 && id !== 749)
+                .sort((a, b) => a - b);
         for (const i of objectIds) {
             const def = getObjectFromId(i);
             const rawDef = allObjectsData[String(i)];
             
-            if (def && rawDef && matchesCategory(activeCatDef, rawDef)) {
+            if (def && rawDef && (recentMode || matchesCategory(activeCatDef, rawDef))) {
                 itemsForGrid.push({ type: "object", id: i, frame: def.frame });
             }
         }
@@ -2353,6 +2382,7 @@ class LevelEditor {
             }
             this._makeCompositeBouncyButton(btnBg, [btnBg, icon], 1.2, () => {
                 window.selectedObjId = item.id;
+                this._rememberEditorObject(item.id);
                 this._buildObjectGrid();
             });
         } else if (item.type === "action") {
@@ -10273,6 +10303,9 @@ LevelEditor.methodNames = [
   "_createEditorObjectButtonPreview",
   "_buildObjectGrid",
   "_openEditorObjectSearch",
+  "_editorRecentObjectsKey",
+  "_readEditorRecentObjectIds",
+  "_rememberEditorObject",
   "_moveObject",
   "_rotateObject",
   "_flipObject",
