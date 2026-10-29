@@ -3331,6 +3331,29 @@ if (this.p.isFlying || this.p.isUfo) {
     const surfaceY = gameObj.getSlopeSurfaceY(contactX);
     if (surfaceY === null) return { landed: false, died: false };
     const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
+
+    if (this.p.isWave) {
+      // Wave collision must use the triangle's solid side, not the slope's
+      // axis-aligned bounding box. The old broad-phase fallback killed the
+      // wave while it was travelling through the empty side of an upside-down
+      // slope. Test the current and previous physics positions so fast waves
+      // cannot tunnel through the rotated/flipped triangle.
+      const samples = 5;
+      let touchesSolid = false;
+      for (let sample = 0; sample < samples && !touchesSolid; sample++) {
+        const progress = sample / (samples - 1);
+        const sampleX = previousWorldX + (pieceWidth - previousWorldX) * progress;
+        const sampleY = playersLastY + (playersY - playersLastY) * progress;
+        for (const offsetX of [-hitSize, 0, hitSize]) {
+          if (gameObj.isSlopeSolidAt(sampleX + offsetX, sampleY, false)) {
+            touchesSolid = true;
+            break;
+          }
+        }
+      }
+      return { landed: false, died: touchesSolid };
+    }
+
     const footProbe = playersY - hitSize + gamemodeAddition;
     const lastFootProbe = playersLastY - hitSize + gamemodeAddition;
     const headProbe = playersY + hitSize - gamemodeAddition;
@@ -3419,19 +3442,12 @@ if (this.p.isFlying || this.p.isUfo) {
     }
 
     if (candidate) {
-      // The wave does not ride solid surfaces in GD; touching a slope is the
-      // same lethal collision as touching a block (D-block behavior is a
-      // separate object modifier and is not represented by these colliders).
-      if (this.p.isWave) return { landed: false, died: true };
       candidate.gameObj = gameObj;
       return { landed: true, died: false, candidate };
     }
 
     const overlapping = pieceWidth + tightPad > left && pieceWidth - tightPad < right &&
       playersY + tightPad > top && playersY - tightPad < bottom;
-    if (this.p.isWave && overlapping) {
-      return { landed: false, died: true };
-    }
     if (overlapping && !onSlopeSurface) {
       if (!gameObj.slopeIsFilled && gameObj.isSlopeSolidAt(pieceWidth, playersY, this.p.gravityFlipped)) {
         if (window.noClip) this.p.diedThisFrame = true;
