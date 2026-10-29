@@ -6280,8 +6280,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
   }
   _updateDeathTimeline() {
     if (!window.deathTimeline || window.streamMode || window.isEditor || this._menuActive) {
-      if (this._deathTimelineLabel) this._deathTimelineLabel.setVisible(false);
+      if (this._deathTimelineLabel?.scene === this && this._deathTimelineLabel.active !== false) this._deathTimelineLabel.setVisible(false);
       return;
+    }
+    if (this._deathTimelineLabel && (this._deathTimelineLabel.scene !== this || this._deathTimelineLabel.active === false || !this._deathTimelineLabel.texture)) {
+      this._deathTimelineLabel = null;
     }
     if (!this._deathTimelineLabel) {
       this._deathTimelineLabel = this.add.text(12, 104, "", {

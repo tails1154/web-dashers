@@ -111,6 +111,20 @@ class LevelEditor {
     this._editorPlaytestSavedView = null;
     this._editorPlaytestPauseView = null;
     this._editorPlaytestLastTrailPoint = null;
+    this._editorCollabClient = null;
+    this._editorCollabBroadcastTimer = null;
+    this._editorCollabApplying = false;
+    const activeEditorClient = window._tailsConnectClient;
+    if (activeEditorClient?.protocol === "tc3" && activeEditorClient.socket?.readyState === WebSocket.OPEN) {
+        this._editorCollabClient = activeEditorClient;
+        activeEditorClient.onMessage = data => {
+            if (data?.type === "tc3-peer-join") {
+                if (activeEditorClient.role === "host") this._broadcastEditorState(true);
+                return;
+            }
+            if (data?.type === "editor-state") this._applyEditorCollabState(data);
+        };
+    }
     this._editorAutosaveSeconds = 60;
     if (this._editorAutosaveNotice?.destroy) this._editorAutosaveNotice.destroy();
     this._editorAutosaveNotice = this.add.bitmapText(
@@ -2632,6 +2646,7 @@ class LevelEditor {
     sortTriggers(this._level?._spawnTriggers);
 
     this._refreshEditorCollisionCaches();
+    this._broadcastEditorState();
   }
 
 
@@ -2684,6 +2699,7 @@ class LevelEditor {
     }
 
     this._refreshEditorCollisionCaches();
+    this._broadcastEditorState();
   }
 
 
@@ -3383,6 +3399,7 @@ class LevelEditor {
     this._applyEditorLayerFilter?.();
     this._buildObjectGrid();
     this._updateEditorActionButtons();
+    this._broadcastEditorState();
   }
 
 
@@ -3784,6 +3801,7 @@ class LevelEditor {
     this._refreshEditorLayerSelectorVisual?.();
     this._applyEditorLayerFilter?.();
     this._refreshEditorPlaytestGlowVisibility?.();
+    this._broadcastEditorState();
   }
 
 
@@ -9966,6 +9984,7 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
+        { text: "Live Edit", cb: () => this._openEditorCollabDialog() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -10236,6 +10255,88 @@ _serializeObject(object) {
   return parts.join(",");
   }
 
+  _openEditorCollabDialog() {
+    window.showNativePhaserDialog(this, {
+      title: "LIVE EDIT",
+      message: "Enter HOST to create a room, or enter a room code to join another editor.",
+      input: true,
+      defaultValue: "HOST",
+      placeholder: "HOST or room code",
+      confirmLabel: "CONNECT",
+      cancelLabel: "CANCEL",
+      onConfirm: value => {
+        const target = String(value || "").trim();
+        if (!target) return;
+        const client = window.getTailsConnectClient(this);
+        this._editorCollabClient = client;
+        client.onStatus = text => {
+          this._editorCollabStatus = text;
+          if (this._editorCollabStatusText?.scene) this._editorCollabStatusText.setText(text);
+        };
+        client.onMessage = data => {
+          if (data?.type === "tc3-peer-join") {
+            if (client.role === "host") this._broadcastEditorState(true);
+            return;
+          }
+          if (data?.type === "editor-state") this._applyEditorCollabState(data);
+        };
+        const isHost = target.toUpperCase() === "HOST";
+        client.connect(isHost ? "host" : "join", isHost ? "" : target, "webdashers-editor");
+        this._editorCollabStatus = isHost ? "Creating live edit room..." : "Joining live edit room...";
+        window.showNativePhaserDialog(this, {
+          title: "LIVE EDIT",
+          message: isHost ? "Room is being created. Your room code will appear in the status." : "Joining the live edit room.",
+          confirmLabel: "OK",
+          cancelLabel: "CLOSE"
+        });
+      }
+    });
+  }
+
+  _broadcastEditorState(immediate = false) {
+    const client = this._editorCollabClient || window._tailsConnectClient;
+    if (this._editorCollabApplying || !client || client.protocol !== "tc3") return;
+    if (this._editorCollabBroadcastTimer) {
+      clearTimeout(this._editorCollabBroadcastTimer);
+      this._editorCollabBroadcastTimer = null;
+    }
+    const send = () => {
+      const levelData = { objects: window.levelObjects || [], settings: window.settingslist || "" };
+      client.send({
+        type: "editor-state",
+        levelId: String(window.currentlevel?.[2] || ""),
+        levelString: this._serializeLevel(levelData),
+        songId: this._editorPendingSongId ?? window.currentlevel?.[0] ?? "",
+        songName: this._editorPendingSongName ?? window.currentlevel?.[1] ?? ""
+      });
+    };
+    if (immediate) send();
+    else this._editorCollabBroadcastTimer = setTimeout(send, 120);
+  }
+
+  _applyEditorCollabState(data) {
+    if (!data?.levelString || this._editorCollabApplying) return;
+    const currentId = String(window.currentlevel?.[2] || "");
+    if (data.levelId && currentId && String(data.levelId) !== currentId) return;
+    this._editorCollabApplying = true;
+    window._onlineLevelString = String(data.levelString);
+    window._onlineLevelId = currentId;
+    try {
+      const createdLevels = JSON.parse(localStorage.getItem("created_levels") || "[]");
+      const record = createdLevels.find(level => String(level?.createdId) === currentId);
+      if (record) {
+        record.levelString = window._onlineLevelString;
+        record.lastModified = Date.now();
+        localStorage.setItem("created_levels", JSON.stringify(createdLevels));
+      }
+    } catch (error) {
+      console.warn("Could not cache collaborative editor state", error);
+    }
+    this._stopEditorPlaytest?.();
+    this._showEditorPauseMenu(false);
+    this.scene.restart();
+  }
+
   _saveEditorLevel() {
     const levelData = {
         objects: window.levelObjects,
@@ -10278,6 +10379,7 @@ _serializeObject(object) {
         this._editorPendingSongId = undefined;
         this._editorPendingSongName = undefined;
     }
+    this._broadcastEditorState();
   }
 
 
@@ -10567,6 +10669,9 @@ LevelEditor.methodNames = [
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
   "_openCustomSongSelector",
+  "_openEditorCollabDialog",
+  "_broadcastEditorState",
+  "_applyEditorCollabState",
   "_openEditorZoomTriggerOptionsPopup",
   "_isEditorNineCirclesTriggerId",
   "_getEditorNineCirclesSpeed",

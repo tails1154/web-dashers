@@ -469,10 +469,16 @@ window.AccountAPI = {
 
   async uploadCustomSong(file) {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required to upload songs');
-    const form = new FormData();
-    form.append('song', file, file.name || 'custom-song.mp3');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+    }
     const res = await fetch(`${window._gdProxyUrl}?action=upload_custom_song`, {
-      method: 'POST', credentials: 'include', body: form
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name || 'custom-song.mp3', data: btoa(binary) })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not upload custom song');
