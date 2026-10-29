@@ -6194,7 +6194,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const ghostScreenX = Number(point.x || 0) - Number(this._cameraX || 0);
     const x = this._getMirrorXOffset ? this._getMirrorXOffset(ghostScreenX) : ghostScreenX;
     const y = typeof b === "function" ? b(point.y) + Number(this._cameraY || 0) : screenHeight / 2;
-    this._replayGhostGraphics.clear().fillStyle(0x9de8ff, 0.34).fillCircle(x, y, 13).lineStyle(2, 0xffffff, 0.7).strokeCircle(x, y, 16).setVisible(true);
+    const opacity = Math.max(0.05, Math.min(1, Number(window.replayGhostOpacity) || 0.34));
+    this._replayGhostGraphics.clear().fillStyle(0x9de8ff, opacity).fillCircle(x, y, 13).lineStyle(2, Math.min(1, opacity + 0.35)).strokeCircle(x, y, 16).setVisible(true);
   }
   _recordDeathTimelinePoint() {
     if (!window.deathTimeline || window.isEditor) return;
@@ -7207,6 +7208,13 @@ _buildSettingsPopup() {
             true,
             "Input History"
         );
+        createNumberInput(container, column2X, startY + spacingY, "Ghost Opacity",
+            () => typeof window.replayGhostOpacity === "number" ? window.replayGhostOpacity : 0.34,
+            (v) => window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(v) || 0.34)),
+            0.05,
+            1,
+            false
+        );
     };
 
         const buildPerformancePage = (container) => {
@@ -7284,6 +7292,7 @@ _buildSettingsPopup() {
         runTimer: !!window.runTimer,
         inputHistory: !!window.inputHistory,
         bestSplit: !!window.bestSplit,
+        replayGhostOpacity: Number(window.replayGhostOpacity) || 0.34,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -7322,6 +7331,7 @@ _buildSettingsPopup() {
         runTimer: false,
         inputHistory: false,
         bestSplit: false,
+        replayGhostOpacity: 0.34,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -7354,6 +7364,7 @@ _buildSettingsPopup() {
     window.runTimer = !!data.runTimer;
     window.inputHistory = !!data.inputHistory;
     window.bestSplit = !!data.bestSplit;
+    window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(data.replayGhostOpacity) || 0.34));
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
