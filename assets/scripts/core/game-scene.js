@@ -1335,6 +1335,14 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
         this._creatorOverlayObjects.push(btn);
       });
+      const favoritesButton = this.add.nineslice(sw / 2, sh - 44, "GJ_button01", null, 190, 42, 12, 12, 12, 12)
+        .setScrollFactor(0).setDepth(104).setInteractive();
+      const favoritesLabel = this.add.bitmapText(sw / 2, sh - 44, "bigFont", "FAVORITES", 18).setOrigin(0.5).setScrollFactor(0).setDepth(105);
+      this._creatorOverlayObjects.push(favoritesButton, favoritesLabel);
+      this._makeCompositeBouncyButton(favoritesButton, [favoritesButton, favoritesLabel], 1, () => {
+        this._closeCreatorMenu(true);
+        this._openFavoriteLevelsScene();
+      }, () => true);
     };
     this._searchOverlay = null;
     this._searchOverlayObjects = [];
@@ -1839,6 +1847,21 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._playOverlayObjects.push(ownerDeleteBtn, ownerDeleteLabel);
       }
 
+      const favoriteBtn = this.add.nineslice(sideBtnX - 78, sideBtnY0 + sideBtnGap * 4, "GJ_button01", null, 125, 48, 16, 16, 16, 16)
+        .setScrollFactor(0).setDepth(504).setOrigin(0.5).setInteractive();
+      const favoriteLabel = this.add.bitmapText(sideBtnX - 78, sideBtnY0 + sideBtnGap * 4, "bigFont", "FAVORITE", 15)
+        .setScrollFactor(0).setDepth(505).setOrigin(0.5);
+      const refreshFavoriteVisual = () => {
+        const isFavorite = this._isFavoriteLevel(lvl.id);
+        favoriteBtn.setTint(isFavorite ? 0xffe45c : 0xffffff);
+        favoriteLabel.setTint(isFavorite ? 0xffe45c : 0xffffff);
+      };
+      refreshFavoriteVisual();
+      this._makeBouncyButton(favoriteBtn, 1, () => {
+        this._toggleFavoriteLevel(lvl);
+        refreshFavoriteVisual();
+      });
+
       const leaderboardBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 4, "GJ_GameSheet03", "GJ_levelLeaderboardBtn_001.png")
         .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
       this._makeBouncyButton(leaderboardBtn, sideBtnScale, () => {
@@ -1973,7 +1996,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         shade.querySelector("[data-dislike]").addEventListener("click", () => choose(false));
       });
 
-      this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, addToListBtn, addToListLabel, leaderboardBtn, likeBtn, likeLabel);
+      this._playOverlayObjects.push(rateLockBtn, closeBtn, refreshBtn, infoBtn2, commentsBtn, commentsLabel, addToListBtn, addToListLabel, favoriteBtn, favoriteLabel, leaderboardBtn, likeBtn, likeLabel);
       if (moderatorBtn) this._playOverlayObjects.push(moderatorBtn);
       const songBoxW = sw * 0.55;
       const songBoxH = 190;
@@ -6767,6 +6790,33 @@ _buildPauseOverlay() {
         localStorage.setItem("wd_run_notes", JSON.stringify(notes.slice(-500)));
       }
     });
+  }
+  _getFavoriteLevels() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("wd_favorite_levels") || "[]");
+      return Array.isArray(parsed) ? parsed.filter(level => level && level.id !== undefined) : [];
+    } catch (_) { return []; }
+  }
+  _isFavoriteLevel(levelId) {
+    return this._getFavoriteLevels().some(level => String(level.id) === String(levelId));
+  }
+  _toggleFavoriteLevel(level) {
+    if (!level || level.id === undefined) return false;
+    const favorites = this._getFavoriteLevels();
+    const existingIndex = favorites.findIndex(item => String(item.id) === String(level.id));
+    if (existingIndex >= 0) favorites.splice(existingIndex, 1);
+    else favorites.unshift({ ...level, id: level.id });
+    localStorage.setItem("wd_favorite_levels", JSON.stringify(favorites.slice(0, 100)));
+    return existingIndex < 0;
+  }
+  _openFavoriteLevelsScene() {
+    const favorites = this._getFavoriteLevels();
+    if (!favorites.length) {
+      showNativePhaserDialog(this, { title: "FAVORITES", message: "Favorite levels from their level details menu and they will appear here." });
+      this._openCreatorMenu();
+      return;
+    }
+    this._openOnlineLevelsScene({ title: "Favorites", favorites: true, staticLevels: favorites });
   }
   _openRunNotesLog() {
     let notes = [];
@@ -13598,7 +13648,7 @@ _applyMirrorEffect() {
       180,
       () => {
         this._onlineLevelsOverlay = null;
-        if (isFeatured || isMap || isList) {
+        if (isFeatured || isMap || isList || params.favorites) {
           this._openCreatorMenu();
         } else {
           this._openSearchMenu();
