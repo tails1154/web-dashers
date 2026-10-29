@@ -2052,9 +2052,19 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const officialIndex = parseInt(lvl.id, 10) - 1;
         const isOfficial = String(officialIndex + 1) === String(lvl.id) &&
           window.allLevels && window.allLevels[officialIndex];
-        const parsedSongId = parseInt(lvl.songId ?? lvl.song_id ?? lvl.song ?? "0", 10) || 0;
+        // Online level metadata uses customSongID for Newgrounds songs. Keep
+        // that value when converting the level into a local editor level;
+        // otherwise the editor sees songId=0 and incorrectly rejects it.
+        const songReference = String(lvl.customSongID ?? lvl.songId ?? lvl.song_id ?? lvl.song ?? "").trim();
+        let parsedSongId = parseInt(songReference, 10) || 0;
+        // Some server records only retain the display label (for example
+        // "NG#12345" or "Song #12345") rather than a separate ID field.
+        if (!parsedSongId) {
+          const songIdMatch = songReference.match(/(?:NG|Song\s*#)\s*#?(\d+)/i);
+          parsedSongId = songIdMatch ? parseInt(songIdMatch[1], 10) || 0 : 0;
+        }
         const songId = isOfficial ? -officialIndex - 1 : parsedSongId;
-        const songName = isOfficial ? window.allLevels[officialIndex][1] : (lvl.songName || lvl.song || "Unknown");
+        const songName = isOfficial ? window.allLevels[officialIndex][1] : (lvl.songName || lvl.song || (parsedSongId > 0 ? `Song #${parsedSongId}` : "Unknown"));
 
         const newLevel = {
           levelName: lvl.name || "Unknown",
@@ -2920,6 +2930,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this.scene.restart();
           return true;
         } catch (err) {
+          // Editing should not be blocked by an unavailable audio file. The
+          // level data is still valid, so restart the editor with its normal
+          // placeholder track. Playing the level continues to require audio.
+          if (isEditor) {
+            console.warn("Opening editor without the level song:", err);
+            window.currentlevel[0] = "Placeholder";
+            window.currentlevel[3] = ["Local", "Song unavailable"];
+            loadingText.setText("Loading Level...");
+            if (onBeforeRestart) onBeforeRestart();
+            this.scene.restart();
+            return true;
+          }
           console.warn("Could not start level because its song failed to load", err);
           window.currentlevel = previousLaunchState.currentlevel;
           window._onlineLevelString = previousLaunchState.onlineLevelString;
