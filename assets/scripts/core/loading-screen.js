@@ -299,6 +299,25 @@ class BootScene extends Phaser.Scene {
       this.load.image("flip-icon.png", "assets/generated/gamemode-portals/flip-icon.png?v=1");
       this.load.image("vector-portal-front.png", "assets/generated/gamemode-portals/vector-portal-front.png?v=1");
       this.load.image("phase-portal-front.png", "assets/generated/gamemode-portals/phase-portal-front.png?v=1");
+      const cameraTriggerArt = (accent, symbol) => `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#ffffff" stop-opacity=".95"/><stop offset="1" stop-color="${accent}"/></linearGradient></defs><circle cx="32" cy="32" r="28" fill="#071426" stroke="${accent}" stroke-width="3"/><path d="M15 24h25a7 7 0 0 1 7 7v9a7 7 0 0 1-7 7H15z" fill="url(#g)" stroke="#dff7ff" stroke-width="2"/><circle cx="34" cy="35" r="8" fill="#071426" stroke="#dff7ff" stroke-width="2"/><path d="M47 27l7-5v22l-7-5z" fill="${accent}" stroke="#dff7ff" stroke-width="2"/><text x="34" y="39" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="#ffffff">${symbol}</text></svg>`;
+      const cameraTriggerArtMap = {
+        "camera-shake.svg": ["#ff4d6d", "~"],
+        "camera-flash.svg": ["#fff06a", "*"],
+        "camera-zoom-in.svg": ["#5be7ff", "+"],
+        "camera-zoom-out.svg": ["#5be7ff", "−"],
+        "camera-zoom-reset.svg": ["#8ab4ff", "1"],
+        "camera-tilt-left.svg": ["#c48cff", "↶"],
+        "camera-tilt-right.svg": ["#c48cff", "↷"],
+        "camera-tilt-reset.svg": ["#b9a8ff", "0"],
+        "camera-pan-up.svg": ["#62ffb0", "↑"],
+        "camera-pan-down.svg": ["#62ffb0", "↓"],
+        "camera-pan-reset.svg": ["#8dffcf", "="],
+        "camera-pulse.svg": ["#ff9c4a", "○"]
+      };
+      Object.entries(cameraTriggerArtMap).forEach(([key, [accent, symbol]]) => {
+        const svg = cameraTriggerArt(accent, symbol);
+        this.load.image(key, `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+      });
       this.load.image("like-level-trigger.png", "assets/generated/like-level-trigger.png?v=1");
       this.load.image("player-input-off.svg", "assets/generated/player-input-off.svg?v=1");
       this.load.image("player-input-on.svg", "assets/generated/player-input-on.svg?v=1");

@@ -2351,7 +2351,7 @@ class LevelEditor {
             }
         }
         if (activeCatDef?.types?.includes("trigger")) {
-            for (const triggerId of [5072, 5073, 5074]) {
+            for (const triggerId of [5072, 5073, 5074, 5080, 5081, 5082, 5083, 5084, 5085, 5086, 5087, 5088, 5089, 5090, 5091]) {
                 const trigger = getObjectFromId(triggerId);
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
                     itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
@@ -7080,6 +7080,8 @@ class LevelEditor {
         this._openEditorSpawnTriggerOptionsPopup(saveObj);
     } else if (this._isEditorZoomTriggerId(saveObj.id)) {
         this._openEditorZoomTriggerOptionsPopup(saveObj);
+    } else if (this._isEditorCameraTriggerId(saveObj.id)) {
+        this._openEditorCameraTriggerOptionsPopup(saveObj);
     } else if (this._isEditorRotateTriggerId(saveObj.id)) {
         this._openEditorRotateTriggerOptionsPopup(saveObj);
     } else if (this._isEditorStartPositionId(saveObj.id)) {
@@ -7104,6 +7106,114 @@ class LevelEditor {
 
   _isEditorZoomTriggerId(id) {
     return parseInt(id ?? 0, 10) === 1913;
+  }
+
+
+  _isEditorCameraTriggerId(id) {
+    return parseInt(id ?? 0, 10) >= 5080 && parseInt(id ?? 0, 10) <= 5091;
+  }
+
+
+  _openEditorCameraTriggerOptionsPopup(saveObj) {
+    if (!saveObj) return;
+    this._closeEditorObjectOptionsPopup();
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const panelW = Math.min(650, sw - 50);
+    const panelH = 330;
+    const objectDef = getObjectFromId(saveObj.id) || {};
+    const raw = saveObj._raw || (saveObj._raw = {});
+    const defaultValue = Number(objectDef.cameraDefaultValue) || 0;
+    const label = String(objectDef.sub || "camera").replace(/^camera_/, "").replace(/_/g, " ");
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.55).setOrigin(0).setInteractive());
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 40, "bigFont", `Camera ${label}`, 34).setOrigin(0.5));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 75, "goldFont", "Configure the trigger value and transition time", 18).setOrigin(0.5));
+    const close = this.add.image(-panelW / 2 + 18, -panelH / 2 + 18, "GJ_WebSheet", "GJ_closeBtn_001.png")
+      .setScale(0.75).setInteractive();
+    inner.add(close);
+    this._makeBouncyButton(close, 0.75, () => this._closeEditorObjectOptionsPopup());
+
+    const fields = [];
+    const stop = event => { event?.preventDefault?.(); event?.stopPropagation?.(); };
+    const makeField = (x, key, title, fallback, minimum, maximum) => {
+      const width = 200;
+      const y = -10;
+      const bg = this.add.rectangle(x, y, width, 52, 0x000000, 0.42).setInteractive();
+      const text = this.add.bitmapText(x, y, "bigFont", "", 26).setOrigin(0.5);
+      const labelText = this.add.bitmapText(x, y - 42, "goldFont", title, 22).setOrigin(0.5);
+      inner.add([bg, text, labelText]);
+      let value = String(parseFloat(raw[key] ?? raw[String(key)] ?? fallback));
+      let focused = false;
+      const getValue = () => {
+        const parsed = parseFloat(raw[key] ?? raw[String(key)] ?? fallback);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+      const render = () => text.setText(`${focused ? value : String(getValue())}${focused ? "|" : ""}`);
+      const commit = () => {
+        const parsed = Phaser.Math.Clamp(Number.isFinite(parseFloat(value)) ? parseFloat(value) : fallback, minimum, maximum);
+        const formatted = String(Number(parsed.toFixed(3)));
+        raw[key] = formatted;
+        raw[String(key)] = formatted;
+        const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+        for (const trigger of this._level?._cameraEffectTriggers || []) {
+          if (trigger?.uid !== linkedId) continue;
+          if (String(key) === "28") trigger.value = parsed;
+          if (String(key) === "10") trigger.duration = parsed;
+        }
+        value = formatted;
+      };
+      const entry = {
+        focused: () => focused,
+        blur: save => { if (!focused) return; if (save) commit(); focused = false; this._editorTextInputFocused = false; render(); },
+        cancel: () => { focused = false; this._editorTextInputFocused = false; render(); },
+        isInside: pointer => Math.abs(pointer.x - (sw / 2 + x)) <= width / 2 && Math.abs(pointer.y - sh / 2 - y) <= 30,
+        handleKey: event => {
+          if (event.key === "Enter") entry.blur(true);
+          else if (event.key === "Backspace") value = value.slice(0, -1);
+          else if (/^[0-9.-]$/.test(event.key) && value.length < 10 && (event.key !== "." || !value.includes(".")) && (event.key !== "-" || value.length === 0)) value += event.key;
+          else if (event.key.length !== 1) return false;
+          render();
+          return true;
+        }
+      };
+      bg.on("pointerdown", pointer => {
+        fields.forEach(other => { if (other !== entry) other.blur(true); });
+        value = String(getValue());
+        focused = true;
+        this._editorTextInputFocused = true;
+        render();
+        stop(pointer?.event);
+      });
+      fields.push(entry);
+      render();
+    };
+    makeField(-150, 28, "Value", defaultValue, -360, 360);
+    makeField(150, 10, "Duration", 0.35, 0, 10);
+    this._editorGroupInputPointerDownHandler = pointer => {
+      const focused = fields.find(field => field.focused());
+      if (focused && !focused.isInside(pointer)) focused.blur(true);
+    };
+    this.input.on("pointerdown", this._editorGroupInputPointerDownHandler);
+    this._editorObjectOptionsKeyHandler = event => {
+      const focused = fields.find(field => field.focused());
+      if (event.key === "Escape") {
+        if (focused) focused.cancel();
+        else this._closeEditorObjectOptionsPopup();
+        stop(event);
+      } else if (focused && focused.handleKey(event)) stop(event);
+    };
+    window.addEventListener("keydown", this._editorObjectOptionsKeyHandler);
+    this._makeEditorOkButton(inner, -100, panelH / 2 - 46, "CANCEL", () => this._closeEditorObjectOptionsPopup());
+    this._makeEditorOkButton(inner, 100, panelH / 2 - 46, "OK", () => {
+      fields.forEach(field => field.blur(true));
+      this._closeEditorObjectOptionsPopup();
+    });
   }
 
 

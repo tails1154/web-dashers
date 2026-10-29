@@ -545,6 +545,38 @@ if (!allObjects[5074]) {
 if (!allObjects[5075]) {
   allObjects[5075] = { can_color: false, frame: "image-block-placeholder.svg", editorFrame: "image-block-placeholder.svg", gridH: 1, gridW: 1, type: "image_block", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
 }
+const _cameraTriggerDefinitions = [
+  [5080, "camera_shake", "camera-shake.svg", 0.012, "Shake"],
+  [5081, "camera_flash", "camera-flash.svg", 0.65, "Flash"],
+  [5082, "camera_zoom_in", "camera-zoom-in.svg", 1.25, "Zoom In"],
+  [5083, "camera_zoom_out", "camera-zoom-out.svg", 0.75, "Zoom Out"],
+  [5084, "camera_zoom_reset", "camera-zoom-reset.svg", 1, "Zoom Reset"],
+  [5085, "camera_tilt_left", "camera-tilt-left.svg", -5, "Tilt Left"],
+  [5086, "camera_tilt_right", "camera-tilt-right.svg", 5, "Tilt Right"],
+  [5087, "camera_tilt_reset", "camera-tilt-reset.svg", 0, "Tilt Reset"],
+  [5088, "camera_pan_up", "camera-pan-up.svg", -80, "Pan Up"],
+  [5089, "camera_pan_down", "camera-pan-down.svg", 80, "Pan Down"],
+  [5090, "camera_pan_reset", "camera-pan-reset.svg", 0, "Pan Reset"],
+  [5091, "camera_pulse", "camera-pulse.svg", 1.12, "Pulse"]
+];
+const CAMERA_TRIGGER_DEFINITIONS = Object.fromEntries(_cameraTriggerDefinitions.map(([id, kind, frame, value, label]) => [id, { id, kind, frame, value, label }]));
+for (const [id, kind, frame, value] of _cameraTriggerDefinitions) {
+  allObjects[id] = {
+    can_color: false,
+    frame,
+    editorFrame: frame,
+    gridH: 1,
+    gridW: 1,
+    spritesheet: "GJ_GameSheet02-uhd",
+    type: "trigger",
+    sub: kind,
+    cameraEffect: kind,
+    cameraDefaultValue: value,
+    z: 2,
+    default_detail_color_channel: -1,
+    default_base_color_channel: 0
+  };
+}
 allObjects[5051] = {
   can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
@@ -751,6 +783,10 @@ window.LevelObject = class LevelObject {
     this._zoomTriggerIdx = 0;
     this._activeZoomTweens = [];
     this._touchZoomTriggerActivated = new Set();
+    this._cameraEffectTriggers = [];
+    this._cameraEffectTriggerIdx = 0;
+    this._activeCameraEffects = [];
+    this._touchCameraEffectActivated = new Set();
     this._alphaTriggers = [];
     this._alphaTriggerIdx = 0;
     this._activeAlphaTweens = [];
@@ -2179,6 +2215,21 @@ window.LevelObject = class LevelObject {
       });
     }
 
+    const cameraDefinition = CAMERA_TRIGGER_DEFINITIONS[levelObj.id];
+    if (cameraDefinition) {
+      const _raw = levelObj._raw || {};
+      const defaultValue = Number(cameraDefinition.value) || 0;
+      this._cameraEffectTriggers.push({
+        ...triggerBase,
+        x: levelObj.x * 2,
+        y: levelObj.y * 2,
+        kind: cameraDefinition.kind,
+        value: Number.isFinite(parseFloat(_raw[28] ?? _raw["28"])) ? parseFloat(_raw[28] ?? _raw["28"]) : defaultValue,
+        duration: Math.max(0, parseFloat(_raw[10] ?? _raw["10"] ?? 0.35) || 0.35),
+        touchTriggered: String(_raw[11] ?? _raw["11"] ?? "0") === "1"
+      });
+    }
+
     if (levelObj.id === 1007) {
       const _raw = levelObj._raw;
       this._alphaTriggers.push({
@@ -3025,6 +3076,7 @@ window.LevelObject = class LevelObject {
     this._enterEffectTriggers.sort((a, b) => a.x - b.x);
     this._moveTriggers.sort((a, b) => a.x - b.x);
     this._zoomTriggers.sort((a, b) => a.x - b.x);
+    this._cameraEffectTriggers.sort((a, b) => a.x - b.x);
     this._alphaTriggers.sort((a, b) => a.x - b.x);
     this._rotateTriggers.sort((a, b) => a.x - b.x);
     this._likeTriggers.sort((a, b) => a.x - b.x);
@@ -3874,6 +3926,93 @@ window.LevelObject = class LevelObject {
     this._applyCameraZoom(1);
   }
 
+  _applyCameraRotation(degrees) {
+    const camera = this._scene?.cameras?.main;
+    if (camera?.setRotation) camera.setRotation(Number(degrees || 0) * Math.PI / 180);
+  }
+
+  _startCameraEffectTrigger(trig) {
+    if (!trig || !this._isTriggerSaveObjectLive(trig.uid)) return;
+    const camera = this._scene?.cameras?.main;
+    const duration = Math.max(0, Number(trig.duration) || 0.35);
+    if (trig.kind === "camera_shake") {
+      camera?.shake?.(duration * 1000, Math.max(0, Number(trig.value) || 0.012));
+      return;
+    }
+    if (trig.kind === "camera_flash") {
+      camera?.flash?.(duration * 1000, 255, 255, 255, false);
+      return;
+    }
+    this._activeCameraEffects.push({
+      trig,
+      elapsed: 0,
+      fromZoom: this._getCurrentCameraZoom(),
+      fromRotation: ((camera?.rotation || 0) * 180 / Math.PI),
+      fromOffsetY: Number(this._scene?._cameraEffectOffsetY || 0)
+    });
+  }
+
+  checkCameraEffectTriggers(playerX) {
+    while (this._cameraEffectTriggerIdx < this._cameraEffectTriggers.length) {
+      const trig = this._cameraEffectTriggers[this._cameraEffectTriggerIdx];
+      if (trig.x > playerX) break;
+      if (!trig.spawnTriggered && !trig.touchTriggered) this._startCameraEffectTrigger(trig);
+      this._cameraEffectTriggerIdx++;
+    }
+  }
+
+  checkTouchCameraEffectTriggers(playerX, playerY) {
+    const px = Number(playerX) || 0;
+    const py = Number(playerY) || 0;
+    const halfHitbox = 30 + (typeof playerSize === "number" ? playerSize : 20);
+    for (const trig of this._cameraEffectTriggers) {
+      if (!trig?.touchTriggered || trig.spawnTriggered || !this._isTriggerSaveObjectLive(trig.uid)) continue;
+      const uid = trig.uid ?? `${trig.x},${trig.y}`;
+      if (this._touchCameraEffectActivated.has(uid)) continue;
+      if (Math.abs(px - trig.x) <= halfHitbox && Math.abs(py - (trig.y ?? 0)) <= halfHitbox) {
+        this._touchCameraEffectActivated.add(uid);
+        this._startCameraEffectTrigger(trig);
+      }
+    }
+  }
+
+  stepCameraEffectTriggers(dt) {
+    const scene = this._scene;
+    let i = 0;
+    while (i < this._activeCameraEffects.length) {
+      const effect = this._activeCameraEffects[i];
+      const trig = effect.trig;
+      effect.elapsed += Math.max(0, Number(dt) || 0);
+      const duration = Math.max(0.001, Number(trig.duration) || 0.35);
+      const progress = Math.min(1, effect.elapsed / duration);
+      const smooth = progress * progress * (3 - 2 * progress);
+      if (trig.kind === "camera_pulse") {
+        const pulse = progress < 0.5 ? smooth * 2 : (1 - smooth) * 2;
+        this._applyCameraZoom(effect.fromZoom + ((Number(trig.value) || 1.12) - effect.fromZoom) * pulse);
+      } else if (trig.kind.startsWith("camera_zoom_")) {
+        this._applyCameraZoom(effect.fromZoom + ((Number(trig.value) || 1) - effect.fromZoom) * smooth);
+      } else if (trig.kind.startsWith("camera_tilt_")) {
+        this._applyCameraRotation(effect.fromRotation + ((Number(trig.value) || 0) - effect.fromRotation) * smooth);
+      } else if (trig.kind.startsWith("camera_pan_")) {
+        scene._cameraEffectOffsetY = effect.fromOffsetY + ((Number(trig.value) || 0) - effect.fromOffsetY) * smooth;
+      }
+      if (progress >= 1) {
+        if (trig.kind === "camera_pulse") this._applyCameraZoom(effect.fromZoom);
+        this._activeCameraEffects.splice(i, 1);
+      } else {
+        i++;
+      }
+    }
+  }
+
+  resetCameraEffectTriggers() {
+    this._cameraEffectTriggerIdx = 0;
+    this._activeCameraEffects = [];
+    this._touchCameraEffectActivated.clear();
+    this._scene._cameraEffectOffsetY = 0;
+    this._applyCameraRotation(0);
+  }
+
   checkSpawnTriggers(playerX) {
     while (this._spawnTriggerIdx < this._spawnTriggers.length) {
       const trig = this._spawnTriggers[this._spawnTriggerIdx];
@@ -3902,6 +4041,7 @@ window.LevelObject = class LevelObject {
     for (const trig of spawnMatches(this._moveTriggers)) this._startMoveTriggerTween(trig);
     for (const trig of spawnMatches(this._alphaTriggers)) this._startAlphaTriggerTween(trig);
     for (const trig of spawnMatches(this._rotateTriggers)) this._startRotateTriggerTween(trig);
+    for (const trig of spawnMatches(this._cameraEffectTriggers)) this._startCameraEffectTrigger(trig);
     for (const trig of spawnMatches(this._pulseTriggers)) this._startPulseTrigger(trig);
     for (const trig of spawnMatches(this._spawnTriggers)) this._queueSpawnTrigger(trig);
   }

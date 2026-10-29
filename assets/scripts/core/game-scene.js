@@ -9683,6 +9683,7 @@ _buildSettingsPopup() {
     this._level.resetSpawnTriggers();
     this._level.resetMoveTriggers();
     this._level.resetZoomTriggers?.();
+    this._level.resetCameraEffectTriggers?.();
     this._level.resetVisibility();
     if (this._orbGfx) { this._orbGfx.clear(); }
     this._colorManager.reset();
@@ -10010,6 +10011,7 @@ _buildSettingsPopup() {
     this._level.resetSpawnTriggers();
     this._level.resetMoveTriggers();
       this._level.resetZoomTriggers?.();
+    this._level.resetCameraEffectTriggers?.();
     this._level.resetVisibility();
     this._level.additiveContainer.x = -this._cameraX;
     this._level.additiveContainer.y = this._cameraY;
@@ -10172,6 +10174,7 @@ _buildSettingsPopup() {
         }
       }
     }
+    _0x1a27be += Number(this._cameraEffectOffsetY || 0);
     if (_0x1a27be < 0) {
       _0x1a27be = 0;
     }
@@ -10955,6 +10958,12 @@ _buildSettingsPopup() {
     }
     this._level.stepMoveTriggers(deltaTime / 1000);
     this._level.stepZoomTriggers?.(deltaTime / 1000);
+    this._level.checkCameraEffectTriggers?.(playerX);
+    this._level.checkTouchCameraEffectTriggers?.(playerX, this._state.y);
+    if (this._isDual && !this._state2.isDead) {
+      this._level.checkTouchCameraEffectTriggers?.(playerX, this._state2.y);
+    }
+    this._level.stepCameraEffectTriggers?.(deltaTime / 1000);
     this._level.stepSpawnTriggers(deltaTime / 1000, this._colorManager);
     this._level.checkAlphaTriggers(playerX);
     this._level.stepAlphaTriggers(deltaTime / 1000);
