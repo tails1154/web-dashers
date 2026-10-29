@@ -9934,15 +9934,8 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
-        { text: "Live Edit", cb: () => this._openEditorCollabDialog() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
-
-    this._editorCollabStatusText = this.add.text(screenWidth / 2, screenHeight - 208, "Live edit: offline", {
-        fontFamily: "Arial", fontSize: "18px", color: "#9de8ff", align: "center",
-        wordWrap: { width: Math.min(620, screenWidth - 80) }
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
-    this._editorMenuContainer.add(this._editorCollabStatusText);
 
     buttonData.forEach((data, i) => {
         const x = screenWidth / 2;
