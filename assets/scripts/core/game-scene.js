@@ -732,10 +732,12 @@ this._menuFsBtn = this.add.image(33, 33, "GJ_WebSheet", _0x28fa5b ? "toggleFulls
     if (!this._profileLevelsListener) {
       this._profileLevelsListener = event => {
         const levels = Array.isArray(event.detail?.levels) ? event.detail.levels : [];
-        this._openOnlineLevelsScene?.({
-          title: `${event.detail?.displayName || event.detail?.username || 'User'}'s Levels`,
-          staticLevels: levels
+        const openLevels = () => this._openOnlineLevelsScene?.({
+            title: `${event.detail?.displayName || event.detail?.username || 'User'}'s Levels`,
+            staticLevels: levels
         });
+        if (this._playOverlay && this._closePlayMenu) this._closePlayMenu(false, openLevels);
+        else openLevels();
       };
       window.addEventListener('wd-profile-levels-selected', this._profileLevelsListener);
     }
@@ -1775,7 +1777,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             try {
               const details = await window.AccountAPI.moderatorPrompt(lvl.id);
               if (!details) { button.disabled = false; return; }
-              const result = await window.AccountAPI.moderateLevel(details.id, details.difficulty, details.featured, details.star_reward, details.stars, details.verified, details.verification_hacks, details.verification_start_pos);
+              const result = await window.AccountAPI.moderateLevel(details.id, details.difficulty, details.featured, details.star_reward, details.stars, details.verified, details.verification_hacks, details.verification_start_pos, details.epic);
               if (result?.level && String(details.id) === String(lvl.id)) {
                 Object.assign(lvl, result.level);
                 window._selectedLevelData = lvl;

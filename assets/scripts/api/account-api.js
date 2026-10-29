@@ -510,11 +510,11 @@ window.AccountAPI = {
     });
   },
 
-  async moderateLevel(id, difficulty, featured, star_reward = 0, stars = 0, verified = false, verification_hacks = false, verification_start_pos = false) {
+  async moderateLevel(id, difficulty, featured, star_reward = 0, stars = 0, verified = false, verification_hacks = false, verification_start_pos = false, epic = 0) {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
     const res = await fetch(`${window._gdProxyUrl}?action=moderate`, {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, difficulty, featured, star_reward, stars, verified, verification_hacks, verification_start_pos })
+      body: JSON.stringify({ id, difficulty, featured, epic, star_reward, stars, verified, verification_hacks, verification_start_pos })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Moderation failed');
@@ -773,13 +773,13 @@ window.AccountAPI = {
         '<label style="display:flex;gap:8px;align-items:center;margin:12px 0 5px;font-weight:bold"><input name="verified" type="checkbox"> Verify level</label>' +
         '<label style="display:flex;gap:8px;align-items:center;margin:8px 0 5px"><input name="verification_hacks" type="checkbox"> Verification used hacks</label>' +
         '<label style="display:flex;gap:8px;align-items:center;margin:8px 0 12px"><input name="verification_start_pos" type="checkbox"> Verification used StartPos</label>' +
-        '<label style="display:flex;gap:8px;align-items:center;margin:16px 0;font-weight:bold"><input name="featured" type="checkbox"> Feature this level</label>' +
+        '<label style="display:block;margin:16px 0 5px;font-weight:bold">Rating tier</label><select name="rating_tier" style="padding:9px;border-radius:7px;font-size:16px;width:100%"><option value="none">Unfeatured</option><option value="featured">Featured</option><option value="epic">Epic</option><option value="mythic">Mythic</option><option value="legendary">Legendary</option></select>' +
         '<p data-error style="min-height:18px;margin:10px 0;color:#ff8d8d;font-size:13px"></p><div style="display:flex;gap:8px;justify-content:center"><button type="submit" style="padding:10px 16px;border:0;border-radius:8px;background:#61d66f;font-weight:bold;cursor:pointer">Apply</button><button type="button" data-cancel style="padding:10px 16px;border:0;border-radius:8px;background:#999;font-weight:bold;cursor:pointer">Cancel</button></div>';
       shade.appendChild(dialog); document.body.appendChild(shade);
       const guard = event => { if (shade.contains(event.target)) event.stopPropagation(); };
       ['keydown', 'keyup', 'keypress'].forEach(type => document.addEventListener(type, guard));
       const finish = value => { ['keydown', 'keyup', 'keypress'].forEach(type => document.removeEventListener(type, guard)); shade.remove(); resolve(value); };
-      dialog.addEventListener('submit', event => { event.preventDefault(); const form = new FormData(dialog); const id = String(form.get('id') || '').trim(); if (!/^\d+$/.test(id)) { dialog.querySelector('[data-error]').textContent = 'Enter a numeric level ID.'; return; } finish({ id, difficulty: Number(form.get('difficulty') || 0), stars: Number(form.get('stars') || 0), featured: form.get('featured') === 'on', star_reward: Number(form.get('star_reward') || 0), verified: form.get('verified') === 'on', verification_hacks: form.get('verification_hacks') === 'on', verification_start_pos: form.get('verification_start_pos') === 'on' }); });
+      dialog.addEventListener('submit', event => { event.preventDefault(); const form = new FormData(dialog); const id = String(form.get('id') || '').trim(); if (!/^\d+$/.test(id)) { dialog.querySelector('[data-error]').textContent = 'Enter a numeric level ID.'; return; } const tier = String(form.get('rating_tier') || 'none'); const epic = { none: 0, featured: 0, epic: 1, mythic: 2, legendary: 3 }[tier] ?? 0; finish({ id, difficulty: Number(form.get('difficulty') || 0), stars: Number(form.get('stars') || 0), featured: tier !== 'none', epic, star_reward: Number(form.get('star_reward') || 0), verified: form.get('verified') === 'on', verification_hacks: form.get('verification_hacks') === 'on', verification_start_pos: form.get('verification_start_pos') === 'on' }); });
       dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(null));
       shade.addEventListener('click', event => { if (event.target === shade) finish(null); });
       dialog.querySelector('[name="id"]').focus();
