@@ -2119,12 +2119,41 @@ class LevelEditor {
     } catch (_) {}
   }
 
+  _editorPinnedObjectsKey() {
+    return "wd_editor_pinned_objects";
+  }
+
+  _readEditorPinnedObjectIds() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this._editorPinnedObjectsKey()) || "[]");
+      return Array.isArray(parsed)
+        ? parsed.map(value => Number(value)).filter(value => Number.isInteger(value) && value > 0 && value !== 749).slice(0, 30)
+        : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  _toggleEditorPinnedObject(objectId) {
+    const parsedId = Number(objectId);
+    if (!Number.isInteger(parsedId) || parsedId <= 0 || parsedId === 749) return;
+    const pinned = this._readEditorPinnedObjectIds();
+    const next = pinned.includes(parsedId)
+      ? pinned.filter(id => id !== parsedId)
+      : [parsedId, ...pinned].slice(0, 30);
+    try {
+      localStorage.setItem(this._editorPinnedObjectsKey(), JSON.stringify(next));
+    } catch (_) {}
+    this._buildObjectGrid();
+  }
+
   _buildObjectGrid() {
     if (this._gridContainer) this._gridContainer.destroy();
     if (this._pageDotsContainer) this._pageDotsContainer.destroy();
     if (this._categoryContainer) this._categoryContainer.destroy();
 
     const OBJECT_CATEGORIES = [
+        { id: "pinned",  icon: "tab8", types: null },
         { id: "recent",  icon: "tab3", types: null },
         { id: "all",     icon: "tab3", types: null },
         { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco"] },
@@ -2179,8 +2208,11 @@ class LevelEditor {
         };
 
         const recentMode = activeCatDef?.id === "recent";
-        const objectIds = recentMode
-            ? this._readEditorRecentObjectIds()
+        const pinnedMode = activeCatDef?.id === "pinned";
+        const objectIds = pinnedMode
+            ? this._readEditorPinnedObjectIds()
+            : recentMode
+                ? this._readEditorRecentObjectIds()
             : Object.keys(allObjectsData)
                 .map(id => parseInt(id, 10))
                 .filter(id => Number.isInteger(id) && id > 0 && id !== 749)
@@ -2189,7 +2221,7 @@ class LevelEditor {
             const def = getObjectFromId(i);
             const rawDef = allObjectsData[String(i)];
             
-            if (def && rawDef && (recentMode || matchesCategory(activeCatDef, rawDef))) {
+            if (def && rawDef && (recentMode || pinnedMode || matchesCategory(activeCatDef, rawDef))) {
                 itemsForGrid.push({ type: "object", id: i, frame: def.frame });
             }
         }
@@ -2381,6 +2413,10 @@ class LevelEditor {
                 this._gridContainer.add(icon);
             }
             this._makeCompositeBouncyButton(btnBg, [btnBg, icon], 1.2, () => {
+                if (this.input.activePointer?.event?.ctrlKey) {
+                    this._toggleEditorPinnedObject(item.id);
+                    return;
+                }
                 window.selectedObjId = item.id;
                 this._rememberEditorObject(item.id);
                 this._buildObjectGrid();
@@ -10306,6 +10342,9 @@ LevelEditor.methodNames = [
   "_editorRecentObjectsKey",
   "_readEditorRecentObjectIds",
   "_rememberEditorObject",
+  "_editorPinnedObjectsKey",
+  "_readEditorPinnedObjectIds",
+  "_toggleEditorPinnedObject",
   "_moveObject",
   "_rotateObject",
   "_flipObject",
