@@ -438,12 +438,6 @@ class LevelEditor {
         .setInteractive().setScale(0.72);
     this._lockObjectBtn = this.add.nineslice(0, 425, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
     this._lockObjectLabel = this.add.bitmapText(0, 425, "bigFont", "LOCK", 15).setOrigin(0.5);
-    this._alignObjectsBtn = this.add.nineslice(0, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
-    this._alignObjectsLabel = this.add.bitmapText(0, 500, "bigFont", "ALIGN", 14).setOrigin(0.5);
-    this._sameObjectBtn = this.add.nineslice(-75, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
-    this._sameObjectLabel = this.add.bitmapText(-75, 500, "bigFont", "SAME", 15).setOrigin(0.5);
-    this._sameGroupBtn = this.add.nineslice(-150, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
-    this._sameGroupLabel = this.add.bitmapText(-150, 500, "bigFont", "GROUP", 13).setOrigin(0.5);
     this._soloObjectsBtn = this.add.nineslice(0, 555, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
     this._soloObjectsLabel = this.add.bitmapText(0, 555, "bigFont", "SOLO", 15).setOrigin(0.5);
     this._invertSelectionBtn = this.add.nineslice(-75, 555, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
@@ -467,16 +461,13 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._alignObjectsBtn, this._alignObjectsLabel, this._sameObjectBtn, this._sameObjectLabel, this._sameGroupBtn, this._sameGroupLabel, this._soloObjectsBtn, this._soloObjectsLabel, this._invertSelectionBtn, this._invertSelectionLabel, this._duplicateOffsetBtn, this._duplicateOffsetLabel, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._soloObjectsBtn, this._soloObjectsLabel, this._invertSelectionBtn, this._invertSelectionLabel, this._duplicateOffsetBtn, this._duplicateOffsetLabel, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
     });
     this._makeBouncyButton(this._inspectObjectBtn, 0.72, () => this._openSelectedEditorInspector(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
     this._makeCompositeBouncyButton(this._lockObjectBtn, [this._lockObjectBtn, this._lockObjectLabel], 1, () => this._toggleSelectedEditorObjectLocks(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
-    this._makeCompositeBouncyButton(this._alignObjectsBtn, [this._alignObjectsBtn, this._alignObjectsLabel], 1, () => this._openEditorAlignPopup(), () => this._getCurrentSelectedEditorObjectIds().length > 1);
-    this._makeCompositeBouncyButton(this._sameObjectBtn, [this._sameObjectBtn, this._sameObjectLabel], 1, () => this._selectSameEditorObjects(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
-    this._makeCompositeBouncyButton(this._sameGroupBtn, [this._sameGroupBtn, this._sameGroupLabel], 1, () => this._selectSameGroupObjects(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
     this._makeCompositeBouncyButton(this._soloObjectsBtn, [this._soloObjectsBtn, this._soloObjectsLabel], 1, () => this._toggleEditorIsolation(), () => this._getCurrentSelectedEditorObjectIds().length > 0 || this._editorIsolatedObjectIds instanceof Set);
     this._makeCompositeBouncyButton(this._invertSelectionBtn, [this._invertSelectionBtn, this._invertSelectionLabel], 1, () => this._invertEditorSelection(), () => (this._level?.objectSprites?.length || 0) > 0);
     this._makeCompositeBouncyButton(this._duplicateOffsetBtn, [this._duplicateOffsetBtn, this._duplicateOffsetLabel], 1, () => this._duplicateSelectedObjectWithGridOffset(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
@@ -3460,34 +3451,6 @@ class LevelEditor {
             this._deleteGridButton.setInteractive();
         } else {
             this._deleteGridButton.disableInteractive();
-        }
-    }
-    if (this._alignObjectsBtn) {
-        const alignable = selectedCount > 1;
-        this._alignObjectsBtn.setAlpha(alignable ? 1 : 0.5);
-        this._alignObjectsLabel?.setAlpha(alignable ? 1 : 0.5);
-        if (alignable) {
-            this._alignObjectsBtn.setInteractive();
-        } else {
-            this._alignObjectsBtn.disableInteractive();
-        }
-    }
-    if (this._sameObjectBtn) {
-        this._sameObjectBtn.setAlpha(hasSelection ? 1 : 0.5);
-        this._sameObjectLabel?.setAlpha(hasSelection ? 1 : 0.5);
-        if (hasSelection) {
-            this._sameObjectBtn.setInteractive();
-        } else {
-            this._sameObjectBtn.disableInteractive();
-        }
-    }
-    if (this._sameGroupBtn) {
-        this._sameGroupBtn.setAlpha(hasSelection ? 1 : 0.5);
-        this._sameGroupLabel?.setAlpha(hasSelection ? 1 : 0.5);
-        if (hasSelection) {
-            this._sameGroupBtn.setInteractive();
-        } else {
-            this._sameGroupBtn.disableInteractive();
         }
     }
     if (this._soloObjectsBtn) {
