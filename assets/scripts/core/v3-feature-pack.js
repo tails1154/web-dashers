@@ -77,7 +77,7 @@
     focus_editor_camera: scene => { scene._cameraX = 0; scene._cameraY = 0; },
     clear_editor_selection: scene => scene._deselectEditorObject?.(),
     reset_v3_preferences: scene => {
-      features.filter(feature => feature.kind === "toggle").forEach(feature => { state[feature.id] = false; toggleHandlers[feature.id]?.(scene, false); });
+      features.filter(feature => feature.kind === "toggle").forEach(feature => { state[feature.id] = false; applyToggle(scene, feature.id, false); });
       save();
       notice(scene, "V3 PREFERENCES", "All V3 toggles were reset.");
     },
@@ -169,6 +169,11 @@
     diagnostics_song_availability_check: (_scene, on) => { window.wdSongAvailabilityCheck = on; },
     diagnostics_save_integrity_check: (_scene, on) => { window.wdSaveIntegrityCheck = on; }
   };
+  window.wdV3Flags = window.wdV3Flags || {};
+  const applyToggle = (scene, id, enabled) => {
+    window.wdV3Flags[id] = enabled;
+    toggleHandlers[id]?.(scene, enabled);
+  };
   const screenW = () => Number(window.screenWidth || window.innerWidth || 960);
   const screenH = () => Number(window.screenHeight || window.innerHeight || 540);
   const ensureLabel = (scene, key, x, y, style = {}) => {
@@ -230,7 +235,7 @@
       if (!feature) return false;
       if (feature.kind === "toggle") {
         const enabled = this.setEnabled(id, !this.isEnabled(id));
-        toggleHandlers[id]?.(scene, enabled);
+        applyToggle(scene, id, enabled);
       } else commandHandlers[id]?.(scene);
       toast(scene, `${feature.name}: ${feature.kind === "toggle" ? (this.isEnabled(id) ? "ON" : "OFF") : "DONE"}`);
       return true;
@@ -238,7 +243,7 @@
     install(scene) {
       if (scene._v3FeatureKeyHandler) return;
       features.forEach(feature => {
-        if (feature.kind === "toggle" && this.isEnabled(feature.id)) toggleHandlers[feature.id]?.(scene, true);
+        if (feature.kind === "toggle" && this.isEnabled(feature.id)) applyToggle(scene, feature.id, true);
       });
       scene._v3FeatureKeyHandler = event => {
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "p") {

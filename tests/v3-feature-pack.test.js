@@ -39,4 +39,6 @@ window.WDV3.run("editor_snap_to_grid", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), true);
 window.WDV3.run("reset_v3_preferences", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
+window.WDV3.run("gameplay_coin_route_hints", {});
+assert.equal(window.wdV3Flags.gameplay_coin_route_hints, true);
 console.log(`V3 feature inventory OK: ${features.length} separate features`);
