@@ -6590,6 +6590,10 @@ _buildPauseOverlay() {
     const notesLogLabel = this.add.bitmapText(textureY - 20, 80, "bigFont", "LOG", 17).setOrigin(0.5);
     this._pauseContainer.add([notesLogButton, notesLogLabel]);
     this._makeCompositeBouncyButton(notesLogButton, [notesLogButton, notesLogLabel], 0.7, () => this._openRunNotesLog());
+    const snapshotButton = this.add.nineslice(textureY + 110, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const snapshotLabel = this.add.bitmapText(textureY + 110, 80, "bigFont", "SHOT", 17).setOrigin(0.5);
+    this._pauseContainer.add([snapshotButton, snapshotLabel]);
+    this._makeCompositeBouncyButton(snapshotButton, [snapshotButton, snapshotLabel], 0.7, () => this._saveRunSnapshot());
 
     this._pauseContainer.add(this.add.bitmapText(textureY, 65, "bigFont", window.currentlevel[1], 40).setOrigin(0.5, 0.5));
 
@@ -6727,6 +6731,50 @@ _buildPauseOverlay() {
       ? currentNotes.map(note => `${note.percent}% — ${String(note.text).slice(0, 120)}`).join("\n")
       : "No notes saved for this level yet.";
     window.showNativePhaserDialog(this, { title: "RUN NOTES", message });
+  }
+  _saveRunSnapshot() {
+    const endX = Number(this._level?.endXPos || 0);
+    const percent = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
+    const levelName = String(window.currentlevel?.[1] || "level").replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "").slice(0, 48) || "level";
+    const filename = `${levelName}_${percent}pct.png`;
+    const overlay = this._pauseContainer;
+    const restoreOverlay = () => {
+      if (overlay && overlay.scene === this) overlay.setVisible(true);
+    };
+    if (overlay) overlay.setVisible(false);
+    const renderer = this.game?.renderer;
+    if (renderer?.snapshot) {
+      renderer.snapshot(image => {
+        restoreOverlay();
+        if (!image?.src) {
+          this.InfoBoxDoAThing("Could not capture the gameplay canvas.");
+          return;
+        }
+        const link = document.createElement("a");
+        link.href = image.src;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        this.InfoBoxDoAThing(`Saved ${filename}`);
+      }, "image/png", 1);
+      return;
+    }
+    try {
+      const dataUrl = this.game?.canvas?.toDataURL("image/png");
+      restoreOverlay();
+      if (!dataUrl) throw new Error("canvas unavailable");
+      const link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      this.InfoBoxDoAThing(`Saved ${filename}`);
+    } catch (_) {
+      restoreOverlay();
+      this.InfoBoxDoAThing("Could not capture the gameplay canvas.");
+    }
   }
 _buildSettingsPopup() {
     if (this._settingsPopup) return;
