@@ -212,11 +212,18 @@
       }
       if (this.isEnabled("accessibility_pause_on_focus_loss") && document.hidden && !scene._menuActive && !scene._paused) scene._pauseGame?.();
       if (this.isEnabled("audio_mute_menu_music") && scene._menuActive && scene._audio?.isplaying?.()) scene._audio.stopMusic?.();
+      if (scene._attemptsLabel) scene._attemptsLabel.setVisible(this.isEnabled("gameplay_attempt_counter"));
       refreshFilter();
       if (this.isEnabled("editor_selection_count") && window.isEditor && scene._levelEditor) {
         const selected = scene._levelEditor._getCurrentSelectedEditorObjectIds?.() || [];
         ensureLabel(scene, "_v3SelectionLabel", 14, 104).setText(`Selected objects: ${selected.length}`).setVisible(true);
       } else if (scene._v3SelectionLabel) scene._v3SelectionLabel.setVisible(false);
+      if (this.isEnabled("gameplay_death_marker") && !window.isEditor && scene._state?.isDead) {
+        if (!scene._v3DeathMarker) scene._v3DeathMarker = scene.add.graphics().setScrollFactor(0).setDepth(8998);
+        const markerX = Number(scene._playerWorldX || 0) - Number(scene._cameraX || 0);
+        const markerY = typeof b === "function" ? b(Number(scene._state.y || 0)) + Number(scene._cameraY || 0) : screenH() / 2;
+        scene._v3DeathMarker.clear().lineStyle(3, 0xff5b5b, 1).lineBetween(markerX - 12, markerY - 12, markerX + 12, markerY + 12).lineBetween(markerX + 12, markerY - 12, markerX - 12, markerY + 12).setVisible(true);
+      } else if (scene._v3DeathMarker) scene._v3DeathMarker.setVisible(false);
       if (this.isEnabled("diagnostics_object_count_warning") && window.isEditor) {
         const count = Array.isArray(window.levelObjects) ? window.levelObjects.filter(Boolean).length : 0;
         ensureLabel(scene, "_v3ObjectCountLabel", screenW() - 14, 104, { align: "right" }).setOrigin(1, 0).setText(`Objects: ${count}${count > 1000 ? "  HIGH" : ""}`).setTint(count > 1000 ? 0xff7777 : 0xffffff).setVisible(true);

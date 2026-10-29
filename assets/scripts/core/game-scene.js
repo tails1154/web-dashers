@@ -9699,9 +9699,11 @@ _buildSettingsPopup() {
         if (!this._audio._shouldUsePracticeSong()) {
           this._audio.stopMusic();
         }
-        this._audio.playEffect("explode_11", {
-          volume: 0.65 * this._sfxVolume
-        });
+        if (window.wdDeathSound !== false) {
+          this._audio.playEffect("explode_11", {
+            volume: 0.65 * this._sfxVolume
+          });
+        }
         this._deathSoundPlayed = true;
         this._totalDeaths++;
         localStorage.setItem("gd_totalDeaths", this._totalDeaths);
@@ -9747,7 +9749,9 @@ _buildSettingsPopup() {
       }
       this._deathTimer += deltaTime;
       const fastReset = !!window.fastReset;
-      let _0x237728 = fastReset ? 500 : (this._hadNewBest ? 1400 : 1000);
+      let _0x237728 = window.WDV3?.isEnabled?.("gameplay_auto_restart")
+        ? 0
+        : (fastReset ? 500 : (this._hadNewBest ? 1400 : 1000));
       if (this._deathTimer > _0x237728) {
         if (this._practicedMode.practiceMode) {
           this._respawnFromCheckpoint();
