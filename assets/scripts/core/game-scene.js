@@ -5274,7 +5274,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     }
     // Show the current update log only once per browser profile. The info
     // button remains available for users who want to reopen it later.
-    const updateLogVersion = "2026-09-15-economy-profiles";
+    const updateLogVersion = "2026-10-28-slopes-and-editor";
     const updateLogSeen = localStorage.getItem("wd_update_log_seen");
     if (!window.updateLogShown && updateLogSeen !== updateLogVersion) {
       this._buildUpdateLogPopup();
@@ -7571,6 +7571,15 @@ _buildSettingsPopup() {
     */
     const updateEntries = [
       { text: "Update Log", scale: 1, font: "goldFont" },
+      { text: "Rotated slopes use accurate native collision", scale: 0.64 },
+      { text: "Slope exits and adjacent ramps are more stable", scale: 0.64 },
+      { text: "Ball and ship slope launches improved", scale: 0.66 },
+      { text: "Dual-player slope camera tracking improved", scale: 0.64 },
+      { text: "Wave trails remain visible with LDM", scale: 0.68 },
+      { text: "Fast Reset is available in global options", scale: 0.66 },
+      { text: "Nine Circles flash speed can be configured", scale: 0.64 },
+      { text: "Native photosensitive epilepsy warning", scale: 0.66 },
+      { text: "Editor objects can be sent to the top layer", scale: 0.64 },
       { text: "Coins now save to your account", scale: 0.72 },
       { text: "Collect up to three coins per level", scale: 0.68 },
       { text: "Coins are awarded when you beat levels", scale: 0.66 },
