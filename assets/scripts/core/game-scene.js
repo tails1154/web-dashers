@@ -9045,6 +9045,11 @@ _buildSettingsPopup() {
       _0x1a27be = this._level.flyCameraTarget;
     } else {
       let _0x2bc8fb = this._state.y;
+      if (this._isDual && this._state2 && !this._state2.isDead && Number.isFinite(Number(this._state2.y))) {
+        // Keep both dual players in the vertical viewport instead of tracking
+        // only the primary player's lane.
+        _0x2bc8fb = (Number(this._state.y) + Number(this._state2.y)) / 2;
+      }
       let _0x259956 = 140;
       let _0x5025ec = 80;
       let _0x1f7976 = explosionPiece - (typeof o !== 'undefined' ? o : 0) + 320;
@@ -9500,7 +9505,8 @@ _buildSettingsPopup() {
         }
       }
       this._deathTimer += deltaTime;
-      let _0x237728 = this._hadNewBest ? 1400 : 1000;
+      const fastReset = parseInt(window.settingsMap?.wdFastReset || "0", 10) === 1;
+      let _0x237728 = fastReset ? 500 : (this._hadNewBest ? 1400 : 1000);
       if (this._deathTimer > _0x237728) {
         if (this._practicedMode.practiceMode) {
           this._respawnFromCheckpoint();

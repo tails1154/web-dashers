@@ -4129,7 +4129,8 @@ class LevelEditor {
         { label: "Mini Mode", key: "kA3" },
         { label: "Flip Gravity", key: "kA11" },
         { label: "Dual Mode", key: "kA8" },
-        { label: "Mirror Mode", key: "kA28" }
+        { label: "Mirror Mode", key: "kA28" },
+        { label: "Fast Reset", key: "wdFastReset" }
     ];
 
     const makeToggle = (label, key, y) => {
@@ -4163,7 +4164,7 @@ class LevelEditor {
     };
 
     optionDefs.forEach((opt, i) => {
-        makeToggle(opt.label, opt.key, -130 + i * 80);
+        makeToggle(opt.label, opt.key, -130 + i * 60);
     });
 
     const songOffsetButton = this.add.nineslice(135, 165, "GJ_button01", null, 230, 50, 18, 18, 18, 18)
@@ -5502,6 +5503,97 @@ class LevelEditor {
     return groups;
   }
 
+  _getEditorUsedColorChannels() {
+    const channels = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1000, 1001, 1002, 1003, 1004, 1009, 1013, 1014]);
+    const map = this._editorSettingsToMap?.() || {};
+    for (const entry of String(map["kS38"] || "").split("|")) {
+      const parsed = this._parseColorStringEntry(entry);
+      if (Number.isFinite(parsed.channel) && parsed.channel > 0) channels.add(parsed.channel);
+    }
+    return [...channels].sort((a, b) => a - b);
+  }
+
+  _getEditorObjectColorChannel(saveObj, slot = 1) {
+    const raw = saveObj?._raw || {};
+    const key = slot === 2 ? 22 : 21;
+    const prop = slot === 2 ? "color2" : "color1";
+    const value = parseInt(saveObj?.[prop] ?? raw[key] ?? raw[String(key)] ?? 0, 10);
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  _setEditorObjectColorChannel(saveObj, channelId, slot = 1) {
+    if (!saveObj) return;
+    const channel = Math.max(0, parseInt(channelId, 10) || 0);
+    const key = slot === 2 ? 22 : 21;
+    const prop = slot === 2 ? "color2" : "color1";
+    saveObj[prop] = channel;
+    saveObj._raw = saveObj._raw || {};
+    saveObj._raw[key] = String(channel);
+    saveObj._raw[String(key)] = String(channel);
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : null;
+    const sprites = linkedId === null ? [] : (this._level?.objectSprites?.[linkedId] || []);
+    for (const sprite of sprites) {
+      if (!sprite) continue;
+      for (const list of Object.values(this._level?._colorChannelSprites || {})) {
+        const index = list.indexOf(sprite);
+        if (index !== -1) list.splice(index, 1);
+      }
+      sprite._eeColorChannel = channel;
+      if (channel > 0) {
+        this._level._colorChannelSprites[channel] ||= [];
+        this._level._colorChannelSprites[channel].push(sprite);
+      }
+    }
+    this._level?.applyColorChannels?.(this._colorManager);
+  }
+
+  _openSelectedEditorColorGroupsPopup(selectedSaveObjs = []) {
+    const objects = selectedSaveObjs.filter(Boolean);
+    if (!objects.length) return;
+    this._closeEditorObjectOptionsPopup();
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2700);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.5).setOrigin(0).setInteractive());
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const panelW = Math.min(760, sw - 60);
+    const panelH = Math.min(620, sh - 60);
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 42, "goldFont", "Color Groups", 38).setOrigin(0.5));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 78, "bigFont", `${objects.length} selected object${objects.length === 1 ? "" : "s"}`, 20).setOrigin(0.5));
+    const close = () => { root.destroy(); this._editorObjectOptionsPopup = null; };
+    const channels = this._getEditorUsedColorChannels();
+    const current = this._getEditorObjectColorChannel(objects[0], 1);
+    const columns = Math.min(6, Math.max(3, Math.floor((panelW - 100) / 105)));
+    const buttonW = 92;
+    const buttonH = 54;
+    const gapX = 14;
+    const gapY = 14;
+    const startX = -((columns - 1) * (buttonW + gapX)) / 2;
+    const startY = -panelH / 2 + 145;
+    channels.forEach((channel, index) => {
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const x = startX + col * (buttonW + gapX);
+      const y = startY + row * (buttonH + gapY);
+      const color = this._getEditorColorChannel(channel);
+      const swatch = this.add.rectangle(0, -10, 28, 28, Phaser.Display.Color.GetColor(color.r, color.g, color.b)).setStrokeStyle(2, 0xffffff, 0.8);
+      const label = this.add.bitmapText(0, 18, "bigFont", this._getEditorColorChannelLabel(channel), 17).setOrigin(0.5);
+      const hit = this.add.zone(0, 0, buttonW, buttonH).setInteractive();
+      const button = this.add.container(x, y).add([swatch, label, hit]);
+      inner.add(button);
+      this._makeBouncyButton(hit, 1, () => {
+        for (const object of objects) this._setEditorObjectColorChannel(object, channel, 1);
+        close();
+      });
+      if (channel === current) label.setTint(0xffe45c);
+    });
+    this._makeEditorOkButton(inner, 0, panelH / 2 - 46, "OK", close);
+  }
+
 
   _getEditorLayerOptions() {
     let maxLayer = 0;
@@ -5809,6 +5901,10 @@ class LevelEditor {
       this._makeCompositeBouncyButton(hit, [grp], 1, callback);
       return { root: grp, hit, label, bg };
     };
+
+    makeGoldButton(inner, panelW / 2 - 105, -(panelH / 2) + 40, 150, 42, "Colors", 22, () => {
+      this._openSelectedEditorColorGroupsPopup(selectedSaveObjs);
+    });
 
     const numericInputs = [];
     const inputW = 92;
@@ -9321,6 +9417,10 @@ LevelEditor.methodNames = [
   "_getEditorObjectGroupIds",
   "_syncEditorObjectGroupCaches",
   "_setEditorObjectGroupIds",
+  "_getEditorUsedColorChannels",
+  "_getEditorObjectColorChannel",
+  "_setEditorObjectColorChannel",
+  "_openSelectedEditorColorGroupsPopup",
   "_getEditorZLayerOptions",
   "_getEditorObjectZLayer",
   "_getEditorObjectZOrder",

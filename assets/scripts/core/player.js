@@ -5664,9 +5664,10 @@ if (this.p.isFlying || this.p.isUfo) {
       this._ignoreTeleportUntilClear = false;
     }
     if (this._prevSlopeObj && !this._activeSlopeObj) {
-      // Native slope collision does not inject a new vertical launch when
-      // the player leaves the ramp. The existing gravity/launch velocity is
-      // carried out of the slope; slope velocity is only used by jump boosts.
+      // Transfer the slope's exit momentum before clearing its cached state.
+      // Without this call ships lose their vertical exit velocity and cubes
+      // appear to fall off the end of downhill ramps.
+      this._applySlopeExitMomentum(this._prevSlopeObj, pieceWidth);
       this._slopeVelocity = 0;
       this._slopeYVelocity = 0;
       this._lastSlopeYVelocity = 0;
