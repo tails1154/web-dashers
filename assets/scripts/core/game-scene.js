@@ -9115,13 +9115,14 @@ _buildSettingsPopup() {
       // can visibly drift toward the top/bottom of the viewport on ramps.
       const activeSlope = this._player?._activeSlopeObj || this._player?._prevSlopeObj ||
         this._player2?._activeSlopeObj || this._player2?._prevSlopeObj;
-      if (activeSlope) {
+      const dualCamera = this._isDual && this._state2 && !this._state2.isDead;
+      if (activeSlope || dualCamera) {
         _0x1a27be = _0x2bc8fb - 320 + (typeof o !== 'undefined' ? o : 0);
       }
-      let _0x259956 = activeSlope ? 24 : 140;
-      let _0x5025ec = activeSlope ? 24 : 80;
+      let _0x259956 = activeSlope || dualCamera ? 24 : 140;
+      let _0x5025ec = activeSlope || dualCamera ? 24 : 80;
       let _0x1f7976 = explosionPiece - (typeof o !== 'undefined' ? o : 0) + 320;
-      if (activeSlope) {
+      if (activeSlope || dualCamera) {
         // Keep the slope target above; the smaller thresholds are retained
         // for readability and for callers that inspect this routine while a
         // contact is being handed off.

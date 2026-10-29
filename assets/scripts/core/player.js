@@ -3415,8 +3415,8 @@ if (this.p.isFlying || this.p.isUfo) {
       const continuedContact = (wasOnThisSlope || slopeHandoff) && !this.p.isJumping &&
         Math.abs(playersY - slopeTargetY) <= (shouldStickToSlope ? Math.max(5, hitSize * 0.35) : 1);
       const groundedModeDownhillStick = shouldStickToSlope && !this.p.isJumping && slidingDown &&
-        correctGravity && playersY <= slopeTargetY + Math.max(6, hitSize * 0.5) &&
-        this.p.yVelocity <= 2;
+        correctGravity && playersY <= slopeTargetY + Math.max(10, hitSize * 0.75) &&
+        Math.abs(this.p.yVelocity) <= 18;
       const canStickToSlope = specialFirstContact &&
         (correctGravity
           ? (this.p.gravityFlipped
