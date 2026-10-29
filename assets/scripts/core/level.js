@@ -3926,13 +3926,23 @@ window.LevelObject = class LevelObject {
 
   stepNineCirclesEffect(dt) {
     if (!this._nineCirclesEnabled || window.enableLDM) return;
-    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * 5.5;
-    const pulse = (Math.sin(this._nineCirclesPhase) + 1) * 0.5;
-    const tint = (Math.round(105 + pulse * 110) << 16) | (Math.round(35 + pulse * 45) << 8) | Math.round(175 + (1 - pulse) * 70);
+    // Nine Circles is a traveling four-bar flash: each connected-looking
+    // diagonal band alternates between a bright neon block and a near-black
+    // block, then the ON bar advances to the next band.
+    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * 8;
+    const activeBand = Math.floor(this._nineCirclesPhase) % 4;
+    const brightTint = 0xf044ff;
+    const darkTint = 0x160b24;
     for (const section of this._sections) {
       for (const sprite of section || []) {
-        if (!sprite || !sprite.active || sprite._eeIsGlowSprite || sprite._eeEditorTriggerSprite) continue;
-        sprite.setTint?.(tint);
+        if (!sprite || !sprite.active || sprite._eeEditorTriggerSprite) continue;
+        const worldX = Number(sprite._eeWorldX ?? sprite.x) || 0;
+        const worldY = Number(sprite._eeBaseY ?? sprite.y) || 0;
+        // 60 is one gameplay grid cell in the level coordinate system. The
+        // diagonal index makes adjacent/connected block rows flash in order.
+        const band = Math.floor((worldX + worldY) / 60);
+        const relativeBand = ((band - activeBand) % 4 + 4) % 4;
+        sprite.setTint?.(relativeBand === 0 ? brightTint : darkTint);
         sprite._eeNineCirclesTinted = true;
       }
     }
