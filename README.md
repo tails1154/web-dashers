@@ -41,6 +41,12 @@
 - **Icon Kit** - A working Icon Kit with different colors and icons to choose from! (Currently not including 2.2 icons.)
 - **Different Gamemodes** - Just about every gamemode is implemented currently, with the exception of the Swing.
 - **Extra Settings** - You can enable and disable things like Noclip or Show Hitboxes from the settings menu, along with other settings, like the level percentage!
+- **V3 Feature Menu** - The Settings menu opens a searchable native Phaser feature menu with 130 separate gameplay, editor, accessibility, audio, online, progression, visual, and diagnostics features. Toggle state is saved locally; use `Ctrl+Shift+P` as a shortcut.
+- **Newgrounds Song Browser** - The editor can search the server-side Newgrounds audio proxy or accept a direct `/audio/listen/<id>` link and import its ID into the level data.
+
+### Development checks
+
+Run `npm test` to validate the V3 inventory and persisted toggle behavior. Run `npm start` to serve the client locally.
 
 ## Things currently in development:
 - **Practice Mode** - Although an early version of Practice mode is already in the game, we hope to make a completely working Practice Mode with no bugs at all.
