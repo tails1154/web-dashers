@@ -300,10 +300,7 @@ class LevelEditor {
     this.input.keyboard.on('keydown-M', (event) => {
         if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
         event.preventDefault();
-        this._editorMeasureMode = !this._editorMeasureMode;
-        this._editorMeasureStart = null;
-        this._editorMeasureGraphics?.clear();
-        this._editorCoordinateReadout?.setTint(this._editorMeasureMode ? 0xffd76e : 0xb9d8ff);
+        this._toggleEditorMeasureMode();
     });
 
     this._createEditorGui();
@@ -377,6 +374,10 @@ class LevelEditor {
     const overviewLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 122, "bigFont", "MAP", 15).setOrigin(0.5);
     this._toolbox.add([overviewButton, overviewLabel]);
     this._makeCompositeBouncyButton(overviewButton, [overviewButton, overviewLabel], 0.78, () => this._openEditorOverviewPopup());
+    this._measureModeButton = this.add.nineslice(screenWidth - 104, screenHeight - 74, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
+    this._measureModeLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 74, "bigFont", "MEASURE", 14).setOrigin(0.5);
+    this._toolbox.add([this._measureModeButton, this._measureModeLabel]);
+    this._makeCompositeBouncyButton(this._measureModeButton, [this._measureModeButton, this._measureModeLabel], 0.78, () => this._toggleEditorMeasureMode());
 
     const tabX = (screenWidth / 2) - 475;
     const tabYStart = screenHeight - 150;
@@ -3095,6 +3096,14 @@ class LevelEditor {
     this._editorMeasureGraphics.fillCircle(start.x, start.y, 5);
     this._editorMeasureGraphics.fillCircle(pointer.x, pointer.y, 5);
     this._editorCoordinateReadout?.setText(`MEASURE  ${Math.round(distance)}px  •  ${(distance / grid).toFixed(2)} GRID  •  Δ ${Math.round(dx)},${Math.round(dy)}`);
+  }
+
+  _toggleEditorMeasureMode() {
+    this._editorMeasureMode = !this._editorMeasureMode;
+    this._editorMeasureStart = null;
+    this._editorMeasureGraphics?.clear();
+    this._editorCoordinateReadout?.setTint(this._editorMeasureMode ? 0xffd76e : 0xb9d8ff);
+    this._measureModeButton?.setTexture(this._editorMeasureMode ? "GJ_button02" : "GJ_button01");
   }
 
   _duplicateSelectedObjectsMirrored(axis) {
@@ -10464,6 +10473,7 @@ LevelEditor.methodNames = [
   "_sendSelectedEditorObjectsToTop",
   "_focusEditorSelection",
   "_updateEditorMeasure",
+  "_toggleEditorMeasureMode",
   "_duplicateSelectedObjectsMirrored",
   "_deleteSelectedObject",
   "_updateEditorActionButtons",
