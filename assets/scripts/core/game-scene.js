@@ -1335,13 +1335,21 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
         this._creatorOverlayObjects.push(btn);
       });
-      const favoritesButton = this.add.nineslice(sw / 2, sh - 44, "GJ_button01", null, 190, 42, 12, 12, 12, 12)
+      const favoritesButton = this.add.nineslice(sw / 2 - 110, sh - 44, "GJ_button01", null, 190, 42, 12, 12, 12, 12)
         .setScrollFactor(0).setDepth(104).setInteractive();
-      const favoritesLabel = this.add.bitmapText(sw / 2, sh - 44, "bigFont", "FAVORITES", 18).setOrigin(0.5).setScrollFactor(0).setDepth(105);
+      const favoritesLabel = this.add.bitmapText(sw / 2 - 110, sh - 44, "bigFont", "FAVORITES", 18).setOrigin(0.5).setScrollFactor(0).setDepth(105);
       this._creatorOverlayObjects.push(favoritesButton, favoritesLabel);
       this._makeCompositeBouncyButton(favoritesButton, [favoritesButton, favoritesLabel], 1, () => {
         this._closeCreatorMenu(true);
         this._openFavoriteLevelsScene();
+      }, () => true);
+      const recentButton = this.add.nineslice(sw / 2 + 110, sh - 44, "GJ_button01", null, 190, 42, 12, 12, 12, 12)
+        .setScrollFactor(0).setDepth(104).setInteractive();
+      const recentLabel = this.add.bitmapText(sw / 2 + 110, sh - 44, "bigFont", "RECENT", 18).setOrigin(0.5).setScrollFactor(0).setDepth(105);
+      this._creatorOverlayObjects.push(recentButton, recentLabel);
+      this._makeCompositeBouncyButton(recentButton, [recentButton, recentLabel], 1, () => {
+        this._closeCreatorMenu(true);
+        this._openRecentLevelsScene();
       }, () => true);
     };
     this._searchOverlay = null;
@@ -1470,6 +1478,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._playOverlayObjects.push(overlay, blocker, backBtn, cornerBL, cornerBR);
       const lvl = window._selectedLevelData || {};
       if (lvl.id) localStorage.setItem("viewedLevel_" + lvl.id, "1");
+      this._recordRecentLevel(lvl);
       this._saveOnlineLevelToSavedList(lvl);
       const centerX = sw / 2;
 
@@ -6817,6 +6826,27 @@ _buildPauseOverlay() {
       return;
     }
     this._openOnlineLevelsScene({ title: "Favorites", favorites: true, staticLevels: favorites });
+  }
+  _getRecentLevels() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem("wd_recent_levels") || "[]");
+      return Array.isArray(parsed) ? parsed.filter(level => level && level.id !== undefined) : [];
+    } catch (_) { return []; }
+  }
+  _recordRecentLevel(level) {
+    if (!level || level.id === undefined) return;
+    const recent = this._getRecentLevels().filter(item => String(item.id) !== String(level.id));
+    recent.unshift({ ...level, id: level.id, viewedAt: Date.now() });
+    try { localStorage.setItem("wd_recent_levels", JSON.stringify(recent.slice(0, 30))); } catch (_) {}
+  }
+  _openRecentLevelsScene() {
+    const recent = this._getRecentLevels();
+    if (!recent.length) {
+      showNativePhaserDialog(this, { title: "RECENT LEVELS", message: "Levels you open will appear here." });
+      this._openCreatorMenu();
+      return;
+    }
+    this._openOnlineLevelsScene({ title: "Recent Levels", recent: true, staticLevels: recent });
   }
   _openRunNotesLog() {
     let notes = [];
@@ -13648,7 +13678,7 @@ _applyMirrorEffect() {
       180,
       () => {
         this._onlineLevelsOverlay = null;
-        if (isFeatured || isMap || isList || params.favorites) {
+        if (isFeatured || isMap || isList || params.favorites || params.recent) {
           this._openCreatorMenu();
         } else {
           this._openSearchMenu();
