@@ -12137,7 +12137,7 @@ _applyMirrorEffect() {
     const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 190, "goldFont", canEnter ? "THE VAULT" : "VAULT GUARD", 34).setOrigin(0.5);
     const bodyText = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 232, "bigFont", message, 20)
       .setOrigin(0.5).setMaxWidth(panelW - 70).setCenterAlign().setTint(0xffffff);
-    const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 272, "bigFont", `${diamonds} / ${required} DIAMONDS`, 19)
+    const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 252, "bigFont", `${diamonds} / ${required} DIAMONDS`, 19)
       .setOrigin(0.5).setTint(0xd98cff);
     const foreground = this.add.image(sw / 2, sh / 2 + panelH / 2 - 34, "SecretSheet", "dungeon_foreground_001.png")
       .setScale(Math.min(1.8, (panelW - 40) / 310)).setAlpha(0.92);
