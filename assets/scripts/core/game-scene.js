@@ -12130,10 +12130,10 @@ _applyMirrorEffect() {
       .setScale(1.25).setAlpha(0.62);
     const dungeonBarsRight = this.add.image(sw / 2 + panelW / 2 - 55, sh / 2 - 4, "SecretSheet", "dungeon_bars_001.png")
       .setScale(1.25).setFlipX(true).setAlpha(0.62);
-    const body = this.add.image(sw / 2, sh / 2 - panelH / 2 + 104, "SecretSheet", "secretBody_01_001.png")
-      .setScale(1.35).setTint(canEnter ? 0xffffff : 0x788097);
-    const eyes = this.add.image(sw / 2, body.y - 10, "SecretSheet", "secretEyes_01_001.png")
-      .setScale(1.35).setTint(canEnter ? 0x9dffdd : 0x657080);
+    // secretLock2 is the original Vault guardian. secretBody_01 belongs to a
+    // different secret room and is intentionally not used here.
+    const body = this.add.image(sw / 2, sh / 2 - panelH / 2 + 104, "SecretSheet", "GJ_secretLock2_001.png")
+      .setScale(1.55).setTint(canEnter ? 0xffffff : 0x788097);
     const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 190, "goldFont", canEnter ? "THE VAULT" : "VAULT GUARD", 34).setOrigin(0.5);
     const bodyText = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 232, "bigFont", message, 20)
       .setOrigin(0.5).setMaxWidth(panelW - 70).setCenterAlign().setTint(0xffffff);
@@ -12141,7 +12141,7 @@ _applyMirrorEffect() {
       .setOrigin(0.5).setTint(0xd98cff);
     const foreground = this.add.image(sw / 2, sh / 2 + panelH / 2 - 34, "SecretSheet", "dungeon_foreground_001.png")
       .setScale(Math.min(1.8, (panelW - 40) / 310)).setAlpha(0.92);
-    root.add([shade, panel, inner, dungeonBarsLeft, dungeonBarsRight, foreground, body, eyes, title, bodyText, count]);
+    root.add([shade, panel, inner, dungeonBarsLeft, dungeonBarsRight, foreground, body, title, bodyText, count]);
 
     let inputText = "";
     let inputFocused = canEnter;
