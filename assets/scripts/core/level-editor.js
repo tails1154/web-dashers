@@ -10513,6 +10513,7 @@ LevelEditor.methodNames = [
   "_sendSelectedEditorObjectsToTop",
   "_focusEditorSelection",
   "_updateEditorMeasure",
+  "_updateEditorPlacementGuide",
   "_toggleEditorMeasureMode",
   "_duplicateSelectedObjectsMirrored",
   "_deleteSelectedObject",
