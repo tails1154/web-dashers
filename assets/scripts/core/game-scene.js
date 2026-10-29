@@ -6612,6 +6612,10 @@ _buildPauseOverlay() {
     const recordLabel = this.add.bitmapText(textureY + 240, 80, "bigFont", this._runRecorder ? "STOP" : "REC", 17).setOrigin(0.5);
     this._pauseContainer.add([recordButton, recordLabel]);
     this._makeCompositeBouncyButton(recordButton, [recordButton, recordLabel], 0.7, () => this._toggleRunRecording());
+    const goalButton = this.add.nineslice(textureY + 350, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const goalLabel = this.add.bitmapText(textureY + 350, 80, "bigFont", "GOAL", 17).setOrigin(0.5);
+    this._pauseContainer.add([goalButton, goalLabel]);
+    this._makeCompositeBouncyButton(goalButton, [goalButton, goalLabel], 0.7, () => this._openRunGoalDialog());
 
     this._pauseContainer.add(this.add.bitmapText(textureY, 65, "bigFont", window.currentlevel[1], 40).setOrigin(0.5, 0.5));
 
@@ -6750,6 +6754,54 @@ _buildPauseOverlay() {
       ? currentNotes.map(note => `${note.percent}% — ${String(note.text).slice(0, 120)}`).join("\n")
       : "No notes saved for this level yet.";
     window.showNativePhaserDialog(this, { title: "RUN NOTES", message });
+  }
+  _runGoalKey() {
+    return `wd_run_goal_${String(window.currentlevel?.[2] || "level_1")}`;
+  }
+  _loadRunGoal() {
+    const value = Number(localStorage.getItem(this._runGoalKey()) || 0);
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.floor(value))) : 0;
+  }
+  _openRunGoalDialog() {
+    const current = this._loadRunGoal();
+    window.showNativePhaserDialog(this, {
+      title: "PERSONAL RUN GOAL",
+      message: "Set a percentage target for this level. Enter 0 to clear it.",
+      input: true,
+      defaultValue: String(current),
+      placeholder: "Target percentage (0-100)",
+      confirmLabel: "SAVE",
+      cancelLabel: "CANCEL",
+      onConfirm: value => {
+        const parsed = Number(value);
+        const goal = Number.isFinite(parsed) ? Math.max(0, Math.min(100, Math.floor(parsed))) : 0;
+        if (goal === 0) localStorage.removeItem(this._runGoalKey());
+        else localStorage.setItem(this._runGoalKey(), String(goal));
+        this._runGoalPercent = goal;
+        this._runGoalReachedShown = false;
+      }
+    });
+  }
+  _updateRunGoal() {
+    if (!this._runGoalPercent || window.streamMode || window.isEditor || this._menuActive) {
+      if (this._runGoalLabel) this._runGoalLabel.setVisible(false);
+      return;
+    }
+    if (!this._runGoalLabel) {
+      this._runGoalLabel = this.add.text(screenWidth / 2, 112, "", {
+        fontFamily: "Arial", fontSize: "17px", color: "#bfeaff", stroke: "#000000", strokeThickness: 4
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(90);
+    }
+    const endX = Number(this._level?.endXPos || 0);
+    const current = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
+    if (current >= this._runGoalPercent && !this._runGoalReachedShown) {
+      this._runGoalReachedShown = true;
+      this._runGoalLabel.setText(`GOAL ${this._runGoalPercent}% REACHED!`).setTint(0xffd76e);
+      this.tweens.add({ targets: this._runGoalLabel, scale: 1.15, duration: 180, yoyo: true });
+    } else if (!this._runGoalReachedShown) {
+      this._runGoalLabel.setText(`GOAL ${this._runGoalPercent}%  •  ${current}%`).setTint(0xbfeaff);
+    }
+    this._runGoalLabel.setVisible(true);
   }
   _saveRunSnapshot() {
     const endX = Number(this._level?.endXPos || 0);
@@ -8739,6 +8791,8 @@ _buildSettingsPopup() {
     // fixed loading saved new best from local storage
     this._bestPercent = parseFloat(localStorage.getItem("bestPercent_" + (window.currentlevel[2] || "level_1")) || "0");
     this._practiceBestPercent = parseFloat(localStorage.getItem("practiceBestPercent_" + (window.currentlevel[2] || "level_1")) || "0");
+    this._runGoalPercent = this._loadRunGoal();
+    this._runGoalReachedShown = false;
     
     this._menuActive = false;
     this._coinCheatWarningShown = false;
@@ -9193,6 +9247,8 @@ _buildSettingsPopup() {
       this._deathSummaryContainer.destroy(true);
       this._deathSummaryContainer = null;
     }
+    this._runGoalReachedShown = false;
+    if (this._runGoalLabel) this._runGoalLabel.setVisible(false);
     this._hadNewBest = false;
     this._levelWon = false;
     this._pendingStarReward = 0;
@@ -9826,6 +9882,7 @@ _buildSettingsPopup() {
     this._updateDeathTimeline();
     this._updateRunTimer(deltaTime);
     this._updateMilestoneToasts();
+    this._updateRunGoal();
     this._updateInputHistory();
     this._updateBestSplit();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
