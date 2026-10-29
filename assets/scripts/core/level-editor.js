@@ -9988,11 +9988,17 @@ class LevelEditor {
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
+    this._editorCollabStatusText = this.add.text(screenWidth / 2, screenHeight - 208, "Live edit: offline", {
+        fontFamily: "Arial", fontSize: "18px", color: "#9de8ff", align: "center",
+        wordWrap: { width: Math.min(620, screenWidth - 80) }
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(2001);
+    this._editorMenuContainer.add(this._editorCollabStatusText);
+
     buttonData.forEach((data, i) => {
         const x = screenWidth / 2;
-        const y = (screenHeight / 2) - 150 + (i * 70);
+        const y = 100 + (i * 58);
         
-        const btnImg = this.add.nineslice(x, y, "GJ_button01", null, 450, 65, 24, 24, 24, 24 ).setScale(0.75).setInteractive();
+        const btnImg = this.add.nineslice(x, y, "GJ_button01", null, 450, 54, 20, 20, 20, 20 ).setScale(0.75).setInteractive();
         const label = this.add.bitmapText(x, y - 2, "goldFont", data.text, 40).setOrigin(0.5, 0.5).setScale(0.8);
 
         this._editorMenuContainer.add([btnImg, label]);
@@ -10271,7 +10277,9 @@ _serializeObject(object) {
         this._editorCollabClient = client;
         client.onStatus = text => {
           this._editorCollabStatus = text;
-          if (this._editorCollabStatusText?.scene) this._editorCollabStatusText.setText(text);
+          if (this._editorCollabStatusText?.scene) {
+            this._editorCollabStatusText.setText(text).setVisible(true);
+          }
         };
         client.onMessage = data => {
           if (data?.type === "tc3-peer-join") {
@@ -10283,6 +10291,7 @@ _serializeObject(object) {
         const isHost = target.toUpperCase() === "HOST";
         client.connect(isHost ? "host" : "join", isHost ? "" : target, "webdashers-editor");
         this._editorCollabStatus = isHost ? "Creating live edit room..." : "Joining live edit room...";
+        this._editorCollabStatusText?.setText(this._editorCollabStatus).setVisible(true);
         window.showNativePhaserDialog(this, {
           title: "LIVE EDIT",
           message: isHost ? "Room is being created. Your room code will appear in the status." : "Joining the live edit room.",
