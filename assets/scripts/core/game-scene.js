@@ -6240,7 +6240,20 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const x = this._getMirrorXOffset ? this._getMirrorXOffset(ghostScreenX) : ghostScreenX;
     const y = typeof b === "function" ? b(point.y) + Number(this._cameraY || 0) : screenHeight / 2;
     const opacity = Math.max(0.05, Math.min(1, Number(window.replayGhostOpacity) || 0.34));
-    this._replayGhostGraphics.clear().fillStyle(0x9de8ff, opacity).fillCircle(x, y, 13).lineStyle(2, Math.min(1, opacity + 0.35)).strokeCircle(x, y, 16).setVisible(true);
+    const trailStart = Math.max(0, this._replayGhostIndex - 10);
+    this._replayGhostGraphics.clear();
+    for (let index = trailStart; index < this._replayGhostIndex; index++) {
+      const previous = this._replayGhostLast[index];
+      const next = this._replayGhostLast[index + 1];
+      if (!previous || !next) continue;
+      const previousX = this._getMirrorXOffset ? this._getMirrorXOffset(Number(previous.x || 0) - Number(this._cameraX || 0)) : Number(previous.x || 0) - Number(this._cameraX || 0);
+      const previousY = typeof b === "function" ? b(previous.y) + Number(this._cameraY || 0) : screenHeight / 2;
+      const nextX = this._getMirrorXOffset ? this._getMirrorXOffset(Number(next.x || 0) - Number(this._cameraX || 0)) : Number(next.x || 0) - Number(this._cameraX || 0);
+      const nextY = typeof b === "function" ? b(next.y) + Number(this._cameraY || 0) : screenHeight / 2;
+      this._replayGhostGraphics.lineStyle(2, 0x9de8ff, opacity * ((index - trailStart + 1) / 10));
+      this._replayGhostGraphics.lineBetween(previousX, previousY, nextX, nextY);
+    }
+    this._replayGhostGraphics.fillStyle(0x9de8ff, opacity).fillCircle(x, y, 13).lineStyle(2, 0x9de8ff, Math.min(1, opacity + 0.35)).strokeCircle(x, y, 16).setVisible(true);
     if (!this._replayGhostDeltaLabel) {
       this._replayGhostDeltaLabel = this.add.bitmapText(screenWidth - 12, 140, "bigFont", "", 16)
         .setOrigin(1, 0)
