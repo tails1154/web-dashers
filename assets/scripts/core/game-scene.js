@@ -7170,8 +7170,8 @@ _buildPauseOverlay() {
     }
     let audioMixSource = null;
     let audioTracks = microphoneStream?.getAudioTracks() || [];
-    const audioContext = this.sound?.context;
-    const masterVolumeNode = this.sound?.masterVolumeNode;
+    const audioContext = this.game?.sound?.context || this.sound?.context;
+    const masterVolumeNode = this.game?.sound?.masterVolumeNode || this.sound?.masterVolumeNode;
     if (audioContext?.createMediaStreamDestination && masterVolumeNode?.connect) {
       try {
         if (!this._autoRecordingAudioDestination) {
@@ -7228,6 +7228,7 @@ _buildPauseOverlay() {
       audioMixSource?.disconnect?.();
       const shouldExport = !!this._autoRunExportPending;
       this._autoRunRecorder = null;
+      this._autoRunChunks = null;
       this._autoRecorderCreating = false;
       this._autoRunExportPending = false;
       if (this._autoRecordingRestartPending) {
@@ -7253,12 +7254,14 @@ _buildPauseOverlay() {
       recordingStream.getTracks().forEach(track => track.stop());
       audioMixSource?.disconnect?.();
       this._autoRunRecorder = null;
+      this._autoRunChunks = null;
       this._autoRecorderCreating = false;
       this._autoRunExportPending = false;
       this._autoRunStopTimer = null;
     };
     this._autoRunHeaderChunk = null;
     this._autoRunRecentChunks = recentChunks;
+    this._autoRunChunks = chunks;
     recorder.start(250);
     this._autoRunRecorder = recorder;
     this._autoRecorderCreating = false;
@@ -7309,6 +7312,33 @@ _buildPauseOverlay() {
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     this.InfoBoxDoAThing("Exported the most recent gameplay buffer.");
+  }
+  _exportCurrentAutoAttempt() {
+    const recorder = this._autoRunRecorder;
+    const chunks = this._autoRunChunks;
+    if (!recorder || recorder.state === "inactive" || !Array.isArray(chunks) || !chunks.length) {
+      this.InfoBoxDoAThing("The current attempt recording is no longer available.");
+      return;
+    }
+    if (this._autoAttemptExporting) return;
+    this._autoAttemptExporting = true;
+    try { recorder.requestData(); } catch (_) {}
+    setTimeout(() => {
+      const levelName = String(window.currentlevel?.[1] || "level")
+        .replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "").slice(0, 48) || "level";
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const blob = new Blob(chunks.slice(), { type: recorder.mimeType || "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${levelName}_attempt_${stamp}.webm`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this._autoAttemptExporting = false;
+      this.InfoBoxDoAThing("Exported this completion attempt.");
+    }, 150);
   }
   _toggleRunRecording() {
     if (this._runRecorder) {
@@ -12330,6 +12360,11 @@ _applyMirrorEffect() {
     const _0x8e2b = ["\x5f\x6d\x61\x63\x72\x6f\x42\x6f\x74", "\x70\x6c\x61\x79\x69\x6e\x67"];let _0x3bc14 = 0xffffff; try {if (this[_0x8e2b[0]] && this[_0x8e2b[0]][_0x8e2b[1]]) {_0x3bc14 = (_0x3bc14 & 0xffff00) | 0xfa;}} catch (_0xe31) {}const _0x17fa2b = this.add.bitmapText(containerX + _0x45540f, _0x241209, "bigFont", _0x165c06, 40).setOrigin(0.5, 0.5).setScale(0.8).setCenterAlign();if (_0x3bc14 !== 0xffffff) _0x17fa2b.setTint(_0x3bc14);
     this._endLayerInternal.add(_0x17fa2b);
     this._endLayerInternal.add(this.add.image(containerX - _0x45540f, 352.5, "GJ_WebSheet", "getIt_001.png").setScale(1 / 1.5));
+    const exportAttemptButton = this.add.nineslice(containerX, 505, "GJ_button01", null, 190, 44, 12, 12, 12, 12)
+      .setOrigin(0.5).setInteractive();
+    const exportAttemptLabel = this.add.bitmapText(containerX, 505, "bigFont", "EXPORT ATTEMPT", 17).setOrigin(0.5);
+    this._endLayerInternal.add([exportAttemptButton, exportAttemptLabel]);
+    this._makeCompositeBouncyButton(exportAttemptButton, [exportAttemptButton, exportAttemptLabel], 1, () => this._exportCurrentAutoAttempt());
     const _0x34b1bd = [{
       key: "downloadApple_001",
       url: "https://discord.gg/TfEzAVWPSJ"
