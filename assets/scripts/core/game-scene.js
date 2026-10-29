@@ -12119,35 +12119,43 @@ _applyMirrorEffect() {
     const sh = screenHeight;
     const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
     this._diamondGuardOverlay = root;
-    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.78).setInteractive();
-    const panelW = Math.min(620, sw - 48);
-    const panelH = canEnter ? 420 : 350;
-    const panel = this.add.rectangle(sw / 2, sh / 2 + 12, panelW, panelH, 0x182642, 1)
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x050817, 0.96).setInteractive();
+    const panelW = Math.min(700, sw - 48);
+    const panelH = canEnter ? 500 : 410;
+    const panel = this.add.rectangle(sw / 2, sh / 2 + 12, panelW, panelH, 0x10172d, 1)
       .setStrokeStyle(5, canEnter ? 0x8de8ff : 0x7b8799, 1);
-    const inner = this.add.rectangle(sw / 2, sh / 2 + 12, panelW - 18, panelH - 18, 0x0d172a, 0.92)
+    const inner = this.add.rectangle(sw / 2, sh / 2 + 12, panelW - 18, panelH - 18, 0x080c1b, 0.98)
       .setStrokeStyle(2, 0x365477, 1);
-    const lock = this.add.image(sw / 2, sh / 2 - panelH / 2 + 58, "GJ_GameSheet03", "GJ_secretLock_001.png")
-      .setScale(0.34).setTint(canEnter ? 0xffffff : 0x777f8e);
-    const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 124, "goldFont", canEnter ? "THE VAULT" : "VAULT GUARD", 34).setOrigin(0.5);
-    const body = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 168, "bigFont", message, 20)
+    const dungeonBarsLeft = this.add.image(sw / 2 - panelW / 2 + 55, sh / 2 - 4, "SecretSheet", "dungeon_bars_001.png")
+      .setScale(1.25).setAlpha(0.62);
+    const dungeonBarsRight = this.add.image(sw / 2 + panelW / 2 - 55, sh / 2 - 4, "SecretSheet", "dungeon_bars_001.png")
+      .setScale(1.25).setFlipX(true).setAlpha(0.62);
+    const body = this.add.image(sw / 2, sh / 2 - panelH / 2 + 104, "SecretSheet", "secretBody_01_001.png")
+      .setScale(1.35).setTint(canEnter ? 0xffffff : 0x788097);
+    const eyes = this.add.image(sw / 2, body.y - 10, "SecretSheet", "secretEyes_01_001.png")
+      .setScale(1.35).setTint(canEnter ? 0x9dffdd : 0x657080);
+    const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 190, "goldFont", canEnter ? "THE VAULT" : "VAULT GUARD", 34).setOrigin(0.5);
+    const bodyText = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 232, "bigFont", message, 20)
       .setOrigin(0.5).setMaxWidth(panelW - 70).setCenterAlign().setTint(0xffffff);
-    const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 208, "bigFont", `${diamonds} / ${required} DIAMONDS`, 19)
+    const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 272, "bigFont", `${diamonds} / ${required} DIAMONDS`, 19)
       .setOrigin(0.5).setTint(0xd98cff);
-    root.add([shade, panel, inner, lock, title, body, count]);
+    const foreground = this.add.image(sw / 2, sh / 2 + panelH / 2 - 34, "SecretSheet", "dungeon_foreground_001.png")
+      .setScale(Math.min(1.8, (panelW - 40) / 310)).setAlpha(0.92);
+    root.add([shade, panel, inner, dungeonBarsLeft, dungeonBarsRight, foreground, body, eyes, title, bodyText, count]);
 
     let inputText = "";
     let inputFocused = canEnter;
-    const inputY = sh / 2 - 2;
+    const inputY = sh / 2 + 50;
     const inputBox = canEnter ? this.add.rectangle(sw / 2, inputY, panelW - 88, 52, 0x09101e, 1)
       .setStrokeStyle(3, 0x6f89aa, 1).setInteractive() : null;
     const inputLabel = canEnter ? this.add.bitmapText(sw / 2 - (panelW - 88) / 2 + 16, inputY, "bigFont", "ENTER VAULT CODE", 20)
       .setOrigin(0, 0.5).setTint(0x7891b2) : null;
     const errorLabel = canEnter ? this.add.bitmapText(sw / 2, inputY + 39, "bigFont", "", 17)
       .setOrigin(0.5).setTint(0xff9b9b) : null;
-    const enterButton = canEnter ? this.add.image(sw / 2 - 92, sh / 2 + 112, "GJ_GameSheet03", "GJ_longBtn06_001.png")
+    const enterButton = canEnter ? this.add.image(sw / 2 - 92, sh / 2 + 168, "GJ_GameSheet03", "GJ_longBtn06_001.png")
       .setScale(0.9).setInteractive() : null;
-    const enterLabel = canEnter ? this.add.bitmapText(sw / 2 - 92, sh / 2 + 112, "bigFont", "ENTER", 21).setOrigin(0.5) : null;
-    const closeButton = this.add.image(canEnter ? sw / 2 + 92 : sw / 2, sh / 2 + (canEnter ? 112 : 95), "GJ_GameSheet03", "GJ_longBtn07_001.png")
+    const enterLabel = canEnter ? this.add.bitmapText(sw / 2 - 92, sh / 2 + 168, "bigFont", "ENTER", 21).setOrigin(0.5) : null;
+    const closeButton = this.add.image(canEnter ? sw / 2 + 92 : sw / 2, sh / 2 + (canEnter ? 168 : 135), "GJ_GameSheet03", "GJ_longBtn07_001.png")
       .setScale(0.9).setInteractive();
     const closeLabel = this.add.bitmapText(closeButton.x, closeButton.y, "bigFont", "CLOSE", 21).setOrigin(0.5);
     root.add([inputBox, inputLabel, errorLabel, enterButton, enterLabel, closeButton, closeLabel].filter(Boolean));
