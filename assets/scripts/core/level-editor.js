@@ -257,9 +257,10 @@ class LevelEditor {
         else this._restoreEditorCameraBookmark();
     });
     this.input.keyboard.on('keydown-F', (event) => {
-        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused || !event?.ctrlKey) return;
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
         event.preventDefault();
-        this._openEditorObjectSearch();
+        if (event?.ctrlKey) this._openEditorObjectSearch();
+        else this._focusEditorSelection();
     });
 
     this._createEditorGui();
@@ -2892,6 +2893,36 @@ class LevelEditor {
       this._setEditorObjectZLayer(saveObj, 11);
       this._setEditorObjectZOrder(saveObj, 999);
     }
+  }
+
+  _focusEditorSelection() {
+    const selectedIds = this._getCurrentSelectedEditorObjectIds();
+    if (!selectedIds.length) return;
+
+    let left = Infinity;
+    let right = -Infinity;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (const objectId of selectedIds) {
+      for (const sprite of (this._level?.objectSprites?.[objectId] || [])) {
+        if (!sprite?.active || typeof sprite.getBounds !== "function") continue;
+        const bounds = sprite.getBounds();
+        if (!bounds) continue;
+        left = Math.min(left, bounds.left);
+        right = Math.max(right, bounds.right);
+        top = Math.min(top, bounds.top);
+        bottom = Math.max(bottom, bounds.bottom);
+      }
+    }
+    if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+
+    const centerX = (left + right) / 2;
+    const centerY = (top + bottom) / 2;
+    this._setEditorZoomInstant(
+      this._editorZoom || 1,
+      Number(this._cameraX || 0) + centerX - screenWidth / 2,
+      Number(this._cameraY || 0) + centerY - screenHeight / 2
+    );
   }
 
   _openEditorAlignPopup() {
@@ -10211,6 +10242,7 @@ LevelEditor.methodNames = [
   "_finishEditorBoxSelect",
   "_duplicateSelectedObject",
   "_sendSelectedEditorObjectsToTop",
+  "_focusEditorSelection",
   "_deleteSelectedObject",
   "_updateEditorActionButtons",
   "_updateEditorGrid",
