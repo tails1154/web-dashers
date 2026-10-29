@@ -2,6 +2,7 @@ window.AccountAPI = {
   currentUser: null,
   _leaderboardSyncTimer: null,
   _leaderboardSyncInFlight: null,
+  _leaderboardSyncQueued: false,
 
   isModerator() {
     const user = this.currentUser;
@@ -15,6 +16,14 @@ window.AccountAPI = {
 
   _url(path) {
     return `${window._apiBase}${path}`;
+  },
+
+  applyServerDiamondBalance(value) {
+    const incoming = Math.max(0, parseInt(value || '0', 10) || 0);
+    const local = Math.max(0, parseInt(localStorage.getItem('wd_diamonds') || '0', 10) || 0);
+    const merged = Math.max(local, incoming);
+    localStorage.setItem('wd_diamonds', String(merged));
+    return merged;
   },
 
   oidcLogin(returnTo = window.location.href) {
@@ -890,11 +899,23 @@ window.AccountAPI = {
 
   async syncLeaderboardStats() {
     if (!this.currentUser && !(await this.checkSession())) return false;
-    if (this._leaderboardSyncInFlight) return this._leaderboardSyncInFlight;
+    if (this._leaderboardSyncInFlight) {
+      this._leaderboardSyncQueued = true;
+      await this._leaderboardSyncInFlight;
+      if (this._leaderboardSyncQueued) {
+        this._leaderboardSyncQueued = false;
+        return this.syncLeaderboardStats();
+      }
+      return true;
+    }
     this._leaderboardSyncInFlight = this.setCloudSave(this.collectLocalData())
       .then(() => true)
       .finally(() => { this._leaderboardSyncInFlight = null; });
     await this._leaderboardSyncInFlight;
+    if (this._leaderboardSyncQueued) {
+      this._leaderboardSyncQueued = false;
+      return this.syncLeaderboardStats();
+    }
     return true;
   },
 
@@ -942,7 +963,15 @@ window.AccountAPI = {
         'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
     ];
     for (const key of keys) {
-      if (save[key] !== undefined) localStorage.setItem(key, save[key]);
+      if (save[key] === undefined) continue;
+      if (key === 'wd_diamonds') {
+        const localValue = Math.max(0, parseInt(localStorage.getItem(key) || '0', 10) || 0);
+        const cloudValue = Math.max(0, parseInt(save[key] || '0', 10) || 0);
+        // A stale cloud save must not silently erase locally awarded diamonds.
+        localStorage.setItem(key, String(Math.max(localValue, cloudValue)));
+        continue;
+      }
+      localStorage.setItem(key, save[key]);
     }
     if (save._bestPercents) {
       for (const [k, v] of Object.entries(save._bestPercents)) {

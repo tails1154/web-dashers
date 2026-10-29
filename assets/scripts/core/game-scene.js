@@ -11520,7 +11520,7 @@ _applyMirrorEffect() {
       if (window._dailyLevelActive) {
         const dailyId = String(window._dailyLevelId || window._selectedLevelData?.id || window.currentlevel?.[2] || "").replace(/^online_/, "");
         window.AccountAPI?.claimDailyReward?.(dailyId, true, false).then(result => {
-          if (result && Number.isFinite(Number(result.diamonds))) localStorage.setItem("wd_diamonds", String(result.diamonds));
+          if (result && Number.isFinite(Number(result.diamonds))) window.AccountAPI?.applyServerDiamondBalance?.(result.diamonds);
           if (result && !result.already_claimed) {
             let dailyClaims = [];
             try { dailyClaims = JSON.parse(localStorage.getItem("wd_daily_claims") || "[]"); } catch (_) {}
@@ -11612,7 +11612,7 @@ _applyMirrorEffect() {
             const reward = await window.AccountAPI.claimQuest(quest.id);
             claimedQuests[claimKey] = Date.now();
             localStorage.setItem("wd_quest_claims", JSON.stringify(claimedQuests));
-            if (reward && Number.isFinite(Number(reward.diamonds))) localStorage.setItem("wd_diamonds", String(reward.diamonds));
+            if (reward && Number.isFinite(Number(reward.diamonds))) window.AccountAPI?.applyServerDiamondBalance?.(reward.diamonds);
             if (reward && !reward.already_claimed) {
               await this._showEndScreenRewardModal("QUEST COMPLETE", `+${reward.awarded} diamonds`);
             }
@@ -12971,7 +12971,7 @@ _applyMirrorEffect() {
           claimButton.disableInteractive();
           try {
             const result = await window.AccountAPI.claimGauntlet(gauntlet.id);
-            if (Number.isFinite(Number(result.diamonds))) localStorage.setItem("wd_diamonds", String(result.diamonds));
+            if (Number.isFinite(Number(result.diamonds))) window.AccountAPI?.applyServerDiamondBalance?.(result.diamonds);
             claimedGauntlets[String(gauntlet.id)] = Date.now();
             localStorage.setItem("wd_gauntlet_claims", JSON.stringify(claimedGauntlets));
             claimLabel.setText("CLAIMED");
