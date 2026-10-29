@@ -548,6 +548,9 @@ if (!allObjects[5073]) {
 if (!allObjects[5074]) {
   allObjects[5074] = { can_color: false, frame: "wave-slide.svg", editorFrame: "wave-slide.svg", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "wave_slide", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
 }
+if (!allObjects[5075]) {
+  allObjects[5075] = { can_color: false, frame: "image-block-placeholder.svg", editorFrame: "image-block-placeholder.svg", gridH: 1, gridW: 1, type: "image_block", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
+}
 allObjects[5051] = {
   can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
@@ -1954,6 +1957,119 @@ window.LevelObject = class LevelObject {
     registerObjectSprite(sprite);
   }
 
+  _spawnCustomImageBlock(levelObj, existingLinkedId = null) {
+    const scene = this._scene;
+    if (!scene || !levelObj) return null;
+
+    const raw = levelObj._raw || {};
+    const linkedObjectId = Number.isInteger(existingLinkedId)
+      ? existingLinkedId
+      : this._nextObjectId++;
+    levelObj._eeObjectId = linkedObjectId;
+    this._resetobject[linkedObjectId] = levelObj;
+
+    const worldX = Number(levelObj.x || 0) * 2;
+    const worldY = Number(levelObj.y || 0) * 2;
+    const width = Phaser.Math.Clamp(parseFloat(raw[702] ?? raw["702"] ?? 60) || 60, 1, 2048);
+    const height = Phaser.Math.Clamp(parseFloat(raw[703] ?? raw["703"] ?? 60) || 60, 1, 2048);
+    const scale = Phaser.Math.Clamp(parseFloat(levelObj.scale ?? 1) || 1, 0.01, 20);
+    const rotation = parseFloat(levelObj.rot || 0) || 0;
+    const collidable = String(raw[704] ?? raw["704"] ?? "0") === "1";
+    const sourceBase64 = String(raw[700] ?? raw["700"] ?? "");
+    const imageKeyPart = sourceBase64.slice(0, 10).replace(/[^a-zA-Z0-9]/g, "_");
+    const baseTextureKey = `custom-image-block-${linkedObjectId}-${sourceBase64.length}-${imageKeyPart}`;
+    const mime = String(raw[701] ?? raw["701"] ?? "image/png").replace(/[^a-zA-Z0-9.+-]/g, "") || "image/png";
+
+    const sprite = scene.add.image(worldX, b(worldY), "image-block-placeholder.svg")
+      .setOrigin(0.5)
+      .setDisplaySize(width * scale, height * scale)
+      .setAngle(rotation)
+      .setFlipX(!!levelObj.flipX)
+      .setFlipY(!!levelObj.flipY);
+    sprite._eeObjectId = linkedObjectId;
+    sprite._eeCustomImageBlock = true;
+    sprite._eeWorldX = worldX;
+    sprite._eeBaseY = b(worldY);
+    sprite._eeOrigWorldX = worldX;
+    sprite._eeOrigBaseY = b(worldY);
+    sprite._eeZDepth = 3;
+    sprite._eeOrigAlpha = 1;
+    sprite.setDepth(3);
+    this._addVisualSprite(sprite);
+    this._addToSection(sprite);
+    this.objectSprites[linkedObjectId] = [sprite];
+
+    if (sourceBase64) {
+      const image = new Image();
+      image.onload = () => {
+        if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
+        if (!sprite.active) return;
+        sprite.setTexture(baseTextureKey);
+        sprite.setDisplaySize(width * scale, height * scale);
+      };
+      image.src = `data:${mime};base64,${sourceBase64}`;
+    }
+
+    if (collidable) {
+      const collider = new Collider(solidType, worldX, worldY, width * scale, height * scale, rotation);
+      collider.objid = 5075;
+      collider._eeObjectId = linkedObjectId;
+      collider._eeEditorLayer = parseInt(levelObj.editorLayer ?? raw[20] ?? raw["20"] ?? 0, 10) || 0;
+      collider._eeEditorLayer2 = parseInt(levelObj.editorLayer2 ?? raw[61] ?? raw["61"] ?? 0, 10) || 0;
+      this.objects.push(collider);
+      this._addCollisionToSection(collider);
+    }
+
+    return allObjects[5075];
+  }
+
+  refreshCustomImageBlock(saveObj) {
+    if (!saveObj || parseInt(saveObj.id ?? 0, 10) !== 5075) return false;
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : null;
+    if (linkedId === null) return false;
+    const oldSprites = this.objectSprites?.[linkedId] || [];
+    for (const sprite of oldSprites) {
+      if (sprite?.destroy) sprite.destroy();
+    }
+    this._breakblock(linkedId);
+    this._resetobject[linkedId] = saveObj;
+    this._spawnCustomImageBlock(saveObj, linkedId);
+    return true;
+  }
+
+  updateCustomImageBlockTransform(saveObj) {
+    if (!saveObj || parseInt(saveObj.id ?? 0, 10) !== 5075) return;
+    const raw = saveObj._raw || {};
+    const worldX = Number(saveObj.x || 0) * 2;
+    const worldY = Number(saveObj.y || 0) * 2;
+    const width = Phaser.Math.Clamp(parseFloat(raw[702] ?? raw["702"] ?? 60) || 60, 1, 2048);
+    const height = Phaser.Math.Clamp(parseFloat(raw[703] ?? raw["703"] ?? 60) || 60, 1, 2048);
+    const scale = Phaser.Math.Clamp(parseFloat(saveObj.scale ?? 1) || 1, 0.01, 20);
+    const rotation = parseFloat(saveObj.rot || 0) || 0;
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : null;
+    if (linkedId === null) return;
+
+    for (const sprite of this.objectSprites?.[linkedId] || []) {
+      if (!sprite?._eeCustomImageBlock) continue;
+      sprite.setPosition(worldX, b(worldY));
+      sprite.setDisplaySize(width * scale, height * scale);
+      sprite.setAngle(rotation);
+      sprite.setFlipX(!!saveObj.flipX);
+      sprite.setFlipY(!!saveObj.flipY);
+      sprite._eeWorldX = worldX;
+      sprite._eeBaseY = b(worldY);
+    }
+    for (const collider of this.objects || []) {
+      if (collider?._eeObjectId !== linkedId) continue;
+      collider.x = worldX;
+      collider.y = worldY;
+      collider.w = width * scale;
+      collider.h = height * scale;
+      collider.rotation = rotation;
+      collider.rotationDegrees = rotation;
+    }
+  }
+
   _spawnObject(levelObj) {
   this.objectSprites = this.objectSprites || [];
 
@@ -1998,6 +2114,10 @@ window.LevelObject = class LevelObject {
     if (levelObj._raw) delete levelObj._raw._eeObjectId;
     this._spawnTextObject(levelObj, objectDef, linkedObjectId);
     return objectDef;
+  }
+
+  if (objectDef?.type === "image_block") {
+    return this._spawnCustomImageBlock(levelObj);
   }
 
   if (objectDef && objectDef.type === triggerType) {

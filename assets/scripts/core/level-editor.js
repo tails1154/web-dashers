@@ -1083,6 +1083,7 @@ class LevelEditor {
     for (const collider of colliders) {
         this._syncEditorColliderWithSaveObject(collider, resolvedSaveObj);
     }
+    this._level?.updateCustomImageBlockTransform?.(resolvedSaveObj);
   }
 
 
@@ -2240,7 +2241,7 @@ class LevelEditor {
         { id: "pinned",  icon: "tab8", types: null },
         { id: "recent",  icon: "tab3", types: null },
         { id: "all",     icon: "tab3", types: null },
-        { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco"] },
+        { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco", "image_block"] },
         { id: "slopes",  icon: "tab6", types: ["slope"] },
         { id: "hazards", icon: "tab2", types: ["hazard", "spike"] },
         { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin", "head_block"] },
@@ -2355,6 +2356,12 @@ class LevelEditor {
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
                     itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
                 }
+            }
+        }
+        if (activeCatDef?.id === "blocks") {
+            const imageBlock = getObjectFromId(5075);
+            if (imageBlock && !itemsForGrid.some(item => item.id === 5075)) {
+                itemsForGrid.push({ type: "object", id: 5075, frame: imageBlock.frame });
             }
         }
     } else if (this._editorTab === "edit") {
@@ -3722,6 +3729,14 @@ class LevelEditor {
         saveData._raw["31"] = defaultText;
     }
 
+    if (parseInt(objId ?? 0, 10) === 5075) {
+        saveData._raw["700"] = "";
+        saveData._raw["701"] = "image/png";
+        saveData._raw["702"] = "60";
+        saveData._raw["703"] = "60";
+        saveData._raw["704"] = "0";
+    }
+
     window.levelObjects.push(saveData);
     this._level._spawnObject(saveData);
 
@@ -3961,6 +3976,11 @@ class LevelEditor {
 
   _closeEditorObjectOptionsPopup() {
     this._editorTextInputFocused = false;
+
+    if (this._editorCustomImageFileInput) {
+        this._editorCustomImageFileInput.remove();
+        this._editorCustomImageFileInput = null;
+    }
 
     if (this._editorObjectOptionsKeyHandler) {
         window.removeEventListener("keydown", this._editorObjectOptionsKeyHandler);
@@ -5995,7 +6015,7 @@ class LevelEditor {
     const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectIds[0]);
     if (!saveObj) return false;
     const objectDef = getObjectFromId(saveObj.id);
-    return !!(objectDef && objectDef.type === triggerType);
+    return !!(objectDef && (objectDef.type === triggerType || this._isEditorCustomImageBlockId(saveObj.id)));
   }
 
 
@@ -7045,6 +7065,11 @@ class LevelEditor {
     const objectDef = getObjectFromId(saveObj.id);
     if (!objectDef) return;
 
+    if (parseInt(saveObj.id ?? 0, 10) === 5075) {
+        this._openEditorCustomImageBlockOptionsPopup(saveObj);
+        return;
+    }
+
     if (objectDef.type !== triggerType) return;
 
     if (this._isEditorColorTriggerId(saveObj.id)) {
@@ -7086,6 +7111,109 @@ class LevelEditor {
 
   _isEditorNineCirclesTriggerId(id) {
     return [5070, 5071].includes(parseInt(id ?? 0, 10));
+  }
+
+
+  _isEditorCustomImageBlockId(id) {
+    return parseInt(id ?? 0, 10) === 5075;
+  }
+
+
+  _openEditorCustomImageBlockOptionsPopup(saveObj) {
+    if (!saveObj) return;
+    this._closeEditorObjectOptionsPopup();
+
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const panelW = Math.min(620, sw - 50);
+    const panelH = Math.min(390, sh - 50);
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.55).setOrigin(0).setInteractive());
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 38, "goldFont", "Image Block", 38).setOrigin(0.5));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 75, "bigFont", "Import an image and choose its collision", 20).setOrigin(0.5));
+
+    const close = this.add.image(-panelW / 2 + 20, -panelH / 2 + 20, "GJ_WebSheet", "GJ_closeBtn_001.png")
+      .setScale(0.75).setInteractive();
+    inner.add(close);
+    this._makeBouncyButton(close, 0.75, () => this._closeEditorObjectOptionsPopup());
+
+    const button = this.add.rectangle(0, -55, 250, 58, 0x2674a8, 1).setStrokeStyle(3, 0xffffff, 0.85).setInteractive();
+    const buttonText = this.add.bitmapText(0, -55, "bigFont", "IMPORT IMAGE", 25).setOrigin(0.5);
+    inner.add([button, buttonText]);
+
+    const raw = saveObj._raw || (saveObj._raw = {});
+    let collidable = String(raw[704] ?? raw["704"] ?? "0") === "1";
+    const check = this.add.rectangle(-120, 30, 34, 34, collidable ? 0x47c96b : 0x27384d, 1)
+      .setStrokeStyle(3, 0xffffff, 0.85).setInteractive();
+    const checkMark = this.add.bitmapText(-120, 30, "bigFont", collidable ? "✓" : "", 25).setOrigin(0.5);
+    const checkLabel = this.add.bitmapText(-88, 30, "bigFont", "Collidable", 24).setOrigin(0, 0.5);
+    inner.add([check, checkMark, checkLabel]);
+
+    const status = this.add.bitmapText(0, 100, "bigFont", raw[700] ? "Image loaded" : "No image imported", 20)
+      .setOrigin(0.5).setTint(0xd7e8ff);
+    inner.add(status);
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.style.display = "none";
+    document.body.appendChild(input);
+    this._editorCustomImageFileInput = input;
+
+    const refresh = () => {
+      this._level?.refreshCustomImageBlock?.(saveObj);
+      this._refreshEditorCollisionCaches?.();
+      this._applyEditorLayerFilter?.();
+      this._selectEditorObjectsByIds?.([saveObj._eeObjectId], 0x00ff00);
+    };
+
+    button.on("pointerdown", () => input.click());
+    check.on("pointerdown", () => {
+      collidable = !collidable;
+      raw[704] = collidable ? "1" : "0";
+      raw["704"] = raw[704];
+      check.setFillStyle(collidable ? 0x47c96b : 0x27384d);
+      checkMark.setText(collidable ? "✓" : "");
+      refresh();
+    });
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        status.setText("Choose an image file").setTint(0xff8b8b);
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        status.setText("Image must be 2 MB or smaller").setTint(0xff8b8b);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || "");
+        const comma = dataUrl.indexOf(",");
+        if (comma < 0) return;
+        const image = new Image();
+        image.onload = () => {
+          raw[700] = dataUrl.slice(comma + 1);
+          raw[701] = file.type || "image/png";
+          raw[702] = String(Math.max(1, Math.min(2048, image.naturalWidth || image.width || 60)));
+          raw[703] = String(Math.max(1, Math.min(2048, image.naturalHeight || image.height || 60)));
+          status.setText("Image loaded").setTint(0x9dffb0);
+          refresh();
+        };
+        image.onerror = () => status.setText("Could not read image").setTint(0xff8b8b);
+        image.src = dataUrl;
+      };
+      reader.onerror = () => status.setText("Could not read image").setTint(0xff8b8b);
+      reader.readAsDataURL(file);
+    });
+
+    this._makeEditorOkButton(inner, 0, panelH / 2 - 45, "OK", () => this._closeEditorObjectOptionsPopup());
   }
 
 
@@ -10670,6 +10798,8 @@ LevelEditor.methodNames = [
   "_applyEditorCollabState",
   "_openEditorZoomTriggerOptionsPopup",
   "_isEditorNineCirclesTriggerId",
+  "_isEditorCustomImageBlockId",
+  "_openEditorCustomImageBlockOptionsPopup",
   "_getEditorNineCirclesSpeed",
   "_setEditorNineCirclesSpeed",
   "_openEditorNineCirclesOptionsPopup",
