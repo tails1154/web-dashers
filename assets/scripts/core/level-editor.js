@@ -1370,6 +1370,7 @@ class LevelEditor {
     this._editorPlaytestPauseView = null;
 
     this._editorPlaytestActive = true;
+    this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
     this._spaceWasDown = !!this.input.activePointer?.isDown;
     this._deltaBuffer = 0;
@@ -1472,6 +1473,7 @@ class LevelEditor {
     }
 
     this._editorPlaytestActive = false;
+    this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
     this._spaceWasDown = false;
     this._deltaBuffer = 0;
@@ -1500,6 +1502,7 @@ class LevelEditor {
 
 
   _editorPlaytestPress() {
+    if (this._playerInputEnabled === false) return;
     if (this._state.isDead) return;
 
     this._state.upKeyDown = true;
@@ -1774,6 +1777,7 @@ class LevelEditor {
     this._level.checkAlphaTriggers(playerX);
     this._level.stepAlphaTriggers(deltaTime / 1000);
     this._level.checkRotateTriggers(playerX);
+    this._level.checkPlayerInputTriggers?.(playerX);
     this._level.stepRotateTriggers(deltaTime / 1000);
     this._level.checkPulseTriggers(playerX);
     this._level.stepPulseTriggers(deltaTime / 1000, this._colorManager);
@@ -2346,7 +2350,7 @@ class LevelEditor {
             }
         }
         if (activeCatDef?.types?.includes("trigger")) {
-            for (const triggerId of [5070, 5071]) {
+            for (const triggerId of [5070, 5071, 5072, 5073]) {
                 const trigger = getObjectFromId(triggerId);
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
                     itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });

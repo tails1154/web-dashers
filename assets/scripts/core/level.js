@@ -539,6 +539,12 @@ if (!allObjects[5070]) {
 if (!allObjects[5071]) {
   allObjects[5071] = { can_color: false, frame: "nine-circles-off.png", editorFrame: "nine-circles-off.png", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "nine_circles_off", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
 }
+if (!allObjects[5072]) {
+  allObjects[5072] = { can_color: false, frame: "player-input-off.svg", editorFrame: "player-input-off.svg", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "player_input_off", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
+}
+if (!allObjects[5073]) {
+  allObjects[5073] = { can_color: false, frame: "player-input-on.svg", editorFrame: "player-input-on.svg", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "player_input_on", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
+}
 allObjects[5051] = {
   can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
@@ -757,6 +763,8 @@ window.LevelObject = class LevelObject {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesEnabled = false;
     this._nineCirclesPhase = 0;
+    this._playerInputTriggers = [];
+    this._playerInputTriggerIdx = 0;
     this._headBlocks = [];
     this._letterBlocks = [];
     this._pulseTriggers = [];
@@ -2119,6 +2127,10 @@ window.LevelObject = class LevelObject {
       this._nineCirclesTriggers.push({ ...triggerBase, x: levelObj.x * 2, enabled: levelObj.id === 5070 });
     }
 
+    if (levelObj.id === 5072 || levelObj.id === 5073) {
+      this._playerInputTriggers.push({ ...triggerBase, x: levelObj.x * 2, enabled: levelObj.id === 5073 });
+    }
+
     if (levelObj.id === 1006) {
       const _raw = levelObj._raw;
       const targetType = parseInt(_raw[52] ?? 0, 10);
@@ -2903,6 +2915,7 @@ window.LevelObject = class LevelObject {
     this._rotateTriggers.sort((a, b) => a.x - b.x);
     this._likeTriggers.sort((a, b) => a.x - b.x);
     this._nineCirclesTriggers.sort((a, b) => a.x - b.x);
+    this._playerInputTriggers.sort((a, b) => a.x - b.x);
     this._pulseTriggers.sort((a, b) => a.x - b.x);
 
     for (let si = 0; si < this._sectionContainers.length; si++) {
@@ -3942,6 +3955,22 @@ window.LevelObject = class LevelObject {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesPhase = 0;
     this._clearNineCirclesEffect();
+  }
+
+  checkPlayerInputTriggers(playerX) {
+    while (this._playerInputTriggerIdx < this._playerInputTriggers.length) {
+      const trigger = this._playerInputTriggers[this._playerInputTriggerIdx];
+      if (trigger.x > playerX) break;
+      if (this._isTriggerSaveObjectLive(trigger.uid)) {
+        this._scene?._setPlayerInputEnabled?.(!!trigger.enabled);
+      }
+      this._playerInputTriggerIdx++;
+    }
+  }
+
+  resetPlayerInputTriggers() {
+    this._playerInputTriggerIdx = 0;
+    this._scene?._setPlayerInputEnabled?.(true);
   }
 
   stepRotateTriggers(dt) {

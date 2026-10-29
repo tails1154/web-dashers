@@ -568,6 +568,7 @@ class GameScene extends Phaser.Scene {
     this._player2._activationKey = "dual";
     this._player2.setInvertedColors?.(true);
     this._isDual = false;
+    this._playerInputEnabled = true;
     this._dualPortalCenterY = null;
     this._player2.setCubeVisible(false);
     this._player2.setShipVisible(false);
@@ -9083,6 +9084,7 @@ _buildSettingsPopup() {
     return container;
   }
   _startGame() {
+    this._setPlayerInputEnabled(true);
     this._resetRunTimer();
     this._performanceSamples = [];
     this._performanceSampleAt = 0;
@@ -9359,6 +9361,8 @@ _buildSettingsPopup() {
       return;
     }
 
+    if (this._playerInputEnabled === false) return;
+
     if (!this._slideIn && !this._state.isDead && !cancelInput) {
       this._state.upKeyDown = true;
       this._state.upKeyPressed = true;
@@ -9421,6 +9425,19 @@ _buildSettingsPopup() {
   }
   _releaseButton(ignoreMacro = false) {
     this._recordInputHistory("RELEASE");
+    this._state.upKeyDown = false;
+    this._state.upKeyPressed = false;
+    this._state.queuedHold = false;
+    this._state._orbActivationConsumedForPress = false;
+    this._state2.upKeyDown = false;
+    this._state2.upKeyPressed = false;
+    this._state2.queuedHold = false;
+    this._state2._orbActivationConsumedForPress = false;
+  }
+
+  _setPlayerInputEnabled(enabled) {
+    this._playerInputEnabled = enabled !== false;
+    if (this._playerInputEnabled) return;
     this._state.upKeyDown = false;
     this._state.upKeyPressed = false;
     this._state.queuedHold = false;
@@ -9694,6 +9711,7 @@ _buildSettingsPopup() {
     this._level.resetRotateTriggers();
     this._level.resetLikeTriggers?.();
     this._level.resetNineCirclesTriggers?.();
+    this._level.resetPlayerInputTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
@@ -10021,6 +10039,7 @@ _buildSettingsPopup() {
     this._level.resetRotateTriggers();
     this._level.resetLikeTriggers?.();
     this._level.resetNineCirclesTriggers?.();
+    this._level.resetPlayerInputTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
@@ -10551,7 +10570,7 @@ _buildSettingsPopup() {
     const fromClick = this.input.activePointer.isDown;
     const cancelInput = isOverUI && fromClick;
 
-    if (!!this.input.activePointer.isDown && !this._state.upKeyDown && !this._state.isDead) {
+    if (this._playerInputEnabled !== false && !!this.input.activePointer.isDown && !this._state.upKeyDown && !this._state.isDead) {
       this._state.upKeyDown = true;
       this._state.queuedHold = true;
       this._state._orbActivationConsumedForPress = false;
@@ -10977,6 +10996,7 @@ _buildSettingsPopup() {
     this._level.checkRotateTriggers(playerX);
     this._level.checkLikeTriggers?.(playerX);
     this._level.checkNineCirclesTriggers?.(playerX);
+    this._level.checkPlayerInputTriggers?.(playerX);
     this._level.stepRotateTriggers(deltaTime / 1000);
     this._level.checkPulseTriggers(playerX);
     this._level.stepPulseTriggers(deltaTime / 1000, this._colorManager);
