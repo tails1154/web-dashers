@@ -308,10 +308,16 @@
     run(id, scene = window._wdGameScene) {
       const feature = features.find(item => item.id === id);
       if (!feature) return false;
-      if (feature.kind === "toggle") {
-        const enabled = this.setEnabled(id, !this.isEnabled(id));
-        applyToggle(scene, id, enabled);
-      } else commandHandlers[id]?.(scene);
+      try {
+        if (feature.kind === "toggle") {
+          const enabled = this.setEnabled(id, !this.isEnabled(id));
+          applyToggle(scene, id, enabled);
+        } else commandHandlers[id]?.(scene);
+      } catch (error) {
+        console.error(`[V3] ${id} failed`, error);
+        notice(scene, "V3 FEATURE", `${feature.name} could not run.`);
+        return false;
+      }
       toast(scene, `${feature.name}: ${feature.kind === "toggle" ? (this.isEnabled(id) ? "ON" : "OFF") : "DONE"}`);
       return true;
     },
