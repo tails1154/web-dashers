@@ -6189,6 +6189,33 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const y = typeof b === "function" ? b(point.y) + Number(this._cameraY || 0) : screenHeight / 2;
     this._replayGhostGraphics.clear().fillStyle(0x9de8ff, 0.34).fillCircle(x, y, 13).lineStyle(2, 0xffffff, 0.7).strokeCircle(x, y, 16).setVisible(true);
   }
+  _recordDeathTimelinePoint() {
+    if (!window.deathTimeline || window.isEditor) return;
+    const levelId = String(window.currentlevel?.[2] || "level_1");
+    const endX = Number(this._level?.endXPos || 0);
+    const percent = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
+    let entries = [];
+    try { entries = JSON.parse(localStorage.getItem("wd_death_timeline") || "[]"); } catch (_) {}
+    if (!Array.isArray(entries)) entries = [];
+    entries.push({ levelId, percent, timestamp: Date.now() });
+    localStorage.setItem("wd_death_timeline", JSON.stringify(entries.slice(-250)));
+  }
+  _updateDeathTimeline() {
+    if (!window.deathTimeline || window.isEditor || this._menuActive) {
+      if (this._deathTimelineLabel) this._deathTimelineLabel.setVisible(false);
+      return;
+    }
+    if (!this._deathTimelineLabel) {
+      this._deathTimelineLabel = this.add.text(12, 104, "", {
+        fontFamily: "Arial", fontSize: "16px", color: "#ffd77a", stroke: "#000000", strokeThickness: 4
+      }).setScrollFactor(0).setDepth(90);
+    }
+    let entries = [];
+    try { entries = JSON.parse(localStorage.getItem("wd_death_timeline") || "[]"); } catch (_) {}
+    const levelId = String(window.currentlevel?.[2] || "level_1");
+    const recent = (Array.isArray(entries) ? entries : []).filter(entry => entry.levelId === levelId).slice(-8);
+    this._deathTimelineLabel.setText(recent.length ? `Recent deaths: ${recent.map(entry => `${entry.percent}%`).join(" • ")}` : "No recorded deaths").setVisible(true);
+  }
   _createStartPosGui() {
         const centerX = screenWidth / 2;
         const bottomY = screenHeight - 60;
@@ -6651,6 +6678,7 @@ _buildSettingsPopup() {
         "Hitbox Trail": "Shows the hitbox of exactly where your hitbox has been.",
         "Hitboxes on Death": "Shows hitboxes upon death in both normal and practice mode.",
         "Replay Ghost": "Shows a translucent replay of your previous attempt after you die. It never affects physics or rewards.",
+        "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Show FPS": "Shows the frames per second your game is running at.",
         "Solid Wave Trail": "Removes the extra details of the wave trail.",
         "Show CPS": "Shows when you click in a level in the top left of your screen.",
@@ -7018,6 +7046,17 @@ _buildSettingsPopup() {
             true,
             "Enable Orb Guide"
         );
+        createToggle(container, column2X, startY + (spacingY * 5), "Death Timeline",
+            () => !!window.deathTimeline,
+            (v) => {
+                window.deathTimeline = !!v;
+                if (!v && this._deathTimelineLabel) this._deathTimelineLabel.setVisible(false);
+            },
+            undefined,
+            22,
+            true,
+            "Death Timeline"
+        );
     };
 
     const buildAdvancedPage = (container) => {
@@ -7105,6 +7144,7 @@ _buildSettingsPopup() {
         practiceMusicSync: window.practiceMusicSync,
         fastReset: !!window.fastReset,
         replayGhost: !!window.replayGhost,
+        deathTimeline: !!window.deathTimeline,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -7139,6 +7179,7 @@ _buildSettingsPopup() {
         practiceMusicSync: false,
         fastReset: false,
         replayGhost: false,
+        deathTimeline: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -7167,6 +7208,7 @@ _buildSettingsPopup() {
     window.practiceMusicSync = !!data.practiceMusicSync;
     window.fastReset = !!data.fastReset;
     window.replayGhost = !!data.replayGhost;
+    window.deathTimeline = !!data.deathTimeline;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
@@ -9392,6 +9434,7 @@ _buildSettingsPopup() {
   }
   update(_0x54fa47, deltaTime) {
     this._updateReplayGhost(deltaTime);
+    this._updateDeathTimeline();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
       if (_liveCoinCheatFlags.length && !this._coinCheatWarningShown) {
@@ -9764,6 +9807,7 @@ _buildSettingsPopup() {
       }
       if (!this._newBestShown) {
         this._newBestShown = true;
+        this._recordDeathTimelinePoint();
         let _0x435587 = this._level.endXPos || 6000;
         let _0x169d53 = this._playerWorldX;
         this._lastPercent = Math.min(99, Math.max(0, Math.floor(_0x169d53 / _0x435587 * 100)));
