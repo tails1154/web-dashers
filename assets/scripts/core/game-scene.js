@@ -6631,6 +6631,29 @@ _buildPauseOverlay() {
     _0x3d0987.setPosition(textureY - _0xb5ab6f * 0.992 / 2, _0x21dacf);
     this._pauseContainer.add(_0x3d0987);
     this._pauseContainer.add(this.add.bitmapText(textureY, _0x21dacf, "bigFont", _0x46bab2 + "%", 30).setOrigin(0.5, 0.5).setScale(0.7));
+    let deathHeatmap = [];
+    try {
+      const timeline = JSON.parse(localStorage.getItem("wd_death_timeline") || "[]");
+      const levelId = String(window.currentlevel?.[2] || "level_1");
+      deathHeatmap = (Array.isArray(timeline) ? timeline : [])
+        .filter(entry => entry.levelId === levelId && Number.isFinite(Number(entry.percent)))
+        .slice(-24);
+    } catch (_) {}
+    if (deathHeatmap.length) {
+      deathHeatmap.forEach((entry, index) => {
+        const percent = Math.max(0, Math.min(100, Number(entry.percent)));
+        const marker = this.add.circle(
+          textureY - _0xb5ab6f / 2 + (_0xb5ab6f * percent / 100),
+          _0x21dacf,
+          6,
+          0xff6b6b,
+          Math.min(1, 0.4 + index / Math.max(1, deathHeatmap.length) * 0.6)
+        ).setStrokeStyle(2, 0xffffff, 0.75);
+        this._pauseContainer.add(marker);
+      });
+      this._pauseContainer.add(this.add.bitmapText(textureY, _0x21dacf + 28, "bigFont", `DEATH HEATMAP  •  ${deathHeatmap.length} RECENT`, 17)
+        .setOrigin(0.5).setTint(0xffa7a7));
+    }
     this._pauseContainer.add(this.add.bitmapText(textureY, 130, "bigFont", "Normal Mode", 30).setOrigin(0.5, 0.5).setScale(0.78));
 
     const _pausePractPct = this._practiceBestPercent || 0;
