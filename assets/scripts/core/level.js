@@ -11,23 +11,9 @@ class Collider {
     this.slopeDir = 1;
     this.slopeIsFilled = false;
     this.slopeFlipY = false;
-    this.slopeSolidVertices = null;
-    this.slopeSurfaceA = null;
-    this.slopeSurfaceB = null;
   }
   getSlopeSurfaceY(worldX) {
     if (this.type !== slopeType) return null;
-    if (this.slopeSurfaceA && this.slopeSurfaceB) {
-      const a = this.slopeSurfaceA;
-      const b = this.slopeSurfaceB;
-      const dx = b.x - a.x;
-      if (Math.abs(dx) > 0.001) {
-        const minX = Math.min(a.x, b.x);
-        const maxX = Math.max(a.x, b.x);
-        if (worldX < minX || worldX > maxX) return null;
-        return a.y + (b.y - a.y) * ((worldX - a.x) / dx);
-      }
-    }
     const halfW = this.w / 2;
     const left = this.x - halfW;
     const right = this.x + halfW;
@@ -66,25 +52,6 @@ class Collider {
     const surfaceY = this.getSlopeSurfaceY(worldX);
     if (surfaceY === null) return false;
     return this.isSolidBelowSurface(gravityFlipped) ? worldY < surfaceY : worldY > surfaceY;
-  }
-  isSlopeSolidAtExact(worldX, worldY) {
-    if (this.type !== slopeType || !Array.isArray(this.slopeSolidVertices)) return false;
-    const vertices = this.slopeSolidVertices;
-    const pointInPolygon = (px, py) => {
-      let inside = false;
-      for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
-        const a = vertices[i];
-        const b = vertices[j];
-        const cross = (px - a.x) * (b.y - a.y) - (py - a.y) * (b.x - a.x);
-        const onEdge = Math.abs(cross) <= 0.75 &&
-          px >= Math.min(a.x, b.x) - 0.75 && px <= Math.max(a.x, b.x) + 0.75 &&
-          py >= Math.min(a.y, b.y) - 0.75 && py <= Math.max(a.y, b.y) + 0.75;
-        if (onEdge) return true;
-        if ((a.y > py) !== (b.y > py) && px < (b.x - a.x) * (py - a.y) / (b.y - a.y) + a.x) inside = !inside;
-      }
-      return inside;
-    };
-    return pointInPolygon(Number(worldX) || 0, Number(worldY) || 0);
   }
   getSlopeBackWallSide() {
     // Native slopeWallLeft() is derived from the slope orientation only;
@@ -348,14 +315,27 @@ const _SLOPE_DATA = {
   1906:{gw:1,gh:1,angle:45,sq:false},1907:{gw:2,gh:1,angle:22.5,sq:false},
 };
  
-function _resolveSlopeOrientation(vertices) {
-  if (!Array.isArray(vertices) || vertices.length < 3) return { dir: 1, flipY: false };
-  // The first two vertices are the native slope's diagonal surface and the
-  // third vertex is on its solid side. Use the already transformed vertices;
-  // reconstructing this from an axis-aligned box breaks rotated slopes.
-  const edgeA = vertices[0];
-  const edgeB = vertices[1];
-  const solidVertex = vertices[2];
+function _resolveSlopeOrientation(levelObj, slopeData) {
+  const sx = levelObj.flipX ? -1 : 1;
+  const sy = levelObj.flipY ? -1 : 1;
+  const rotation = Math.round((((levelObj.rot || 0) % 360) + 360) % 360 / 90) * 90;
+  const radians = -rotation * Math.PI / 180;
+  const cos = Math.round(Math.cos(radians));
+  const sin = Math.round(Math.sin(radians));
+  const halfW = slopeData.gw / 2;
+  const halfH = slopeData.gh / 2;
+  const transform = (point) => {
+    const x = point.x * sx;
+    const y = point.y * sy;
+    return { x: x * cos - y * sin, y: x * sin + y * cos };
+  };
+
+  // Base collision triangle, globally flipped on X to match the
+  // slope artwork. Apply the object's local mirrors and screen-space rotation
+  // afterward, in the same order as _applyVisualProps.
+  const edgeA = transform({ x: halfW, y: halfH });
+  const edgeB = transform({ x: -halfW, y: -halfH });
+  const solidVertex = transform({ x: halfW, y: -halfH });
   const leftEdge = edgeA.x <= edgeB.x ? edgeA : edgeB;
   const rightEdge = edgeA.x <= edgeB.x ? edgeB : edgeA;
   const lineDir = rightEdge.y >= leftEdge.y ? 1 : -1;
@@ -375,47 +355,21 @@ function _resolveSlopeOrientation(vertices) {
 function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const slopeData = _SLOPE_DATA[levelObj.id];
   if (!slopeData) return null;
-  const rotationDegrees = Number(levelObj.rot) || 0;
-  const normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
-  const rot90 = Math.round(normalizedRotation / 90) % 4;
+  const rot90 = Math.round((((levelObj.rot || 0) % 360) + 360) % 360 / 90) % 4;
   const steep = rot90 === 1 || rot90 === 3;
   const rawScale = Number(levelObj.scale);
   const scale = Math.max(0.01, Math.abs(Number.isFinite(rawScale) ? rawScale : 1));
-  const localW = slopeData.gw * a * scale;
-  const localH = slopeData.gh * a * scale;
-  const angle = -normalizedRotation * Math.PI / 180;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  const sx = levelObj.flipX ? -1 : 1;
-  const sy = levelObj.flipY ? -1 : 1;
-  const transform = ({ x, y }) => ({
-    x: x * sx * cos - y * sy * sin + worldX,
-    y: x * sx * sin + y * sy * cos + worldY
-  });
-  const halfW = localW / 2;
-  const halfH = localH / 2;
-  const localVertices = slopeData.sq
-    ? [{ x: -halfW, y: -halfH }, { x: halfW, y: -halfH }, { x: halfW, y: halfH }, { x: -halfW, y: halfH }]
-    : [{ x: halfW, y: halfH }, { x: -halfW, y: -halfH }, { x: halfW, y: -halfH }];
-  const vertices = localVertices.map(transform);
-  const xs = vertices.map(point => point.x);
-  const ys = vertices.map(point => point.y);
-  const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
-  const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
+  const w = (steep ? slopeData.gh : slopeData.gw) * a * scale;
+  const h = (steep ? slopeData.gw : slopeData.gh) * a * scale;
   const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
-  collider.slopeSolidVertices = vertices;
-  if (!slopeData.sq) {
-    collider.slopeSurfaceA = vertices[0];
-    collider.slopeSurfaceB = vertices[1];
-  }
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
   // has to use atan(1 / 2) (and atan(2 / 1) when quarter-turned), otherwise
   // surface snapping and the velocity inherited at the end of the slope do
   // not agree.
   collider.slopeAngleDeg = Math.atan2(h, w) * 180 / Math.PI;
-  const { dir, flipY } = _resolveSlopeOrientation(vertices);
+  const { dir, flipY } = _resolveSlopeOrientation(levelObj, slopeData);
   collider.slopeDir = dir;
   collider.slopeFlipY = flipY;
   collider.slopeIsFilled = slopeData.sq;
@@ -803,8 +757,6 @@ window.LevelObject = class LevelObject {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesEnabled = false;
     this._nineCirclesPhase = 0;
-    this._nineCirclesEnvironmentApplied = false;
-    this._nineCirclesPreviousEnvironment = null;
     this._headBlocks = [];
     this._letterBlocks = [];
     this._pulseTriggers = [];
@@ -1039,19 +991,6 @@ window.LevelObject = class LevelObject {
       settings: settingslist
     } = parseLevel(levelData);
     levelObjects = this._normalizeTeleportPortals(levelObjects);
-    // Gameplay triggers must come from the parsed level data, independently
-    // of whether their editor sprite/object definition can be rendered.
-    this._nineCirclesTriggers = levelObjects
-      .filter(levelObj => levelObj && (Number(levelObj.id) === 5070 || Number(levelObj.id) === 5071))
-      .map(levelObj => ({
-        x: Number(levelObj.x || 0) * 2,
-        enabled: Number(levelObj.id) === 5070,
-        saveObj: levelObj,
-        speed: Math.max(0.1, Math.min(60, parseFloat(levelObj._raw?.[28] ?? levelObj._raw?.["28"] ?? 8) || 8))
-      }))
-      .sort((a, b) => a.x - b.x);
-    this._nineCirclesTriggerIdx = 0;
-    this._nineCirclesEnabled = false;
     this._sourceLevelObjects = levelObjects;
     this._spawnLevelObjects(levelObjects);
     this._setUpSettings(settingslist);
@@ -2049,8 +1988,7 @@ window.LevelObject = class LevelObject {
     return objectDef;
   }
 
-  const isNineCirclesTrigger = objectDef && (Number(levelObj.id) === 5070 || Number(levelObj.id) === 5071);
-  if (objectDef && (objectDef.type === triggerType || isNineCirclesTrigger)) {
+  if (objectDef && objectDef.type === triggerType) {
     if (this._nextObjectId === undefined) {
       this._nextObjectId = 0;
     }
@@ -2175,6 +2113,10 @@ window.LevelObject = class LevelObject {
         ...triggerBase,
         x: levelObj.x * 2
       });
+    }
+
+    if (levelObj.id === 5070 || levelObj.id === 5071) {
+      this._nineCirclesTriggers.push({ ...triggerBase, x: levelObj.x * 2, enabled: levelObj.id === 5070 });
     }
 
     if (levelObj.id === 1006) {
@@ -3964,9 +3906,10 @@ window.LevelObject = class LevelObject {
     while (this._nineCirclesTriggerIdx < this._nineCirclesTriggers.length) {
       const trigger = this._nineCirclesTriggers[this._nineCirclesTriggerIdx];
       if (trigger.x > playerX) break;
-      this._nineCirclesEnabled = !!trigger.enabled;
-      this._nineCirclesSpeed = trigger.speed || 8;
-      if (!this._nineCirclesEnabled) this._clearNineCirclesEffect();
+      if (this._isTriggerSaveObjectLive(trigger.uid)) {
+        this._nineCirclesEnabled = !!trigger.enabled;
+        if (!this._nineCirclesEnabled) this._clearNineCirclesEffect();
+      }
       this._nineCirclesTriggerIdx++;
     }
   }
@@ -3982,27 +3925,14 @@ window.LevelObject = class LevelObject {
   }
 
   stepNineCirclesEffect(dt) {
-    // This is gameplay behavior, not optional decoration. Low-detail mode
-    // must not silently disable the trigger after it has been activated.
-    if (!this._nineCirclesEnabled) return;
-    // Nine Circles is a traveling four-bar flash: each connected-looking
-    // diagonal band alternates between a bright neon block and a near-black
-    // block, then the ON bar advances to the next band.
-    const flashSpeed = Math.max(0.1, Math.min(60, Number(this._nineCirclesSpeed) || 8));
-    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * flashSpeed;
-    const activeBand = Math.floor(this._nineCirclesPhase) % 4;
-    const brightTint = 0xf044ff;
-    const darkTint = 0x160b24;
+    if (!this._nineCirclesEnabled || window.enableLDM) return;
+    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * 5.5;
+    const pulse = (Math.sin(this._nineCirclesPhase) + 1) * 0.5;
+    const tint = (Math.round(105 + pulse * 110) << 16) | (Math.round(35 + pulse * 45) << 8) | Math.round(175 + (1 - pulse) * 70);
     for (const section of this._sections) {
       for (const sprite of section || []) {
-        if (!sprite || !sprite.active || sprite._eeEditorTriggerSprite) continue;
-        const worldX = Number(sprite._eeWorldX ?? sprite.x) || 0;
-        const worldY = Number(sprite._eeBaseY ?? sprite.y) || 0;
-        // 60 is one gameplay grid cell in the level coordinate system. The
-        // diagonal index makes adjacent/connected block rows flash in order.
-        const band = Math.floor((worldX + worldY) / 60);
-        const relativeBand = ((band - activeBand) % 4 + 4) % 4;
-        sprite.setTint?.(relativeBand === 0 ? brightTint : darkTint);
+        if (!sprite || !sprite.active || sprite._eeIsGlowSprite || sprite._eeEditorTriggerSprite) continue;
+        sprite.setTint?.(tint);
         sprite._eeNineCirclesTinted = true;
       }
     }
@@ -4011,36 +3941,7 @@ window.LevelObject = class LevelObject {
   resetNineCirclesTriggers() {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesPhase = 0;
-    this._nineCirclesSpeed = 8;
     this._clearNineCirclesEffect();
-    this._nineCirclesEnvironmentApplied = false;
-    this._nineCirclesPreviousEnvironment = null;
-  }
-
-  applyNineCirclesEnvironment(backgroundColor, groundColor, ground2Color) {
-    const scene = this._scene;
-    if (!scene || window.isEditor) return;
-    if (this._nineCirclesEnabled) {
-      if (!this._nineCirclesEnvironmentApplied) {
-        this._nineCirclesPreviousEnvironment = {
-          background: backgroundColor,
-          ground: groundColor,
-          ground2: ground2Color
-        };
-        this._nineCirclesEnvironmentApplied = true;
-      }
-      scene._bg?.setTint?.(0x000000);
-      this.setGroundColor(0x000000);
-      this.setGround2Color?.(0x000000);
-      return;
-    }
-    if (!this._nineCirclesEnvironmentApplied) return;
-    const previous = this._nineCirclesPreviousEnvironment || {};
-    scene._bg?.setTint?.(previous.background ?? backgroundColor ?? 0xffffff);
-    this.setGroundColor(previous.ground ?? groundColor ?? 0xffffff);
-    this.setGround2Color?.(previous.ground2 ?? ground2Color ?? 0xffffff);
-    this._nineCirclesEnvironmentApplied = false;
-    this._nineCirclesPreviousEnvironment = null;
   }
 
   stepRotateTriggers(dt) {
