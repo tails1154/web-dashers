@@ -2811,7 +2811,9 @@ class LevelEditor {
       { key: "evenY", label: "EVEN Y" },
       { key: "mirrorX", label: "MIRROR X" },
       { key: "mirrorY", label: "MIRROR Y" },
-      { key: "snap", label: "SNAP GRID" }
+      { key: "snap", label: "SNAP GRID" },
+      { key: "rotate45", label: "ROTATE 45" },
+      { key: "rotate90", label: "ROTATE 90" }
     ];
     this._openEditorHorizontalOptionPopup(
       "ALIGN OBJECTS",
@@ -2925,12 +2927,20 @@ class LevelEditor {
         nextX = Math.round(nextX / saveGridSize) * saveGridSize;
         nextY = Math.round(nextY / saveGridSize) * saveGridSize;
       }
+      if (mode === "rotate45" || mode === "rotate90") {
+        const radians = (mode === "rotate45" ? 45 : 90) * Math.PI / 180;
+        const offsetX = Number(saveObj.x || 0) - centerX;
+        const offsetY = Number(saveObj.y || 0) - centerY;
+        nextX = centerX + offsetX * Math.cos(radians) - offsetY * Math.sin(radians);
+        nextY = centerY + offsetX * Math.sin(radians) + offsetY * Math.cos(radians);
+      }
       const dx = (nextX - Number(saveObj.x || 0)) * 2;
       const dy = (Number(saveObj.y || 0) - nextY) * 2;
-      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001 || mode === "mirrorX" || mode === "mirrorY") {
+      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001 || mode === "mirrorX" || mode === "mirrorY" || mode === "rotate45" || mode === "rotate90") {
         this._selectEditorObjectsByIds([entry.objectId], 0x00ff00);
         if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) this._moveObject(dx, dy);
-        this._flipObject(mode === "mirrorY" ? "y" : "x");
+        if (mode === "mirrorX" || mode === "mirrorY") this._flipObject(mode === "mirrorY" ? "y" : "x");
+        if (mode === "rotate45" || mode === "rotate90") this._rotateObject(mode === "rotate45" ? 45 : 90);
       }
     });
     this._selectEditorObjectsByIds(selectedIds, 0x00ff00);
