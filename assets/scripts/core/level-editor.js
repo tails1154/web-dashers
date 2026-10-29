@@ -374,6 +374,8 @@ class LevelEditor {
         .setInteractive().setScale(0.72);
     this._lockObjectBtn = this.add.nineslice(0, 425, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
     this._lockObjectLabel = this.add.bitmapText(0, 425, "bigFont", "LOCK", 15).setOrigin(0.5);
+    this._alignObjectsBtn = this.add.nineslice(0, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
+    this._alignObjectsLabel = this.add.bitmapText(0, 500, "bigFont", "ALIGN", 14).setOrigin(0.5);
 
     this._editorLayerSelector = this.add.container(-75, 275);
     this._editorLayerFirstBtn = this.add.image(-90, 0, "GJ_GameSheet03", "GJ_arrow_02_001.png").setInteractive().setScale(0.45).setAlpha(0.5);
@@ -391,13 +393,14 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._alignObjectsBtn, this._alignObjectsLabel, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
     });
     this._makeBouncyButton(this._inspectObjectBtn, 0.72, () => this._openSelectedEditorInspector(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
     this._makeCompositeBouncyButton(this._lockObjectBtn, [this._lockObjectBtn, this._lockObjectLabel], 1, () => this._toggleSelectedEditorObjectLocks(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
+    this._makeCompositeBouncyButton(this._alignObjectsBtn, [this._alignObjectsBtn, this._alignObjectsLabel], 1, () => this._openEditorAlignPopup(), () => this._getCurrentSelectedEditorObjectIds().length > 1);
 
     this._makeBouncyButton(this._editObjectBtn, 1, () => {
         this._openSelectedEditorObjectOptions();
@@ -2786,6 +2789,80 @@ class LevelEditor {
     }
   }
 
+  _openEditorAlignPopup() {
+    const selected = this._getCurrentSelectedEditorObjectIds();
+    if (selected.length < 2) return;
+    const options = [
+      { key: "minX", label: "MIN X" },
+      { key: "maxX", label: "MAX X" },
+      { key: "minY", label: "MIN Y" },
+      { key: "maxY", label: "MAX Y" },
+      { key: "evenX", label: "EVEN X" },
+      { key: "evenY", label: "EVEN Y" }
+    ];
+    this._openEditorHorizontalOptionPopup(
+      "ALIGN OBJECTS",
+      options,
+      "",
+      option => this._alignSelectedEditorObjects(option.key),
+      (parent, option, ox, oy, choose) => {
+        const root = this.add.container(ox, oy);
+        const background = this.add.nineslice(0, 0, "GJ_button01", null, 118, 42, 12, 12, 12, 12).setScale(0.8).setInteractive();
+        const label = this.add.bitmapText(0, 0, "bigFont", option.label, 15).setOrigin(0.5);
+        root.add([background, label]);
+        this._makeCompositeBouncyButton(background, [background, label], 0.8, choose);
+        parent.add(root);
+        return { root, visualRoot: root, baseScale: 1 };
+      }
+    );
+  }
+
+  _alignSelectedEditorObjects(mode) {
+    const selectedIds = this._getCurrentSelectedEditorObjectIds();
+    const entries = selectedIds
+      .filter(objectId => !this._isEditorObjectLocked(objectId))
+      .map(objectId => ({ objectId, saveObj: this._getEditorSaveObjectForObjectId(objectId) }))
+      .filter(entry => entry.saveObj);
+    if (entries.length < 2) return;
+
+    const xs = entries.map(entry => Number(entry.saveObj.x || 0));
+    const ys = entries.map(entry => Number(entry.saveObj.y || 0));
+    const targetX = mode === "minX" ? Math.min(...xs) : mode === "maxX" ? Math.max(...xs) : null;
+    const targetY = mode === "minY" ? Math.min(...ys) : mode === "maxY" ? Math.max(...ys) : null;
+    const sortedX = [...xs].sort((a, b) => a - b);
+    const sortedY = [...ys].sort((a, b) => a - b);
+    const minX = sortedX[0];
+    const maxX = sortedX[sortedX.length - 1];
+    const minY = sortedY[0];
+    const maxY = sortedY[sortedY.length - 1];
+    const xOrder = [...entries].sort((a, b) => Number(a.saveObj.x || 0) - Number(b.saveObj.x || 0));
+    const yOrder = [...entries].sort((a, b) => Number(a.saveObj.y || 0) - Number(b.saveObj.y || 0));
+
+    entries.forEach(entry => {
+      const saveObj = entry.saveObj;
+      let nextX = Number(saveObj.x || 0);
+      let nextY = Number(saveObj.y || 0);
+      if (targetX !== null) nextX = targetX;
+      if (targetY !== null) nextY = targetY;
+      if (mode === "evenX") {
+        const index = xOrder.indexOf(entry);
+        nextX = entries.length === 1 ? minX : minX + (maxX - minX) * index / (entries.length - 1);
+      }
+      if (mode === "evenY") {
+        const index = yOrder.indexOf(entry);
+        nextY = entries.length === 1 ? minY : minY + (maxY - minY) * index / (entries.length - 1);
+      }
+      const dx = (nextX - Number(saveObj.x || 0)) * 2;
+      const dy = (Number(saveObj.y || 0) - nextY) * 2;
+      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+        this._selectEditorObjectsByIds([entry.objectId], 0x00ff00);
+        this._moveObject(dx, dy);
+      }
+    });
+    this._selectEditorObjectsByIds(selectedIds, 0x00ff00);
+    this._refreshEditorCollisionCaches();
+  }
+
 
   _deleteSelectedObject() {
     const selectedObjectIds = this._getCurrentSelectedEditorObjectIds();
@@ -2897,6 +2974,15 @@ class LevelEditor {
             this._deleteGridButton.setInteractive();
         } else {
             this._deleteGridButton.disableInteractive();
+        }
+    }
+    if (this._alignObjectsBtn) {
+        const alignable = selectedCount > 1;
+        this._alignObjectsBtn.setAlpha(alignable ? 1 : 0.5);
+        if (alignable) {
+            this._alignObjectsBtn.setInteractive();
+        } else {
+            this._alignObjectsBtn.disableInteractive();
         }
     }
   }
@@ -9807,6 +9893,8 @@ LevelEditor.methodNames = [
   "_readEditorSelectionSets",
   "_saveEditorSelectionSet",
   "_loadEditorSelectionSet",
+  "_openEditorAlignPopup",
+  "_alignSelectedEditorObjects",
   "_clearEditorPlaytestMarks",
   "_ensureEditorPlaytestTrail",
   "_drawEditorPlaytestTrailPoint",
