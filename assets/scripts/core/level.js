@@ -545,6 +545,9 @@ if (!allObjects[5072]) {
 if (!allObjects[5073]) {
   allObjects[5073] = { can_color: false, frame: "player-input-on.svg", editorFrame: "player-input-on.svg", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "player_input_on", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
 }
+if (!allObjects[5074]) {
+  allObjects[5074] = { can_color: false, frame: "wave-slide.svg", editorFrame: "wave-slide.svg", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "wave_slide", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
+}
 allObjects[5051] = {
   can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
@@ -765,6 +768,7 @@ window.LevelObject = class LevelObject {
     this._nineCirclesPhase = 0;
     this._playerInputTriggers = [];
     this._playerInputTriggerIdx = 0;
+    this._waveSlideTriggers = [];
     this._headBlocks = [];
     this._letterBlocks = [];
     this._pulseTriggers = [];
@@ -2129,6 +2133,10 @@ window.LevelObject = class LevelObject {
 
     if (levelObj.id === 5072 || levelObj.id === 5073) {
       this._playerInputTriggers.push({ ...triggerBase, x: levelObj.x * 2, enabled: levelObj.id === 5073 });
+    }
+
+    if (levelObj.id === 5074) {
+      this._waveSlideTriggers.push({ ...triggerBase, x: levelObj.x * 2, y: levelObj.y * 2 });
     }
 
     if (levelObj.id === 1006) {
@@ -3971,6 +3979,19 @@ window.LevelObject = class LevelObject {
   resetPlayerInputTriggers() {
     this._playerInputTriggerIdx = 0;
     this._scene?._setPlayerInputEnabled?.(true);
+  }
+
+  isWaveSlideBlock(gameObj) {
+    if (!gameObj || gameObj.type !== solidType || !this._waveSlideTriggers.length) return false;
+    const halfW = Math.max(1, Number(gameObj.w) || 0) / 2;
+    const halfH = Math.max(1, Number(gameObj.h) || 0) / 2;
+    return this._waveSlideTriggers.some(trigger => {
+      const markerX = Number(trigger.x);
+      const markerY = Number(trigger.y);
+      if (!Number.isFinite(markerX) || !Number.isFinite(markerY)) return false;
+      return markerX >= gameObj.x - halfW - 15 && markerX <= gameObj.x + halfW + 15 &&
+        markerY >= gameObj.y - halfH - 15 && markerY <= gameObj.y + halfH + 15;
+    });
   }
 
   stepRotateTriggers(dt) {

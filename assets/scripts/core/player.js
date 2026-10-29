@@ -5438,6 +5438,24 @@ if (this.p.isFlying || this.p.isUfo) {
           const _0xLandTop = (this.p.yVelocity >= 0 || this.p.onGround) && (_0x3e7199 <= top || _0x135a9d <= top);
           const isstandingOnAPlatform = this.p.gravityFlipped ? _0xLandTop : _0xLandBot;
           if (iscolliding && !isstandingOnAPlatform) {
+            if (this.p.isWave && this._gameLayer.isWaveSlideBlock?.(gameObj)) {
+              const blockCenter = (top + bottom) / 2;
+              const slideOnUpperFace = playersY >= blockCenter;
+              if (slideOnUpperFace) {
+                this.p.y = bottom + waveHitSize;
+                this.p.onGround = true;
+                this.p.onCeiling = false;
+                this.p.collideBottom = bottom;
+              } else {
+                this.p.y = top - waveHitSize;
+                this.p.onGround = false;
+                this.p.onCeiling = true;
+                this.p.collideTop = top;
+              }
+              this.p.yVelocity = 0;
+              this.p.canJump = false;
+              continue;
+            }
             const isOverheadHit = this.p.gravityFlipped ? _0xLandBot : _0xLandTop;
             if (this.p.isWave && this._letterBlockAt("D", pieceWidth, playersY, waveHitSize)) {
               continue;
