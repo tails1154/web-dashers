@@ -5410,7 +5410,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._rightBtn.setRotation(Math.PI);
     window.scene = this.scene;
     window._wdGameScene = this;
-    window.WDV3?.install?.(this);
     window.rightbuttoncallback = () => {
       if (this._levelSelectOverlay && this._levelSelectSwitchLevel) {
         this._levelSelectSwitchLevel(1);
@@ -6533,15 +6532,6 @@ _buildSettingsPopup() {
         this._settingsPopup.destroy();
         this._settingsPopup = null;
     });
-    const featureMenuButton = this.add.nineslice((panelWidth / 2) - 70, -(panelHeight / 2) + 28, "GJ_button01", null, 90, 36, 12, 12, 12, 12).setInteractive();
-    const featureMenuLabel = this.add.bitmapText((panelWidth / 2) - 70, -(panelHeight / 2) + 27, "bigFont", "V3", 18).setOrigin(0.5);
-    innerContainer.add([featureMenuButton, featureMenuLabel]);
-    this._makeCompositeBouncyButton(featureMenuButton, [featureMenuButton, featureMenuLabel], 1, () => {
-        this._settingsPopup.destroy();
-        this._settingsPopup = null;
-        this._openV3FeatureMenu();
-    });
-
     const pages = ["Gameplay", "Visual", "Advanced", "Performance"];
     let currentPage = 0;
     const pageTitle = this.add.bitmapText(0, -(panelHeight / 2) + 45, "bigFont", pages[currentPage], 40).setOrigin(0.5);
@@ -9335,7 +9325,6 @@ _buildSettingsPopup() {
     return _0xd8019e * 60;
   }
   update(_0x54fa47, deltaTime) {
-    window.WDV3?.update?.(this, deltaTime);
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
       if (_liveCoinCheatFlags.length && !this._coinCheatWarningShown) {
@@ -9699,11 +9688,9 @@ _buildSettingsPopup() {
         if (!this._audio._shouldUsePracticeSong()) {
           this._audio.stopMusic();
         }
-        if (window.wdDeathSound !== false) {
-          this._audio.playEffect("explode_11", {
-            volume: 0.65 * this._sfxVolume
-          });
-        }
+        this._audio.playEffect("explode_11", {
+          volume: 0.65 * this._sfxVolume
+        });
         this._deathSoundPlayed = true;
         this._totalDeaths++;
         localStorage.setItem("gd_totalDeaths", this._totalDeaths);
@@ -9749,9 +9736,7 @@ _buildSettingsPopup() {
       }
       this._deathTimer += deltaTime;
       const fastReset = !!window.fastReset;
-      let _0x237728 = window.WDV3?.isEnabled?.("gameplay_auto_restart")
-        ? 0
-        : (fastReset ? 500 : (this._hadNewBest ? 1400 : 1000));
+      let _0x237728 = fastReset ? 500 : (this._hadNewBest ? 1400 : 1000);
       if (this._deathTimer > _0x237728) {
         if (this._practicedMode.practiceMode) {
           this._respawnFromCheckpoint();
@@ -12484,79 +12469,6 @@ _applyMirrorEffect() {
       reportText.setText("REPORT ID COPIED").setTint(0x88ffbb);
     });
     makeButton(sw / 2 + 190, "CLOSE", close);
-  }
-
-  _openV3FeatureMenu() {
-    if (this._v3FeatureMenu) return;
-    const features = window.WDV3?.features || [];
-    const sw = screenWidth;
-    const sh = screenHeight;
-    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(9500);
-    this._v3FeatureMenu = root;
-    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.84).setInteractive();
-    const panelW = Math.min(820, sw - 40);
-    const panelH = Math.min(590, sh - 34);
-    const panel = this.add.rectangle(sw / 2, sh / 2, panelW, panelH, 0x14223d, 1).setStrokeStyle(5, 0xc1fb3d, 1);
-    const inner = this.add.rectangle(sw / 2, sh / 2, panelW - 14, panelH - 14, 0x091326, 0.98).setStrokeStyle(2, 0x47648e, 1);
-    const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 30, "goldFont", "V3 FEATURE MENU", 34).setOrigin(0.5);
-    const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 62, "bigFont", `${features.length} separate features`, 17).setOrigin(0.5).setTint(0xbfeeff);
-    root.add([shade, panel, inner, title, count]);
-    let page = 0;
-    let filter = "";
-    const perPage = 8;
-    const searchBox = this.add.rectangle(sw / 2, sh / 2 - panelH / 2 + 98, panelW - 150, 40, 0x050a15, 1).setStrokeStyle(2, 0x6f89aa, 1).setInteractive();
-    const searchText = this.add.bitmapText(sw / 2 - (panelW - 150) / 2 + 12, searchBox.y, "bigFont", "Filter features", 17).setOrigin(0, 0.5).setTint(0x7891b2);
-    root.add([searchBox, searchText]);
-    let focused = true;
-    const close = () => {
-      window.removeEventListener("keydown", onKeyDown);
-      this._v3FeatureMenu = null;
-      root.destroy(true);
-    };
-    const updateSearch = () => searchText.setText(filter || "Filter features").setTint(filter ? 0xffffff : 0x7891b2);
-    const results = () => features.filter(feature => !filter || `${feature.name} ${feature.category || "command"}`.toLowerCase().includes(filter.toLowerCase()));
-    const rows = this.add.container(0, 0);
-    root.add(rows);
-    const render = () => {
-      rows.removeAll(true);
-      const list = results();
-      const pageCount = Math.max(1, Math.ceil(list.length / perPage));
-      page = Phaser.Math.Wrap(page, 0, pageCount);
-      list.slice(page * perPage, (page + 1) * perPage).forEach((feature, index) => {
-        const column = index % 2;
-        const row = Math.floor(index / 2);
-        const x = sw / 2 + (column ? 196 : -196);
-        const y = sh / 2 - panelH / 2 + 145 + row * 57;
-        const bg = this.add.nineslice(x, y, "GJ_button01", null, 370, 45, 14, 14, 14, 14).setInteractive();
-        const enabled = feature.kind === "toggle" ? window.WDV3.isEnabled(feature.id) : false;
-        const label = this.add.bitmapText(x - 168, y, "bigFont", `${feature.kind === "toggle" ? (enabled ? "ON  " : "OFF ") : "RUN  "}${feature.name}`, 16).setOrigin(0, 0.5).setTint(enabled ? 0xc1fb3d : 0xffffff);
-        rows.add([bg, label]);
-        this._makeCompositeBouncyButton(bg, [bg, label], 1, () => { window.WDV3.run(feature.id, this); render(); });
-      });
-      const pageText = this.add.bitmapText(sw / 2, sh / 2 + panelH / 2 - 34, "bigFont", `${page + 1}/${pageCount}`, 18).setOrigin(0.5);
-      const prev = this.add.nineslice(sw / 2 - 105, pageText.y, "GJ_button01", null, 120, 34, 10, 10, 10, 10).setInteractive();
-      const next = this.add.nineslice(sw / 2 + 105, pageText.y, "GJ_button01", null, 120, 34, 10, 10, 10, 10).setInteractive();
-      const prevText = this.add.bitmapText(prev.x, prev.y, "bigFont", "PREV", 15).setOrigin(0.5);
-      const nextText = this.add.bitmapText(next.x, next.y, "bigFont", "NEXT", 15).setOrigin(0.5);
-      rows.add([pageText, prev, next, prevText, nextText]);
-      this._makeCompositeBouncyButton(prev, [prev, prevText], 1, () => { page--; render(); });
-      this._makeCompositeBouncyButton(next, [next, nextText], 1, () => { page++; render(); });
-    };
-    const onKeyDown = event => {
-      if (!focused) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (event.key === "Escape") { close(); return; }
-      if (event.key === "Backspace") { filter = filter.slice(0, -1); updateSearch(); render(); return; }
-      if (event.key.length === 1 && filter.length < 50 && !event.ctrlKey && !event.metaKey) { filter += event.key; updateSearch(); render(); }
-    };
-    searchBox.on("pointerdown", () => { focused = true; searchBox.setStrokeStyle(2, 0xc1fb3d, 1); });
-    const closeButton = this.add.image(sw / 2 - panelW / 2 + 26, sh / 2 - panelH / 2 + 26, "GJ_WebSheet", "GJ_closeBtn_001.png").setScale(0.7).setInteractive();
-    root.add(closeButton);
-    this._makeBouncyButton(closeButton, 0.7, close);
-    window.addEventListener("keydown", onKeyDown);
-    updateSearch();
-    render();
   }
 
   _showPathUnlockToast(iconId) {
