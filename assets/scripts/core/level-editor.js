@@ -482,6 +482,21 @@ class LevelEditor {
     this._refreshEditorPlaytestControls();
 
     this._zoomText = this.add.bitmapText(screenWidth / 2, 80, "bigFont", "Zoom: 1.00x", 40).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0);
+    this._editorCoordinateReadout = this.add.bitmapText(14, 58, "bigFont", "", 16)
+        .setScrollFactor(0)
+        .setDepth(2000)
+        .setTint(0xb9d8ff)
+        .setVisible(true);
+    this.input.on("pointermove", pointer => {
+        if (!window.isEditor || this._editorPlaytestActive || !this._editorCoordinateReadout) return;
+        const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+        const worldX = (pointer.x + Number(this._cameraX || 0)) / zoom;
+        const worldY = (pointer.y + Number(this._cameraY || 0)) / zoom;
+        const grid = Math.max(1, Number(this._editorGridSize || 60));
+        const cellX = Math.floor(worldX / grid);
+        const cellY = Math.floor(worldY / grid);
+        this._editorCoordinateReadout.setText(`X ${Math.round(worldX)}  Y ${Math.round(worldY)}  •  CELL ${cellX},${cellY}`);
+    });
 
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
         const zoomAmount = deltaY > 0 ? -0.1 : 0.1;
@@ -527,7 +542,8 @@ class LevelEditor {
         this._zoomButtons,
         this._sideButtons,
         this._timelineContainer,
-        this._zoomText
+        this._zoomText,
+        this._editorCoordinateReadout
     ];
 
     for (const obj of guiObjects) {
