@@ -6716,7 +6716,6 @@ _buildPauseOverlay() {
     this._pauseContainer.add([goalButton, goalLabel]);
     this._makeCompositeBouncyButton(goalButton, [goalButton, goalLabel], 0.7, () => this._openRunGoalDialog());
 
-    this._pauseContainer.add(this.add.bitmapText(textureY, 65, "bigFont", window.currentlevel[1], 40).setOrigin(0.5, 0.5));
 
     const _0x21dacf = 170;
     const _0x46bab2 = this._bestPercent || 0;
