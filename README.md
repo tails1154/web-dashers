@@ -42,7 +42,6 @@
 - **Different Gamemodes** - Just about every gamemode is implemented currently, with the exception of the Swing.
 - **Extra Settings** - You can enable and disable things like Noclip or Show Hitboxes from the settings menu, along with other settings, like the level percentage!
 - **V3 Feature Menu** - The Settings menu opens a searchable native Phaser feature menu with 130 separate gameplay, editor, accessibility, audio, online, progression, visual, and diagnostics features. Toggle state is saved locally; use `Ctrl+Shift+P` as a shortcut.
-- **Newgrounds Song Browser** - The editor can search the server-side Newgrounds audio proxy or accept a direct `/audio/listen/<id>` link and import its ID into the level data.
 
 ### Development checks
 

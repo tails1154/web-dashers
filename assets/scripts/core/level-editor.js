@@ -7377,120 +7377,6 @@ class LevelEditor {
   }
 
 
-  _openNewgroundsSongBrowser(onSelect) {
-    if (this._ngSongBrowserOverlay) return;
-    const sw = screenWidth;
-    const sh = screenHeight;
-    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(4000);
-    this._ngSongBrowserOverlay = root;
-    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.82).setInteractive();
-    const panelW = Math.min(760, sw - 48);
-    const panelH = Math.min(570, sh - 44);
-    const panel = this.add.rectangle(sw / 2, sh / 2, panelW, panelH, 0x14223d, 1).setStrokeStyle(5, 0xffd84d, 1);
-    const inner = this.add.rectangle(sw / 2, sh / 2, panelW - 16, panelH - 16, 0x091326, 0.98).setStrokeStyle(2, 0x47648e, 1);
-    const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 34, "goldFont", "NEWGROUNDS AUDIO", 34).setOrigin(0.5);
-    const subtitle = this.add.text(sw / 2, sh / 2 - panelH / 2 + 66, "Search Newgrounds Audio or paste an /audio/listen/<ID> URL", {
-      fontFamily: "Arial", fontSize: "16px", color: "#b9d4f5", align: "center"
-    }).setOrigin(0.5);
-    root.add([shade, panel, inner, title, subtitle]);
-
-    let query = "";
-    let focused = true;
-    const inputY = sh / 2 - panelH / 2 + 112;
-    const inputBox = this.add.rectangle(sw / 2 - 72, inputY, panelW - 210, 48, 0x050a15, 1).setStrokeStyle(3, 0x8de8ff, 1).setInteractive();
-    const inputLabel = this.add.bitmapText(sw / 2 - 72 - (panelW - 210) / 2 + 14, inputY, "bigFont", "Search Newgrounds audio", 19).setOrigin(0, 0.5).setTint(0x7891b2);
-    const searchButton = this.add.nineslice(sw / 2 + panelW / 2 - 82, inputY, "GJ_button01", null, 135, 48, 16, 16, 16, 16).setInteractive();
-    const searchLabel = this.add.bitmapText(searchButton.x, searchButton.y, "bigFont", "SEARCH", 18).setOrigin(0.5);
-    const status = this.add.text(sw / 2, inputY + 42, "Enter a title or artist, then press Search.", {
-      fontFamily: "Arial", fontSize: "16px", color: "#9eb3d1", align: "center"
-    }).setOrigin(0.5);
-    const results = this.add.container(0, 0);
-    root.add([inputBox, inputLabel, searchButton, searchLabel, status, results]);
-    const close = () => {
-      window.removeEventListener("keydown", onKeyDown);
-      this._editorTextInputFocused = false;
-      this._ngSongBrowserOverlay = null;
-      root.destroy(true);
-    };
-    const updateInput = () => inputLabel.setText(query || "Search Newgrounds audio").setTint(query ? 0xffffff : 0x7891b2);
-    const renderResults = songs => {
-      results.removeAll(true);
-      if (!songs.length) {
-        status.setText("No songs found. Try a different title or artist.").setColor("#ffcf83");
-        return;
-      }
-      status.setText(`${songs.length} song${songs.length === 1 ? "" : "s"} found — select one to use its ID.`).setColor("#9effc2");
-      songs.slice(0, 8).forEach((song, index) => {
-        const y = sh / 2 - panelH / 2 + 160 + index * 42;
-        const row = this.add.nineslice(sw / 2, y, "GJ_button01", null, panelW - 70, 36, 12, 12, 12, 12).setInteractive();
-        const label = this.add.bitmapText(sw / 2 - (panelW - 70) / 2 + 14, y, "bigFont", `${song.title}  •  NG#${song.id}`, 17).setOrigin(0, 0.5);
-        results.add([row, label]);
-        this._makeCompositeBouncyButton(row, [row, label], 1, () => {
-          onSelect?.(song);
-          close();
-        });
-      });
-    };
-    const selectDirectUrl = () => {
-      const match = query.match(/(?:newgrounds\.com)?\/audio\/listen\/(\d+)/i);
-      if (!match) return false;
-      onSelect?.({ id: Number(match[1]), title: `Newgrounds Song #${match[1]}` });
-      close();
-      return true;
-    };
-    const search = async () => {
-      if (selectDirectUrl()) return;
-      const term = query.trim();
-      if (term.length < 2) {
-        status.setText("Enter at least two characters.").setColor("#ff9b9b");
-        return;
-      }
-      searchButton.disableInteractive();
-      status.setText("Searching Newgrounds Audio...").setColor("#b9d4f5");
-      try {
-        const base = (window._gdProxyUrl || "").replace(/\/$/, "");
-        const response = await fetch(`${base}?action=ng_audio_search&q=${encodeURIComponent(term)}`, { credentials: "omit" });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || "Newgrounds search failed");
-        const songs = Array.isArray(data.songs) ? data.songs : [];
-        renderResults(songs);
-      } catch (error) {
-        results.removeAll(true);
-        status.setText(error.message || "Newgrounds search failed").setColor("#ff9b9b");
-      } finally {
-        searchButton.setInteractive();
-      }
-    };
-    const onKeyDown = event => {
-      if (!focused) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      if (event.key === "Enter") { search(); return; }
-      if (event.key === "Escape") { close(); return; }
-      if (event.key === "Backspace") { query = query.slice(0, -1); updateInput(); return; }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v") {
-        event.preventDefault();
-        navigator.clipboard?.readText?.().then(text => {
-          query = String(text || "").slice(0, 80);
-          updateInput();
-          selectDirectUrl();
-        }).catch(() => {});
-        return;
-      }
-      if (event.key.length === 1 && query.length < 80 && !event.ctrlKey && !event.metaKey) {
-        query += event.key;
-        updateInput();
-      }
-    };
-    inputBox.on("pointerdown", () => { focused = true; this._editorTextInputFocused = true; inputBox.setStrokeStyle(3, 0xffd84d, 1); });
-    this._makeBouncyButton(searchButton, 1, search);
-    const closeButton = this.add.image(sw / 2 - panelW / 2 + 30, sh / 2 - panelH / 2 + 30, "GJ_WebSheet", "GJ_closeBtn_001.png").setScale(0.72).setInteractive();
-    root.add(closeButton);
-    this._makeBouncyButton(closeButton, 0.72, close);
-    window.addEventListener("keydown", onKeyDown);
-    updateInput();
-  }
-
   _openEditorZoomTriggerOptionsPopup(saveObj) {
     window.showNativePhaserDialog(this, {
       title: "ZOOM TRIGGER", message: "Enter zoom amount (1 = normal).", input: true,
@@ -9677,10 +9563,7 @@ class LevelEditor {
 
     const prevSong = this.add.image(-250, songTextY + 2, "GJ_GameSheet03", "edit_leftBtn_001.png").setScale(1.2).setFlipX(false).setInteractive();
     const nextSong = this.add.image(250, songTextY + 2, "GJ_GameSheet03", "edit_leftBtn_001.png").setScale(1.2).setFlipX(true).setInteractive();
-    const browseSongButton = this.add.nineslice(0, songTextY + 60, "GJ_button01", null, 260, 42, 14, 14, 14, 14).setInteractive();
-    const browseSongLabel = this.add.bitmapText(0, songTextY + 58, "bigFont", "BROWSE NEWGROUNDS", 16).setOrigin(0.5);
-
-    inner.add([prevSong, nextSong, browseSongButton, browseSongLabel]);
+    inner.add([prevSong, nextSong]);
 
     let customInputBeforeFocus = customInput;
 
@@ -9796,8 +9679,6 @@ class LevelEditor {
 
         prevSong.setVisible(songCategory === "normal");
         nextSong.setVisible(songCategory === "normal");
-        browseSongButton.setVisible(songCategory === "custom");
-        browseSongLabel.setVisible(songCategory === "custom");
         drawCustomSongInput();
 
         if (songCategory === "normal") {
@@ -9831,7 +9712,7 @@ class LevelEditor {
                     ? `${customInput}|`
                     : customInput
                         ? customInput
-                        : "Newgrounds Song ID"
+                        : "Custom Song ID"
             );
         }
     };
@@ -9873,17 +9754,6 @@ class LevelEditor {
         commitNormalSongDraft();
         updateSongUi();
     });
-
-    this._makeCompositeBouncyButton(browseSongButton, [browseSongButton, browseSongLabel], 1, () => {
-        if (songCategory !== "custom") return;
-        blurCustomSongInput(false);
-        this._openNewgroundsSongBrowser(song => {
-            customInput = String(song.id);
-            customInputBeforeFocus = customInput;
-            commitCustomSongDraft();
-            updateSongUi();
-        });
-    }, () => songCategory === "custom");
 
     customSongInputHit.on("pointerdown", (pointer) => {
         focusCustomSongInput(pointer);
@@ -10596,7 +10466,6 @@ LevelEditor.methodNames = [
   "_setEditorSpawnTriggerRandomDelay",
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
-  "_openNewgroundsSongBrowser",
   "_openEditorZoomTriggerOptionsPopup",
   "_isEditorNineCirclesTriggerId",
   "_getEditorNineCirclesSpeed",
