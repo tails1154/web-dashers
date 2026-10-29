@@ -248,6 +248,12 @@ class LevelEditor {
         event?.preventDefault?.();
         this._rotateObject(event.shiftKey ? 45 : 90);
     });
+    this.input.keyboard.on('keydown-B', (event) => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused || !event?.ctrlKey) return;
+        event.preventDefault();
+        if (event.shiftKey) this._saveEditorCameraBookmark();
+        else this._restoreEditorCameraBookmark();
+    });
 
     this._createEditorGui();
   }
