@@ -2798,7 +2798,9 @@ class LevelEditor {
       { key: "minY", label: "MIN Y" },
       { key: "maxY", label: "MAX Y" },
       { key: "evenX", label: "EVEN X" },
-      { key: "evenY", label: "EVEN Y" }
+      { key: "evenY", label: "EVEN Y" },
+      { key: "mirrorX", label: "MIRROR X" },
+      { key: "mirrorY", label: "MIRROR Y" }
     ];
     this._openEditorHorizontalOptionPopup(
       "ALIGN OBJECTS",
@@ -2835,6 +2837,8 @@ class LevelEditor {
     const maxX = sortedX[sortedX.length - 1];
     const minY = sortedY[0];
     const maxY = sortedY[sortedY.length - 1];
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
     const xOrder = [...entries].sort((a, b) => Number(a.saveObj.x || 0) - Number(b.saveObj.x || 0));
     const yOrder = [...entries].sort((a, b) => Number(a.saveObj.y || 0) - Number(b.saveObj.y || 0));
 
@@ -2852,11 +2856,14 @@ class LevelEditor {
         const index = yOrder.indexOf(entry);
         nextY = entries.length === 1 ? minY : minY + (maxY - minY) * index / (entries.length - 1);
       }
+      if (mode === "mirrorX") nextX = centerX * 2 - Number(saveObj.x || 0);
+      if (mode === "mirrorY") nextY = centerY * 2 - Number(saveObj.y || 0);
       const dx = (nextX - Number(saveObj.x || 0)) * 2;
       const dy = (Number(saveObj.y || 0) - nextY) * 2;
-      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+      if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001 || mode === "mirrorX" || mode === "mirrorY") {
         this._selectEditorObjectsByIds([entry.objectId], 0x00ff00);
-        this._moveObject(dx, dy);
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) this._moveObject(dx, dy);
+        this._flipObject(mode === "mirrorY" ? "y" : "x");
       }
     });
     this._selectEditorObjectsByIds(selectedIds, 0x00ff00);
@@ -2979,6 +2986,7 @@ class LevelEditor {
     if (this._alignObjectsBtn) {
         const alignable = selectedCount > 1;
         this._alignObjectsBtn.setAlpha(alignable ? 1 : 0.5);
+        this._alignObjectsLabel?.setAlpha(alignable ? 1 : 0.5);
         if (alignable) {
             this._alignObjectsBtn.setInteractive();
         } else {
@@ -4433,6 +4441,7 @@ class LevelEditor {
     const isBgPopup = titleText === "Select Background";
     const isGroundPopup = titleText === "Select Ground";
     const isArtPopup = isBgPopup || isGroundPopup;
+    const isAlignPopup = titleText === "ALIGN OBJECTS";
 
     const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2600);
     this._editorHorizontalOptionPopup = root;
@@ -4440,14 +4449,14 @@ class LevelEditor {
     const blocker = this.add.rectangle(0, 0, sw, sh, 0x000000, 0.25).setOrigin(0).setInteractive();
     root.add(blocker);
 
-    const optionCols = isArtPopup ? 10 : options.length;
-    const optionRows = isArtPopup ? Math.ceil(options.length / optionCols) : 1;
+    const optionCols = isArtPopup ? 10 : (isAlignPopup ? 4 : options.length);
+    const optionRows = (isArtPopup || isAlignPopup) ? Math.ceil(options.length / optionCols) : 1;
 
-    const optionGapX = isArtPopup ? 76 : (isGamemodePopup ? 84 : (isSpeedPopup ? 150 : 142));
-    const optionGapY = isArtPopup ? 68 : 0;
+    const optionGapX = isArtPopup ? 76 : (isAlignPopup ? 150 : (isGamemodePopup ? 84 : (isSpeedPopup ? 150 : 142)));
+    const optionGapY = (isArtPopup || isAlignPopup) ? 68 : 0;
 
     const panelW = isArtPopup ? 860 : 760;
-    const panelH = isArtPopup ? Math.min(650, 225 + optionRows * optionGapY) - 45 : 340;
+    const panelH = isArtPopup ? Math.min(650, 225 + optionRows * optionGapY) - 45 : (isAlignPopup ? 430 : 340);
 
     const speedTargetHeight = 112;
     const artGridYOffset = isArtPopup ? -20 : 0;
@@ -4512,12 +4521,12 @@ class LevelEditor {
     };
 
     options.forEach((opt, i) => {
-        const row = isArtPopup ? Math.floor(i / optionCols) : 0;
-        const col = isArtPopup ? (i % optionCols) : i;
-        const itemsInRow = isArtPopup ? Math.min(optionCols, options.length - row * optionCols) : options.length;
+        const row = (isArtPopup || isAlignPopup) ? Math.floor(i / optionCols) : 0;
+        const col = (isArtPopup || isAlignPopup) ? (i % optionCols) : i;
+        const itemsInRow = (isArtPopup || isAlignPopup) ? Math.min(optionCols, options.length - row * optionCols) : options.length;
 
         const ox = ((col - ((itemsInRow - 1) / 2)) * optionGapX) + (isSpeedPopup ? -15 : 0);
-        const oy = isArtPopup
+        const oy = (isArtPopup || isAlignPopup)
             ? (-(optionRows - 1) * optionGapY / 2) + row * optionGapY + 16 + artGridYOffset
             : -2;
 
