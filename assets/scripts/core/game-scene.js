@@ -5288,6 +5288,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         return;
       }
       if (this._paused) {
+        if (this._versusActive && !this._versusFinished) {
+          this._resumeGame();
+          return;
+        }
         this._audio.playEffect("quitSound_01");
         this._audio.stopMusic();
         this._resumeGame();
@@ -6747,11 +6751,14 @@ _buildPauseOverlay() {
         }}
     ];
 
-    const _0x25aa59 = _0x4791ac.map(btn => this.textures.getFrame(btn.atlas, btn.frame)?.width || 123);
-    let _0x599a9b = textureY - (_0x25aa59.reduce((a, b) => a + b, 0) + (_0x4791ac.length - 1) * 40) / 2;
+    const pauseActions = this._versusActive && !this._versusFinished
+      ? _0x4791ac.filter(btn => btn.frame !== "GJ_menuBtn_001.png")
+      : _0x4791ac;
+    const _0x25aa59 = pauseActions.map(btn => this.textures.getFrame(btn.atlas, btn.frame)?.width || 123);
+    let _0x599a9b = textureY - (_0x25aa59.reduce((a, b) => a + b, 0) + (pauseActions.length - 1) * 40) / 2;
 
-    for (let i = 0; i < _0x4791ac.length; i++) {
-        const item = _0x4791ac[i];
+    for (let i = 0; i < pauseActions.length; i++) {
+        const item = pauseActions[i];
         const width = _0x25aa59[i];
         const btn = this.add.image(_0x599a9b + width / 2, 390, item.atlas, item.frame).setInteractive();
         
