@@ -97,6 +97,7 @@ class LevelEditor {
     this._editorBoxSelectStart = null;
     this._editorBoxSelectGraphics = null;
     this._currentSelectedObjectIds = [];
+    this._lockedEditorObjectIds = new Set();
     this._editorTab = "build";
     window.editorSelectedObject = -1;
     this._editorZoom = 1.0;
@@ -356,6 +357,8 @@ class LevelEditor {
         .setInteractive().setScale(0.75);
     this._inspectObjectBtn = this.add.image(0, 350, "GJ_GameSheet03", "GJ_infoIcon_001.png")
         .setInteractive().setScale(0.72);
+    this._lockObjectBtn = this.add.nineslice(0, 425, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
+    this._lockObjectLabel = this.add.bitmapText(0, 425, "bigFont", "LOCK", 15).setOrigin(0.5);
 
     this._editorLayerSelector = this.add.container(-75, 275);
     this._editorLayerFirstBtn = this.add.image(-90, 0, "GJ_GameSheet03", "GJ_arrow_02_001.png").setInteractive().setScale(0.45).setAlpha(0.5);
@@ -373,12 +376,13 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
     });
     this._makeBouncyButton(this._inspectObjectBtn, 0.72, () => this._openSelectedEditorInspector(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
+    this._makeCompositeBouncyButton(this._lockObjectBtn, [this._lockObjectBtn, this._lockObjectLabel], 1, () => this._toggleSelectedEditorObjectLocks(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
 
     this._makeBouncyButton(this._editObjectBtn, 1, () => {
         this._openSelectedEditorObjectOptions();
@@ -2249,6 +2253,7 @@ class LevelEditor {
     }
 
     for (const selectedObjectId of selectedObjectIds) {
+        if (this._isEditorObjectLocked(selectedObjectId)) continue;
         const sprites = this._level.objectSprites[selectedObjectId];
         const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectId);
 
@@ -2314,6 +2319,7 @@ class LevelEditor {
     if (!selectedObjectIds.length) return;
 
     for (const selectedObjectId of selectedObjectIds) {
+        if (this._isEditorObjectLocked(selectedObjectId)) continue;
         const sprites = this._level.objectSprites[selectedObjectId];
         const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectId);
         const colliders = this._getEditorCollidersForObjectId(selectedObjectId);
@@ -2365,6 +2371,7 @@ class LevelEditor {
     if (!selectedObjectIds.length) return;
 
     for (const selectedObjectId of selectedObjectIds) {
+        if (this._isEditorObjectLocked(selectedObjectId)) continue;
         const sprites = this._level.objectSprites[selectedObjectId];
         const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectId);
         const colliders = this._getEditorCollidersForObjectId(selectedObjectId);
@@ -2445,6 +2452,21 @@ class LevelEditor {
     }
 
     return ids;
+  }
+
+  _isEditorObjectLocked(objectId) {
+    return this._lockedEditorObjectIds instanceof Set && this._lockedEditorObjectIds.has(Number(objectId));
+  }
+
+  _toggleSelectedEditorObjectLocks() {
+    const selected = this._getCurrentSelectedEditorObjectIds();
+    if (!selected.length) return;
+    const shouldLock = selected.some(objectId => !this._isEditorObjectLocked(objectId));
+    selected.forEach(objectId => {
+      if (shouldLock) this._lockedEditorObjectIds.add(Number(objectId));
+      else this._lockedEditorObjectIds.delete(Number(objectId));
+    });
+    this._lockObjectLabel?.setText(shouldLock ? "UNLOCK" : "LOCK");
   }
 
 
@@ -2631,6 +2653,7 @@ class LevelEditor {
     const newObjectIds = [];
 
     for (const selectedObjectId of selectedObjectIds) {
+        if (this._isEditorObjectLocked(selectedObjectId)) continue;
         const src = this._getEditorSaveObjectForObjectId(selectedObjectId);
         if (!src) continue;
 
@@ -2715,6 +2738,7 @@ class LevelEditor {
     this._clearEditorSelection();
 
     for (const selectedObjectId of selectedObjectIds) {
+        if (this._isEditorObjectLocked(selectedObjectId)) continue;
         const sprites = this._level.objectSprites[selectedObjectId] || [];
         for (const spr of sprites) {
             if (spr && spr.destroy) spr.destroy();
@@ -3124,6 +3148,7 @@ class LevelEditor {
     let foundSprite = null;
 
     for (let i = this._level.objectSprites.length - 1; i >= 0; i--) {
+        if (this._isEditorObjectLocked(i)) continue;
         const spriteList = this._level.objectSprites[i];
         if (!spriteList || !spriteList.length) continue;
         if (!this._editorObjectMatchesActiveLayerByObjectId(i)) continue;
@@ -9675,6 +9700,8 @@ LevelEditor.methodNames = [
   "_flipObject",
   "_restoreEditorSelectionTint",
   "_getCurrentSelectedEditorObjectIds",
+  "_isEditorObjectLocked",
+  "_toggleSelectedEditorObjectLocks",
   "_selectEditorObjectsByIds",
   "_clearEditorSelection",
   "_selectEditorObjectByIndex",
