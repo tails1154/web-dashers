@@ -6235,6 +6235,24 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const seconds = (this._runTimerSeconds % 60).toFixed(2).padStart(5, "0");
     this._runTimerLabel.setText(`${minutes}:${seconds}`).setVisible(true);
   }
+  _recordInputHistory(type) {
+    if (!window.inputHistory || window.isEditor) return;
+    this._inputHistory = Array.isArray(this._inputHistory) ? this._inputHistory : [];
+    this._inputHistory.push(`${type} ${((this._playTime || 0)).toFixed(2)}s`);
+    this._inputHistory = this._inputHistory.slice(-8);
+  }
+  _updateInputHistory() {
+    if (!window.inputHistory || window.isEditor || this._menuActive) {
+      if (this._inputHistoryLabel) this._inputHistoryLabel.setVisible(false);
+      return;
+    }
+    if (!this._inputHistoryLabel) {
+      this._inputHistoryLabel = this.add.text(screenWidth - 12, 106, "", {
+        fontFamily: "Arial", fontSize: "14px", color: "#b9d4f5", align: "right", stroke: "#000000", strokeThickness: 3
+      }).setOrigin(1, 0).setScrollFactor(0).setDepth(90);
+    }
+    this._inputHistoryLabel.setText((this._inputHistory || []).join("\n")).setVisible(true);
+  }
   _createStartPosGui() {
         const centerX = screenWidth / 2;
         const bottomY = screenHeight - 60;
@@ -6699,6 +6717,7 @@ _buildSettingsPopup() {
         "Replay Ghost": "Shows a translucent replay of your previous attempt after you die. It never affects physics or rewards.",
         "Run Timer": "Shows the active attempt duration and pauses while the game is paused or the player is dead.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
+        "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
         "Show FPS": "Shows the frames per second your game is running at.",
         "Solid Wave Trail": "Removes the extra details of the wave trail.",
         "Show CPS": "Shows when you click in a level in the top left of your screen.",
@@ -7102,6 +7121,17 @@ _buildSettingsPopup() {
             true,
             "Crash Reporting"
         );
+        createToggle(container, column2X, startY, "Input History",
+            () => !!window.inputHistory,
+            (v) => {
+                window.inputHistory = !!v;
+                if (!v && this._inputHistoryLabel) this._inputHistoryLabel.setVisible(false);
+            },
+            undefined,
+            22,
+            true,
+            "Input History"
+        );
     };
 
         const buildPerformancePage = (container) => {
@@ -7177,6 +7207,7 @@ _buildSettingsPopup() {
         replayGhost: !!window.replayGhost,
         deathTimeline: !!window.deathTimeline,
         runTimer: !!window.runTimer,
+        inputHistory: !!window.inputHistory,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -7213,6 +7244,7 @@ _buildSettingsPopup() {
         replayGhost: false,
         deathTimeline: false,
         runTimer: false,
+        inputHistory: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -7243,6 +7275,7 @@ _buildSettingsPopup() {
     window.replayGhost = !!data.replayGhost;
     window.deathTimeline = !!data.deathTimeline;
     window.runTimer = !!data.runTimer;
+    window.inputHistory = !!data.inputHistory;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
@@ -8610,6 +8643,7 @@ _buildSettingsPopup() {
     this._applyLevelStartOptions();
   }
   _pushButton(ignoreMacro = false) {
+    this._recordInputHistory("PRESS");
     const objectsUnderPointer = this.input.manager.hitTest(
       this.input.activePointer, 
       this._startPosGui.list,
@@ -8688,6 +8722,7 @@ _buildSettingsPopup() {
 
   }
   _releaseButton(ignoreMacro = false) {
+    this._recordInputHistory("RELEASE");
     this._state.upKeyDown = false;
     this._state.upKeyPressed = false;
     this._state.queuedHold = false;
@@ -9471,6 +9506,7 @@ _buildSettingsPopup() {
     this._updateReplayGhost(deltaTime);
     this._updateDeathTimeline();
     this._updateRunTimer(deltaTime);
+    this._updateInputHistory();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
       if (_liveCoinCheatFlags.length && !this._coinCheatWarningShown) {
