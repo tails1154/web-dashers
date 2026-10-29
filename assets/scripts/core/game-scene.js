@@ -1221,16 +1221,50 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       }
     };
     const confirmNineCirclesWarning = () => new Promise(resolve => {
-      const shade = document.createElement('div');
-      shade.style.cssText = 'position:fixed;inset:0;z-index:100001;display:grid;place-items:center;background:rgba(0,0,0,.82);font-family:Arial,sans-serif;color:#fff;';
-      const dialog = document.createElement('div');
-      dialog.style.cssText = 'width:min(520px,calc(100vw - 32px));padding:26px;border:3px solid #ff668c;border-radius:16px;background:linear-gradient(145deg,#3b2034,#111522);box-shadow:0 10px 0 #000,0 20px 55px #000b;text-align:center;';
-      dialog.innerHTML = '<h2 style="margin:0 0 14px;color:#ff668c">PHOTOSENSITIVE EPILEPSY WARNING</h2><p style="margin:0 0 20px;line-height:1.5;color:#eee">This level contains rapidly alternating flashing colors. It may trigger seizures in people with photosensitive epilepsy. Continue only if you are comfortable viewing flashing effects.</p><div style="display:flex;gap:10px;justify-content:center"><button type="button" data-continue style="padding:11px 18px;border:0;border-radius:8px;background:#ff668c;font-weight:bold;cursor:pointer">Continue</button><button type="button" data-cancel style="padding:11px 18px;border:0;border-radius:8px;background:#999;font-weight:bold;cursor:pointer">Go Back</button></div>';
-      shade.appendChild(dialog); document.body.appendChild(shade);
-      const finish = value => { shade.remove(); resolve(value); };
-      dialog.querySelector('[data-continue]').addEventListener('click', () => finish(true));
-      dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
-      shade.addEventListener('click', event => { if (event.target === shade) finish(false); });
+      const modal = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
+      const shade = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.82)
+        .setInteractive();
+      modal.add(shade);
+
+      const panelWidth = Math.min(650, screenWidth - 40);
+      const panelHeight = 330;
+      const panel = this._drawScale9(screenWidth / 2, screenHeight / 2, panelWidth, panelHeight, "GJ_square02", 24, 0x3b2034, 1);
+      const panelOutline = this.add.rectangle(screenWidth / 2, screenHeight / 2, panelWidth, panelHeight)
+        .setFillStyle(0x000000, 0).setStrokeStyle(4, 0xff668c, 1);
+      modal.add([panel, panelOutline]);
+
+      const title = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 115, "bigFont", "PHOTOSENSITIVE EPILEPSY WARNING", 30)
+        .setOrigin(0.5).setTint(0xff668c);
+      const body = this.add.text(screenWidth / 2, screenHeight / 2 - 35,
+        "This level contains rapidly alternating flashing colors.\nIt may trigger seizures in people with photosensitive epilepsy.\nContinue only if you are comfortable viewing flashing effects.", {
+          fontFamily: "Arial",
+          fontSize: "19px",
+          color: "#eeeeee",
+          align: "center",
+          lineSpacing: 7,
+          wordWrap: { width: panelWidth - 70 }
+        }).setOrigin(0.5);
+      modal.add([title, body]);
+
+      let finished = false;
+      const finish = value => {
+        if (finished) return;
+        finished = true;
+        modal.destroy(true);
+        resolve(value);
+      };
+
+      const makeWarningButton = (x, label, color, result) => {
+        const button = this.add.rectangle(x, screenHeight / 2 + 100, 170, 52, color, 1)
+          .setStrokeStyle(3, 0xffffff, 0.8).setInteractive({ useHandCursor: true });
+        const text = this.add.bitmapText(x, screenHeight / 2 + 100, "bigFont", label, 24).setOrigin(0.5);
+        modal.add([button, text]);
+        this._makeBouncyButton(button, 1, () => finish(result));
+      };
+
+      makeWarningButton(screenWidth / 2 - 100, "Continue", 0xff668c, true);
+      makeWarningButton(screenWidth / 2 + 100, "Go Back", 0x777777, false);
+      shade.on("pointerdown", () => finish(false));
     });
     this._saveOnlineLevelToSavedList = (lvl) => {
       if (!lvl || !lvl.id) return;
