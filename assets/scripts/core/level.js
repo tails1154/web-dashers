@@ -2032,7 +2032,8 @@ window.LevelObject = class LevelObject {
     return objectDef;
   }
 
-  if (objectDef && objectDef.type === triggerType) {
+  const isNineCirclesTrigger = objectDef && (Number(levelObj.id) === 5070 || Number(levelObj.id) === 5071);
+  if (objectDef && (objectDef.type === triggerType || isNineCirclesTrigger)) {
     if (this._nextObjectId === undefined) {
       this._nextObjectId = 0;
     }
@@ -2159,8 +2160,12 @@ window.LevelObject = class LevelObject {
       });
     }
 
-    if (levelObj.id === 5070 || levelObj.id === 5071) {
-      this._nineCirclesTriggers.push({ ...triggerBase, x: levelObj.x * 2, enabled: levelObj.id === 5070 });
+    if (isNineCirclesTrigger) {
+      this._nineCirclesTriggers.push({
+        ...triggerBase,
+        x: Number(levelObj.x || 0) * 2,
+        enabled: Number(levelObj.id) === 5070
+      });
     }
 
     if (levelObj.id === 1006) {
@@ -3950,10 +3955,8 @@ window.LevelObject = class LevelObject {
     while (this._nineCirclesTriggerIdx < this._nineCirclesTriggers.length) {
       const trigger = this._nineCirclesTriggers[this._nineCirclesTriggerIdx];
       if (trigger.x > playerX) break;
-      if (this._isTriggerSaveObjectLive(trigger.uid)) {
-        this._nineCirclesEnabled = !!trigger.enabled;
-        if (!this._nineCirclesEnabled) this._clearNineCirclesEffect();
-      }
+      this._nineCirclesEnabled = !!trigger.enabled;
+      if (!this._nineCirclesEnabled) this._clearNineCirclesEffect();
       this._nineCirclesTriggerIdx++;
     }
   }
