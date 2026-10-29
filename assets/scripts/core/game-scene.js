@@ -6594,6 +6594,10 @@ _buildPauseOverlay() {
     const snapshotLabel = this.add.bitmapText(textureY + 110, 80, "bigFont", "SHOT", 17).setOrigin(0.5);
     this._pauseContainer.add([snapshotButton, snapshotLabel]);
     this._makeCompositeBouncyButton(snapshotButton, [snapshotButton, snapshotLabel], 0.7, () => this._saveRunSnapshot());
+    const recordButton = this.add.nineslice(textureY + 240, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const recordLabel = this.add.bitmapText(textureY + 240, 80, "bigFont", this._runRecorder ? "STOP" : "REC", 17).setOrigin(0.5);
+    this._pauseContainer.add([recordButton, recordLabel]);
+    this._makeCompositeBouncyButton(recordButton, [recordButton, recordLabel], 0.7, () => this._toggleRunRecording());
 
     this._pauseContainer.add(this.add.bitmapText(textureY, 65, "bigFont", window.currentlevel[1], 40).setOrigin(0.5, 0.5));
 
@@ -6630,6 +6634,7 @@ _buildPauseOverlay() {
         { frame: "GJ_playBtn2_001.png", atlas: "GJ_WebSheet", action: () => this._resumeGame() },
         { frame: "GJ_menuBtn_001.png", atlas: "GJ_WebSheet", action: () => {
             this._audio.playEffect("quitSound_01");
+            if (this._runRecorder) this._runRecorder.stop();
             this._stopVersusSession?.();
             this._queueGameplayLevelViewReturn();
             this.game.registry.remove("autoStartGame");
@@ -6774,6 +6779,61 @@ _buildPauseOverlay() {
     } catch (_) {
       restoreOverlay();
       this.InfoBoxDoAThing("Could not capture the gameplay canvas.");
+    }
+  }
+  _toggleRunRecording() {
+    if (this._runRecorder) {
+      this._runRecorder.stop();
+      return;
+    }
+    const canvas = this.game?.canvas;
+    const notify = message => {
+      if (this.scene?.isActive?.()) this.InfoBoxDoAThing(message);
+    };
+    if (!canvas?.captureStream || typeof MediaRecorder === "undefined") {
+      notify("Browser recording is not supported here. Use Chromebook screen sharing instead.");
+      return;
+    }
+    try {
+      const stream = canvas.captureStream(60);
+      const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
+        .find(type => MediaRecorder.isTypeSupported(type)) || "";
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const chunks = [];
+      recorder.ondataavailable = event => {
+        if (event.data?.size) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach(track => track.stop());
+        this._runRecorder = null;
+        if (!chunks.length) {
+          notify("No gameplay was recorded.");
+          return;
+        }
+        const endX = Number(this._level?.endXPos || 0);
+        const percent = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
+        const levelName = String(window.currentlevel?.[1] || "level").replace(/[^a-z0-9]+/gi, "_").replace(/^_|_$/g, "").slice(0, 48) || "level";
+        const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${levelName}_${percent}pct.webm`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        notify("Gameplay recording downloaded.");
+      };
+      recorder.onerror = () => {
+        this._runRecorder = null;
+        stream.getTracks().forEach(track => track.stop());
+        notify("The browser could not record this canvas.");
+      };
+      recorder.start(1000);
+      this._runRecorder = recorder;
+      if (this._paused) this._resumeGame();
+    } catch (_) {
+      notify("The browser could not start recording.");
     }
   }
 _buildSettingsPopup() {
