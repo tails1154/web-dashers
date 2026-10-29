@@ -6209,7 +6209,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     localStorage.setItem("wd_death_timeline", JSON.stringify(entries.slice(-250)));
   }
   _updateDeathTimeline() {
-    if (!window.deathTimeline || window.isEditor || this._menuActive) {
+    if (!window.deathTimeline || window.streamMode || window.isEditor || this._menuActive) {
       if (this._deathTimelineLabel) this._deathTimelineLabel.setVisible(false);
       return;
     }
@@ -6232,9 +6232,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     if (this._runTimerLabel) this._runTimerLabel.setText("0:00.00");
   }
   _updateRunTimer(deltaTime = 0) {
-    if (!window.runTimer || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) {
+    if (!window.runTimer || window.streamMode || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) {
       if (this._runTimerLabel && this._runTimerLabel.scene === this && this._runTimerLabel.active !== false && this._runTimerLabel.texture) {
-        this._runTimerLabel.setVisible(!!window.runTimer && !window.isEditor && !this._menuActive);
+        this._runTimerLabel.setVisible(!!window.runTimer && !window.streamMode && !window.isEditor && !this._menuActive);
       } else {
         this._runTimerLabel = null;
       }
@@ -6253,7 +6253,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     }
   }
   _updateMilestoneToasts() {
-    if (!window.milestoneToasts || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) return;
+    if (!window.milestoneToasts || window.streamMode || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) return;
     const endX = Number(this._level?.endXPos || 0);
     if (endX <= 0) return;
     const current = Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100)));
@@ -6289,7 +6289,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     });
   }
   _updateBestSplit() {
-    if (!window.bestSplit || window.isEditor || this._menuActive || this._levelWon) {
+    if (!window.bestSplit || window.streamMode || window.isEditor || this._menuActive || this._levelWon) {
       if (this._bestSplitLabel) this._bestSplitLabel.setVisible(false);
       return;
     }
@@ -6311,7 +6311,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._inputHistory = this._inputHistory.slice(-8);
   }
   _updateInputHistory() {
-    if (!window.inputHistory || window.isEditor || this._menuActive) {
+    if (!window.inputHistory || window.streamMode || window.isEditor || this._menuActive) {
       if (this._inputHistoryLabel) this._inputHistoryLabel.setVisible(false);
       return;
     }
@@ -6829,6 +6829,7 @@ _buildSettingsPopup() {
         "Milestone Toasts": "Shows a short celebration when you pass 25%, 50%, or 75% of a level during an attempt.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
+        "Stream Mode": "Hides gameplay HUD elements so the game is ready for Chromebook screen sharing or browser capture.",
         "Show FPS": "Shows the frames per second your game is running at.",
         "Solid Wave Trail": "Removes the extra details of the wave trail.",
         "Show CPS": "Shows when you click in a level in the top left of your screen.",
@@ -7244,6 +7245,17 @@ _buildSettingsPopup() {
             true,
             "Death Timeline"
         );
+        createToggle(container, column2X, startY + (spacingY * 6), "Stream Mode",
+            () => !!window.streamMode,
+            (v) => {
+                window.streamMode = !!v;
+                if (this._pauseBtn) this._pauseBtn.setVisible(!v && !this._menuActive && !this._slideIn && !this._levelWon);
+            },
+            undefined,
+            22,
+            true,
+            "Stream Mode"
+        );
     };
 
     const buildAdvancedPage = (container) => {
@@ -7354,6 +7366,7 @@ _buildSettingsPopup() {
         inputHistory: !!window.inputHistory,
         bestSplit: !!window.bestSplit,
         milestoneToasts: !!window.milestoneToasts,
+        streamMode: !!window.streamMode,
         replayGhostOpacity: Number(window.replayGhostOpacity) || 0.34,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
@@ -7394,6 +7407,7 @@ _buildSettingsPopup() {
         inputHistory: false,
         bestSplit: false,
         milestoneToasts: false,
+        streamMode: false,
         replayGhostOpacity: 0.34,
         showGlow: true,
         showEditorGlow: false,
@@ -7428,6 +7442,7 @@ _buildSettingsPopup() {
     window.inputHistory = !!data.inputHistory;
     window.bestSplit = !!data.bestSplit;
     window.milestoneToasts = !!data.milestoneToasts;
+    window.streamMode = !!data.streamMode;
     window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(data.replayGhostOpacity) || 0.34));
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
@@ -9798,15 +9813,16 @@ _buildSettingsPopup() {
         this._versusClient.send({ type: "versus-position", x: this._playerWorldX, y: this._state.y, percent: rawPercent, dead: !!this._state.isDead });
       }
     }
-    this._percentageLabel.setVisible(window.showPercentage && !this._menuActive);
-    this._startPosGui.setVisible(window.startPosSwitcher && !this._menuActive);
-    this._noclipIndicator.setVisible(window.noClip && !this._menuActive);
-    this._accuracyIndicator.setVisible(window.noClip && window.noClipAccuracy && !this._menuActive);
-    this._deathsIndicator.setVisible(window.noClip && window.noClipAccuracy && !this._menuActive);
+    const streamMode = !!window.streamMode;
+    this._percentageLabel.setVisible(window.showPercentage && !streamMode && !this._menuActive);
+    this._startPosGui.setVisible(window.startPosSwitcher && !streamMode && !this._menuActive);
+    this._noclipIndicator.setVisible(window.noClip && !streamMode && !this._menuActive);
+    this._accuracyIndicator.setVisible(window.noClip && window.noClipAccuracy && !streamMode && !this._menuActive);
+    this._deathsIndicator.setVisible(window.noClip && window.noClipAccuracy && !streamMode && !this._menuActive);
     this._accuracyIndicator.setText(`${this._player.noclipStats.accuracy.toFixed(2)}%`);
     this._deathsIndicator.setText(`${this._player.noclipStats.deaths} Deaths`);
 
-    this._cpsIndicator.setVisible(window.showCPS && !this._menuActive);
+    this._cpsIndicator.setVisible(window.showCPS && !streamMode && !this._menuActive);
     if (this._clickHistory && this._clickHistory.length > 0) {
       this._clickHistory = this._clickHistory.filter(timestamp => this.time.now - timestamp <= 1000);
       this._cpsIndicator.setText(`${this._clickHistory.length} CPS`);
@@ -9824,10 +9840,19 @@ _buildSettingsPopup() {
     }
     this._cpsIndicator.setPosition(10, 10 + (window.noClip * 20) + (window.noClip && window.noClipAccuracy * 40));
 
-    this._bottedIndicator.setVisible(this._macroBot?.playing);
+    this._bottedIndicator.setVisible(!streamMode && this._macroBot?.playing);
     this._bottedIndicator.setPosition(10, 10 + (window.noClip * 20) + (window.noClip && window.noClipAccuracy * 40) + (window.showCPS * 20));
     if (this._macroBtn){
-      this._macroBtn.setVisible(window.macroBot);
+      this._macroBtn.setVisible(!streamMode && window.macroBot);
+    }
+    if (this._practiceModeBarContainer) {
+      this._practiceModeBarContainer.setVisible(!streamMode && !!this._practicedMode?.practiceMode);
+    }
+    if (this._checkpointBtnContainer) {
+      this._checkpointBtnContainer.setVisible(!streamMode && !!this._practicedMode?.practiceMode);
+    }
+    if (this._pauseBtn) {
+      this._pauseBtn.setVisible(!streamMode && !this._paused && !this._menuActive && !this._slideIn && !this._levelWon && !this._state.isDead);
     }
 
     this._fpsAccum += deltaTime;
@@ -9837,6 +9862,7 @@ _buildSettingsPopup() {
       this._fpsAccum = 0;
       this._fpsFrames = 0;
     }
+    this._fpsText.setVisible(!streamMode && !!window.showFPS);
     if (this._paused) {
       if (!this._updateLogPopup && (this._spaceKey.isDown || this._upKey.isDown || this._wKey.isDown || this._lKey.isDown) && !this._spaceWasDown && !this._settingsPopup) {
         setTimeout(() => {
