@@ -192,6 +192,51 @@
     if (window.wdReducedMotion) filters.push("saturate(.82)");
     document.body.style.filter = filters.join(" ");
   };
+  const readList = key => {
+    try { const value = JSON.parse(localStorage.getItem(key) || "[]"); return Array.isArray(value) ? value : []; } catch (_) { return []; }
+  };
+  const writeList = (key, value, limit = 500) => localStorage.setItem(key, JSON.stringify(value.slice(-limit)));
+  const recordProgress = scene => {
+    const dead = !!scene._state?.isDead;
+    const won = !!scene._levelWon;
+    const wasDead = !!scene._v3WasDead;
+    const wasWon = !!scene._v3WasWon;
+    if (dead === wasDead && won === wasWon) return;
+    scene._v3WasDead = dead;
+    scene._v3WasWon = won;
+    if (!dead && !won) return;
+    const levelId = String(window.currentlevel?.[2] || "level_1");
+    const endX = Number(scene._level?.endXPos || 0);
+    const percent = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(scene._playerWorldX || 0) / endX * 100))) : 0;
+    const event = { timestamp: Date.now(), levelId, outcome: won ? "complete" : "death", percent, attempts: Number(scene._levelAttempts || 0) };
+    if (window.WDV3.isEnabled("progression_run_history")) writeList("wd_v3_run_history", [...readList("wd_v3_run_history"), event]);
+    if (window.WDV3.isEnabled("progression_attempt_graph")) writeList("wd_v3_attempt_history", [...readList("wd_v3_attempt_history"), { timestamp: event.timestamp, levelId, attempts: event.attempts }]);
+    if (dead && window.WDV3.isEnabled("progression_death_heatmap")) {
+      const bucket = Math.floor(percent / 5) * 5;
+      const heatmap = readList("wd_v3_death_heatmap");
+      const existing = heatmap.find(item => item.levelId === levelId && item.bucket === bucket);
+      if (existing) existing.count += 1;
+      else heatmap.push({ levelId, bucket, count: 1 });
+      writeList("wd_v3_death_heatmap", heatmap);
+    }
+    if (won && window.WDV3.isEnabled("progression_personal_records")) {
+      const records = readList("wd_v3_personal_records");
+      const existing = records.find(item => item.levelId === levelId);
+      if (existing) existing.attempts = Math.min(existing.attempts || Infinity, event.attempts || Infinity);
+      else records.push({ levelId, attempts: event.attempts, timestamp: event.timestamp });
+      writeList("wd_v3_personal_records", records);
+    }
+    if (won && window.WDV3.isEnabled("progression_daily_streak")) {
+      const today = new Date(event.timestamp).toISOString().slice(0, 10);
+      const streak = (() => { try { return JSON.parse(localStorage.getItem("wd_v3_daily_streak") || "{}"); } catch (_) { return {}; } })();
+      if (streak.lastDate !== today) {
+        const yesterday = new Date(event.timestamp - 86400000).toISOString().slice(0, 10);
+        streak.count = streak.lastDate === yesterday ? Number(streak.count || 0) + 1 : 1;
+        streak.lastDate = today;
+        localStorage.setItem("wd_v3_daily_streak", JSON.stringify(streak));
+      }
+    }
+  };
   window.WDV3 = {
     version: 3,
     features,
@@ -199,6 +244,7 @@
     setEnabled(id, value) { state[id] = !!value; save(); return state[id]; },
     update(scene, delta = 0) {
       if (!scene?.add) return;
+      recordProgress(scene);
       if (this.isEnabled("gameplay_level_timer") && !scene._menuActive && !window.isEditor) {
         scene._v3LevelSeconds = (scene._v3LevelSeconds || 0) + Math.max(0, Number(delta) || 0) / 1000;
         if (!scene._v3LevelTimerLabel) scene._v3LevelTimerLabel = scene.add.bitmapText(screenWidth - 12, 52, "bigFont", "", 18).setOrigin(1, 0.5).setScrollFactor(0).setDepth(90);

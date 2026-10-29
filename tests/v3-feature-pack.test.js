@@ -41,4 +41,8 @@ window.WDV3.run("reset_v3_preferences", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
 window.WDV3.run("gameplay_coin_route_hints", {});
 assert.equal(window.wdV3Flags.gameplay_coin_route_hints, true);
+window.WDV3.setEnabled("progression_run_history", true);
+const runScene = { add: {}, _state: { isDead: true }, _level: { endXPos: 1000 }, _playerWorldX: 430, _levelAttempts: 3 };
+window.WDV3.update(runScene, 16);
+assert.equal(JSON.parse(storage.get("wd_v3_run_history")).at(-1).percent, 43);
 console.log(`V3 feature inventory OK: ${features.length} separate features`);
