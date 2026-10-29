@@ -422,13 +422,14 @@ function showNativePhaserDialog(scene, options = {}) {
   const root = scene.add.container(0, 0).setScrollFactor(0).setDepth(3000);
   const shade = scene.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.76).setInteractive();
   const panelW = Math.min(660, sw - 48);
-  const panelH = wantsInput ? 300 : 250;
+  const panelH = options.large ? 390 : (wantsInput ? 300 : 250);
   const panel = scene.add.rectangle(sw / 2, sh / 2, panelW, panelH, 0x182642, 1)
     .setStrokeStyle(5, options.tone || 0x8de8ff, 1);
   const inner = scene.add.rectangle(sw / 2, sh / 2, panelW - 16, panelH - 16, 0x0d172a, 0.98)
     .setStrokeStyle(2, 0x365477, 1);
   const title = scene.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 38, "goldFont", String(options.title || "NOTICE"), 30).setOrigin(0.5);
-  const message = scene.add.text(sw / 2, sh / 2 - (wantsInput ? 72 : 45), String(options.message || ""), {
+  const messageY = options.large ? sh / 2 - 22 : sh / 2 - (wantsInput ? 72 : 45);
+  const message = scene.add.text(sw / 2, messageY, String(options.message || ""), {
     fontFamily: "Arial", fontSize: "20px", color: "#ffffff", align: "center", wordWrap: { width: panelW - 64 }
   }).setOrigin(0.5);
   root.add([shade, panel, inner, title, message]);
@@ -7106,6 +7107,7 @@ _buildPauseOverlay() {
       showNativePhaserDialog(this, {
         title: "AUTO GAMEPLAY RECORDING",
         message: "Web Dashers can record your gameplay locally and automatically download the successful attempt as a WebM after you beat a level. Recording is on by default. The microphone is optional, controlled in Settings, and is never uploaded by Web Dashers. You can opt out at any time in Settings.",
+        large: true,
         confirm: true,
         confirmLabel: "ENABLE",
         cancelLabel: "OPT OUT",
