@@ -6323,16 +6323,37 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
   _showDeathSummary() {
     if (!window.deathSummary || window.streamMode || this._deathSummaryContainer) return;
     const summary = this.add.container(screenWidth / 2, 128).setScrollFactor(0).setDepth(96);
-    const background = this.add.rectangle(0, 0, 360, 92, 0x1d2433, 0.94).setStrokeStyle(3, 0xffc857, 1);
+    const background = this.add.rectangle(0, 0, 390, window.deathCauseHints ? 116 : 92, 0x1d2433, 0.94).setStrokeStyle(3, 0xffc857, 1);
     const time = Number(this._playTime || 0);
     const minutes = Math.floor(time / 60);
     const seconds = (time % 60).toFixed(2).padStart(5, "0");
-    const text = this.add.bitmapText(0, 0, "bigFont", `DIED AT ${this._lastPercent || 0}%\n${minutes}:${seconds}  •  ${this._levelJumps || 0} JUMPS`, 22)
+    const causeLine = window.deathCauseHints ? `\nLIKELY: ${this._deathCauseHint || "Unknown cause"}` : "";
+    const text = this.add.bitmapText(0, 0, "bigFont", `DIED AT ${this._lastPercent || 0}%\n${minutes}:${seconds}  •  ${this._levelJumps || 0} JUMPS${causeLine}`, 20)
       .setOrigin(0.5).setCenterAlign().setTint(0xffe4a3);
     summary.add([background, text]);
     summary.alpha = 0;
     this._deathSummaryContainer = summary;
     this.tweens.add({ targets: summary, alpha: 1, duration: 160, ease: "Quad.Out" });
+  }
+  _getDeathCauseHint() {
+    const playerX = Number(this._playerWorldX || 0);
+    const playerY = Number(this._state?.y || 0);
+    const nearby = this._level?.getNearbySectionObjects?.(playerX) || [];
+    const candidates = nearby.filter(object => {
+      if (!object || !["hazard", "solid", "slope"].includes(String(object.type))) return false;
+      const dx = Math.abs(Number(object.x || 0) - playerX);
+      const dy = Math.abs(Number(object.y || 0) - playerY);
+      return dx <= 150 && dy <= 220;
+    }).sort((a, b) => {
+      const score = object => Math.abs(Number(object.x || 0) - playerX) + Math.abs(Number(object.y || 0) - playerY) * 0.45;
+      return score(a) - score(b);
+    });
+    const cause = candidates[0];
+    if (!cause) return "Unknown / out of bounds";
+    const type = String(cause.type);
+    const label = type === "hazard" ? "Hazard" : type === "slope" ? "Slope" : "Solid block";
+    const id = Number.isInteger(cause._eeObjectId) ? ` #${cause._eeObjectId}` : "";
+    return `${label}${id}`;
   }
   _updateBestSplit() {
     if (!window.bestSplit || window.streamMode || window.isEditor || this._menuActive || this._levelWon) {
@@ -7156,6 +7177,7 @@ _buildSettingsPopup() {
         "Best Split": "Shows whether your current progress is ahead of or behind your saved best percentage.",
         "Milestone Toasts": "Shows a short celebration when you pass 25%, 50%, or 75% of a level during an attempt.",
         "Death Summary": "Shows your attempt time, progress, and jump count briefly after dying.",
+        "Death Cause Hints": "Estimates the nearby object most likely responsible for a death; it may be unknown or approximate.",
         "Segment Splits": "Times your 25%, 50%, and 75% checkpoints and compares them with local best splits.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
@@ -7614,6 +7636,14 @@ _buildSettingsPopup() {
             true,
             "Death Summary"
         );
+        createToggle(container, column1X, startY + (spacingY * 2), "Death Cause Hints",
+            () => !!window.deathCauseHints,
+            (v) => window.deathCauseHints = !!v,
+            undefined,
+            22,
+            true,
+            "Death Cause Hints"
+        );
         createToggle(container, column2X, startY, "Input History",
             () => !!window.inputHistory,
             (v) => {
@@ -7727,6 +7757,7 @@ _buildSettingsPopup() {
         milestoneToasts: !!window.milestoneToasts,
         streamMode: !!window.streamMode,
         deathSummary: !!window.deathSummary,
+        deathCauseHints: !!window.deathCauseHints,
         segmentSplits: !!window.segmentSplits,
         replayGhostOpacity: Number(window.replayGhostOpacity) || 0.34,
         showGlow: window.showGlow,
@@ -7770,6 +7801,7 @@ _buildSettingsPopup() {
         milestoneToasts: false,
         streamMode: false,
         deathSummary: false,
+        deathCauseHints: false,
         segmentSplits: false,
         replayGhostOpacity: 0.34,
         showGlow: true,
@@ -7807,6 +7839,7 @@ _buildSettingsPopup() {
     window.milestoneToasts = !!data.milestoneToasts;
     window.streamMode = !!data.streamMode;
     window.deathSummary = !!data.deathSummary;
+    window.deathCauseHints = !!data.deathCauseHints;
     window.segmentSplits = !!data.segmentSplits;
     window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(data.replayGhostOpacity) || 0.34));
     window.showGlow = data.showGlow;
@@ -9423,6 +9456,7 @@ _buildSettingsPopup() {
     this._deathSoundPlayed = false;
     this._newBestShown = false;
     this._deathSummaryShown = false;
+    this._deathCauseHint = "";
     if (this._deathSummaryContainer) {
       this._deathSummaryContainer.destroy(true);
       this._deathSummaryContainer = null;
@@ -10459,6 +10493,7 @@ _buildSettingsPopup() {
         let _0x435587 = this._level.endXPos || 6000;
         let _0x169d53 = this._playerWorldX;
         this._lastPercent = Math.min(99, Math.max(0, Math.floor(_0x169d53 / _0x435587 * 100)));
+        this._deathCauseHint = window.deathCauseHints ? this._getDeathCauseHint() : "";
         if (!this._deathSummaryShown) {
           this._deathSummaryShown = true;
           this._showDeathSummary();
