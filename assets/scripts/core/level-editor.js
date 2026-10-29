@@ -302,6 +302,20 @@ class LevelEditor {
         event.preventDefault();
         this._toggleEditorMeasureMode();
     });
+    const adjustEditorGrid = delta => {
+        this._editorGridSize = Phaser.Math.Clamp(Number(this._editorGridSize || 60) + delta, 15, 240);
+        this._editorGridSize = Math.round(this._editorGridSize / 5) * 5;
+        localStorage.setItem(this._editorGridSizeKey(), String(this._editorGridSize));
+        this._updateEditorGrid();
+    };
+    this.input.keyboard.on('keydown-OPEN_BRACKET', () => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+        adjustEditorGrid(-15);
+    });
+    this.input.keyboard.on('keydown-CLOSED_BRACKET', () => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+        adjustEditorGrid(15);
+    });
 
     this._createEditorGui();
   }
