@@ -2223,7 +2223,7 @@ class LevelEditor {
         { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco"] },
         { id: "slopes",  icon: "tab6", types: ["slope"] },
         { id: "hazards", icon: "tab2", types: ["hazard", "spike"] },
-        { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin", "head_block", "letter_block"] },
+        { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin", "head_block"] },
         { id: "pixel",   icon: "tab7", types: ["pixel"] },
         { id: "particle", icon: "tab8", types: ["particle"] },
         { id: "deco",    icon: "tab4", types: ["deco"] },
@@ -2334,14 +2334,6 @@ class LevelEditor {
                 const trigger = getObjectFromId(triggerId);
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
                     itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
-                }
-            }
-        }
-        if (activeCatDef?.types?.includes("head_block")) {
-            for (const letterId of [5065, 5066, 5067, 5068, 5069]) {
-                const letterBlock = getObjectFromId(letterId);
-                if (letterBlock && !itemsForGrid.some(item => item.id === letterId)) {
-                    itemsForGrid.push({ type: "object", id: letterId, frame: letterBlock.frame });
                 }
             }
         }
