@@ -2394,6 +2394,12 @@ class LevelEditor {
     const cols = 6;
     const startX = (screenWidth / 2) - ((cols - 1) * paddingX) / 2;
     const startY = screenHeight - 140;
+    const paletteTooltip = this.add.bitmapText(screenWidth / 2, screenHeight - 248, "bigFont", "", 16)
+        .setOrigin(0.5)
+        .setTint(0xffffff)
+        .setDepth(1002)
+        .setVisible(false);
+    this._gridContainer.add(paletteTooltip);
 
     pageItems.forEach((item, index) => {
         const col = index % cols;
@@ -2405,6 +2411,16 @@ class LevelEditor {
         if (item.type === "object") {
             const btnBg = this.add.image(x, y, "GJ_GameSheet03", "GJ_checkOff_001.png").setScale(1.2).setInteractive();
             const icon = this._createEditorObjectButtonPreview(x, y, item.id);
+            const objectDef = getObjectFromId(item.id) || {};
+            const rawDef = allObjectsData[String(item.id)] || objectDef;
+            const gridSize = [rawDef.gridW || objectDef.gridW, rawDef.gridH || objectDef.gridH]
+                .filter(value => Number(value) > 0)
+                .join("×");
+            const tooltipText = `#${item.id}  ${rawDef.type || objectDef.type || "object"}${rawDef.frame || objectDef.frame ? `  •  ${rawDef.frame || objectDef.frame}` : ""}${gridSize ? `  •  ${gridSize} grid` : ""}`;
+            btnBg.on("pointerover", () => {
+                paletteTooltip.setText(tooltipText).setPosition(x, screenHeight - 248).setVisible(true);
+            });
+            btnBg.on("pointerout", () => paletteTooltip.setVisible(false));
             if (window.selectedObjId === item.id) {
                 btnBg.setTint(0x888888);
             }
