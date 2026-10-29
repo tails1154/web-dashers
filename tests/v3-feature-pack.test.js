@@ -26,4 +26,10 @@ assert.ok(features.length >= 100, `expected at least 100 features, got ${feature
 assert.ok(features.some(feature => feature.kind === "command"));
 assert.ok(features.some(feature => feature.kind === "toggle"));
 assert.equal(source.includes("V3 Labs"), false, "the old Labs placeholder must stay removed");
+assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
+window.WDV3.run("editor_snap_to_grid", {});
+assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), true);
+assert.equal(window.wdEditorSnapToGrid, true);
+window.WDV3.run("editor_snap_to_grid", {});
+assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
 console.log(`V3 feature inventory OK: ${features.length} separate features`);
