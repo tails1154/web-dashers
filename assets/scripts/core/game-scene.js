@@ -6140,6 +6140,55 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._fpsAccum = 0;
     this._fpsFrames = 0;
   }
+  _resetReplayGhost(clearLast = false) {
+    this._replayGhostLevelId = String(window.currentlevel?.[2] || "level_1");
+    this._replayGhostCurrent = [];
+    if (clearLast) this._replayGhostLast = [];
+    this._replayGhostIndex = 0;
+    this._replayGhostSampleClock = 0;
+    this._replayGhostWasDead = false;
+    if (this._replayGhostGraphics) this._replayGhostGraphics.clear().setVisible(false);
+  }
+  _updateReplayGhost(deltaTime = 0) {
+    if (!window.replayGhost || window.isEditor || this._menuActive) {
+      if (this._replayGhostGraphics) this._replayGhostGraphics.setVisible(false);
+      return;
+    }
+    const levelId = String(window.currentlevel?.[2] || "level_1");
+    if (this._replayGhostLevelId !== levelId) this._resetReplayGhost(true);
+    if (!this._replayGhostGraphics) {
+      this._replayGhostGraphics = this.add.graphics().setScrollFactor(0).setDepth(28);
+      this._resetReplayGhost();
+    }
+    if (this._state?.isDead) {
+      if (!this._replayGhostWasDead && this._replayGhostCurrent.length > 4) {
+        this._replayGhostLast = this._replayGhostCurrent.slice();
+        this._replayGhostIndex = 0;
+      }
+      this._replayGhostWasDead = true;
+      this._replayGhostGraphics.clear().setVisible(false);
+      return;
+    }
+    if (this._replayGhostWasDead) {
+      this._replayGhostWasDead = false;
+      this._replayGhostCurrent = [];
+      this._replayGhostSampleClock = 0;
+    }
+    this._replayGhostSampleClock += Math.max(0, Number(deltaTime) || 0);
+    if (this._replayGhostSampleClock >= 50) {
+      this._replayGhostSampleClock = 0;
+      this._replayGhostCurrent.push({ x: Number(this._playerWorldX || 0), y: Number(this._state?.y || 0) });
+    }
+    const point = this._replayGhostLast?.[this._replayGhostIndex];
+    if (!point) {
+      this._replayGhostGraphics.clear().setVisible(false);
+      return;
+    }
+    this._replayGhostIndex += 1;
+    const x = this._getMirrorXOffset ? this._getMirrorXOffset(320) : 320;
+    const y = typeof b === "function" ? b(point.y) + Number(this._cameraY || 0) : screenHeight / 2;
+    this._replayGhostGraphics.clear().fillStyle(0x9de8ff, 0.34).fillCircle(x, y, 13).lineStyle(2, 0xffffff, 0.7).strokeCircle(x, y, 16).setVisible(true);
+  }
   _createStartPosGui() {
         const centerX = screenWidth / 2;
         const bottomY = screenHeight - 60;
@@ -6601,6 +6650,7 @@ _buildSettingsPopup() {
         "Show Hitboxes": "Shows you the hitboxes for objects and your player.",
         "Hitbox Trail": "Shows the hitbox of exactly where your hitbox has been.",
         "Hitboxes on Death": "Shows hitboxes upon death in both normal and practice mode.",
+        "Replay Ghost": "Shows a translucent replay of your previous attempt after you die. It never affects physics or rewards.",
         "Show FPS": "Shows the frames per second your game is running at.",
         "Solid Wave Trail": "Removes the extra details of the wave trail.",
         "Show CPS": "Shows when you click in a level in the top left of your screen.",
@@ -6857,6 +6907,19 @@ _buildSettingsPopup() {
             true,
             "Fast Reset"
         );
+
+        createToggle(container, column2X, startY + (spacingY * 3), "Replay Ghost",
+            () => !!window.replayGhost,
+            (v) => {
+                window.replayGhost = !!v;
+                localStorage.setItem("wd_replay_ghost", window.replayGhost ? "1" : "0");
+                if (!v) this._resetReplayGhost(true);
+            },
+            undefined,
+            22,
+            true,
+            "Replay Ghost"
+        );
     };
 
     const buildVisualPage = (container) => {
@@ -7041,6 +7104,7 @@ _buildSettingsPopup() {
         macroBot: window.macroBot,
         practiceMusicSync: window.practiceMusicSync,
         fastReset: !!window.fastReset,
+        replayGhost: !!window.replayGhost,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -7074,6 +7138,7 @@ _buildSettingsPopup() {
         macroBot: false,
         practiceMusicSync: false,
         fastReset: false,
+        replayGhost: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -7101,6 +7166,7 @@ _buildSettingsPopup() {
     window.macroBot = data.macroBot;
     window.practiceMusicSync = !!data.practiceMusicSync;
     window.fastReset = !!data.fastReset;
+    window.replayGhost = !!data.replayGhost;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
@@ -9325,6 +9391,7 @@ _buildSettingsPopup() {
     return _0xd8019e * 60;
   }
   update(_0x54fa47, deltaTime) {
+    this._updateReplayGhost(deltaTime);
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
       if (_liveCoinCheatFlags.length && !this._coinCheatWarningShown) {
