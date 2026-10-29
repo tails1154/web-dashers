@@ -2351,7 +2351,7 @@ class LevelEditor {
             }
         }
         if (activeCatDef?.types?.includes("trigger")) {
-            for (const triggerId of [5070, 5071, 5072, 5073, 5074]) {
+            for (const triggerId of [5072, 5073, 5074]) {
                 const trigger = getObjectFromId(triggerId);
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
                     itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
@@ -7080,8 +7080,6 @@ class LevelEditor {
         this._openEditorSpawnTriggerOptionsPopup(saveObj);
     } else if (this._isEditorZoomTriggerId(saveObj.id)) {
         this._openEditorZoomTriggerOptionsPopup(saveObj);
-    } else if (this._isEditorNineCirclesTriggerId(saveObj.id)) {
-        this._openEditorNineCirclesOptionsPopup(saveObj);
     } else if (this._isEditorRotateTriggerId(saveObj.id)) {
         this._openEditorRotateTriggerOptionsPopup(saveObj);
     } else if (this._isEditorStartPositionId(saveObj.id)) {
@@ -7106,11 +7104,6 @@ class LevelEditor {
 
   _isEditorZoomTriggerId(id) {
     return parseInt(id ?? 0, 10) === 1913;
-  }
-
-
-  _isEditorNineCirclesTriggerId(id) {
-    return [5070, 5071].includes(parseInt(id ?? 0, 10));
   }
 
 
@@ -10797,12 +10790,8 @@ LevelEditor.methodNames = [
   "_broadcastEditorState",
   "_applyEditorCollabState",
   "_openEditorZoomTriggerOptionsPopup",
-  "_isEditorNineCirclesTriggerId",
   "_isEditorCustomImageBlockId",
   "_openEditorCustomImageBlockOptionsPopup",
-  "_getEditorNineCirclesSpeed",
-  "_setEditorNineCirclesSpeed",
-  "_openEditorNineCirclesOptionsPopup",
   "_openEditorRotateTriggerOptionsPopup",
   "_isEditorColorTriggerTouchTriggered",
   "_setEditorColorTriggerTouchTriggered",

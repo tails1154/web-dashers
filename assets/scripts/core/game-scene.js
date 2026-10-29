@@ -1357,60 +1357,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._searchOverlayObjects = [];
     this._playOverlay = null;
     this._playOverlayObjects = [];
-    const levelContainsNineCircles = (levelString) => {
-      if (!levelString) return false;
-      try {
-        return parseLevel(levelString).objects.some(object => Number(object?.id) === 5070);
-      } catch (_error) {
-        return false;
-      }
-    };
-    const confirmNineCirclesWarning = () => new Promise(resolve => {
-      const modal = this.add.container(0, 0).setScrollFactor(0).setDepth(3000);
-      const shade = this.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, 0x000000, 0.82)
-        .setInteractive();
-      modal.add(shade);
-
-      const panelWidth = Math.min(650, screenWidth - 40);
-      const panelHeight = 330;
-      const panel = this._drawScale9(screenWidth / 2, screenHeight / 2, panelWidth, panelHeight, "GJ_square02", 24, 0x3b2034, 1);
-      const panelOutline = this.add.rectangle(screenWidth / 2, screenHeight / 2, panelWidth, panelHeight)
-        .setFillStyle(0x000000, 0).setStrokeStyle(4, 0xff668c, 1);
-      modal.add([panel, panelOutline]);
-
-      const title = this.add.bitmapText(screenWidth / 2, screenHeight / 2 - 115, "bigFont", "PHOTOSENSITIVE EPILEPSY WARNING", 30)
-        .setOrigin(0.5).setTint(0xff668c);
-      const body = this.add.text(screenWidth / 2, screenHeight / 2 - 35,
-        "This level contains rapidly alternating flashing colors.\nIt may trigger seizures in people with photosensitive epilepsy.\nContinue only if you are comfortable viewing flashing effects.", {
-          fontFamily: "Arial",
-          fontSize: "19px",
-          color: "#eeeeee",
-          align: "center",
-          lineSpacing: 7,
-          wordWrap: { width: panelWidth - 70 }
-        }).setOrigin(0.5);
-      modal.add([title, body]);
-
-      let finished = false;
-      const finish = value => {
-        if (finished) return;
-        finished = true;
-        modal.destroy(true);
-        resolve(value);
-      };
-
-      const makeWarningButton = (x, label, color, result) => {
-        const button = this.add.rectangle(x, screenHeight / 2 + 100, 170, 52, color, 1)
-          .setStrokeStyle(3, 0xffffff, 0.8).setInteractive({ useHandCursor: true });
-        const text = this.add.bitmapText(x, screenHeight / 2 + 100, "bigFont", label, 24).setOrigin(0.5);
-        modal.add([button, text]);
-        this._makeBouncyButton(button, 1, () => finish(result));
-      };
-
-      makeWarningButton(screenWidth / 2 - 100, "Continue", 0xff668c, true);
-      makeWarningButton(screenWidth / 2 + 100, "Go Back", 0x777777, false);
-      shade.on("pointerdown", () => finish(false));
-    });
     this._saveOnlineLevelToSavedList = (lvl) => {
       if (!lvl || !lvl.id) return;
       try {
@@ -2162,7 +2108,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (!data || data.error || !data.level_string) return false;
 
         const levelString = data.level_string;
-        if (levelContainsNineCircles(levelString) && !(await confirmNineCirclesWarning())) return false;
         window._onlineLevelId    = "online_" + lvl.id;
         window._onlineLevelString = levelString;
         window._onlineLevelName   = lvl.name || "Online Level";
@@ -3047,9 +2992,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         container.add([nameBox, titleText, titleCursor, descBox, descText, descCursor, playBtn, editBtn, shareBtn, backBtn, deleteBtn, lengthIcon, lengthLabel, songIcon, songLabel, statusIcon, statusLabel, versionText, idText]);
     };
     this._startCreatedLevel = async (level, isEditor, onBeforeRestart = null) => {
-        if (!isEditor && levelContainsNineCircles(level?.levelString) && !(await confirmNineCirclesWarning())) {
-          return false;
-        }
         const loadingOverlay = this.add.graphics().setScrollFactor(0).setDepth(1000);
         loadingOverlay.fillStyle(0x000000, 0.85);
         loadingOverlay.fillRect(0, 0, screenWidth, screenHeight);
@@ -8605,7 +8547,6 @@ _buildSettingsPopup() {
       { text: "Update Log", scale: 1, font: "goldFont" },
       { text: "Wave trails remain visible with LDM", scale: 0.68 },
       { text: "Fast Reset is available in global options", scale: 0.66 },
-      { text: "Nine Circles flash speed can be configured", scale: 0.64 },
       { text: "Native photosensitive epilepsy warning", scale: 0.66 },
       { text: "Editor objects can be sent to the top layer", scale: 0.64 },
       { text: "Coins now save to your account", scale: 0.72 },
@@ -9710,7 +9651,6 @@ _buildSettingsPopup() {
     this._level.resetAlphaTriggers();
     this._level.resetRotateTriggers();
     this._level.resetLikeTriggers?.();
-    this._level.resetNineCirclesTriggers?.();
     this._level.resetPlayerInputTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
@@ -10038,7 +9978,6 @@ _buildSettingsPopup() {
     this._level.resetAlphaTriggers();
     this._level.resetRotateTriggers();
     this._level.resetLikeTriggers?.();
-    this._level.resetNineCirclesTriggers?.();
     this._level.resetPlayerInputTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
@@ -10995,14 +10934,12 @@ _buildSettingsPopup() {
     this._level.stepAlphaTriggers(deltaTime / 1000);
     this._level.checkRotateTriggers(playerX);
     this._level.checkLikeTriggers?.(playerX);
-    this._level.checkNineCirclesTriggers?.(playerX);
     this._level.checkPlayerInputTriggers?.(playerX);
     this._level.stepRotateTriggers(deltaTime / 1000);
     this._level.checkPulseTriggers(playerX);
     this._level.stepPulseTriggers(deltaTime / 1000, this._colorManager);
     this._colorManager.step(deltaTime / 1000);
     this._level.applyColorChannels(this._colorManager);
-    this._level.stepNineCirclesEffect?.(deltaTime / 1000);
     this._bg.setTint(this._colorManager.getHex(fs));
     this._level.setGroundColor(this._colorManager.getHex(gs));
     this._level.setGround2Color?.(this._colorManager.getHex(1009));

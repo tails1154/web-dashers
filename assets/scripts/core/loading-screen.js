@@ -300,8 +300,6 @@ class BootScene extends Phaser.Scene {
       this.load.image("vector-portal-front.png", "assets/generated/gamemode-portals/vector-portal-front.png?v=1");
       this.load.image("phase-portal-front.png", "assets/generated/gamemode-portals/phase-portal-front.png?v=1");
       this.load.image("like-level-trigger.png", "assets/generated/like-level-trigger.png?v=1");
-      this.load.image("nine-circles-on.png", "assets/generated/nine-circles-on.png?v=1");
-      this.load.image("nine-circles-off.png", "assets/generated/nine-circles-off.png?v=1");
       this.load.image("player-input-off.svg", "assets/generated/player-input-off.svg?v=1");
       this.load.image("player-input-on.svg", "assets/generated/player-input-on.svg?v=1");
       this.load.image("wave-slide.svg", "assets/generated/wave-slide.svg?v=1");

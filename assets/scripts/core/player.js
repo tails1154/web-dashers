@@ -5441,6 +5441,11 @@ if (this.p.isFlying || this.p.isUfo) {
             if (this.p.isWave && this._gameLayer.isWaveSlideBlock?.(gameObj)) {
               const blockCenter = (top + bottom) / 2;
               const slideOnUpperFace = playersY >= blockCenter;
+              const slideFaceMatchesGravity = this.p.gravityFlipped ? !slideOnUpperFace : slideOnUpperFace;
+              if (!slideFaceMatchesGravity) {
+                this.killPlayer();
+                return;
+              }
               if (slideOnUpperFace) {
                 this.p.y = bottom + waveHitSize;
                 this.p.onGround = true;
