@@ -1200,9 +1200,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         return false;
       }
     };
-    const confirmNineCirclesWarning = () => window.confirm(
-      "PHOTOSENSITIVE EPILEPSY WARNING\n\nThis level contains rapidly alternating flashing colors. It may trigger seizures in people with photosensitive epilepsy. Continue only if you are comfortable viewing flashing effects."
-    );
+    const confirmNineCirclesWarning = () => new Promise(resolve => {
+      const shade = document.createElement('div');
+      shade.style.cssText = 'position:fixed;inset:0;z-index:100001;display:grid;place-items:center;background:rgba(0,0,0,.82);font-family:Arial,sans-serif;color:#fff;';
+      const dialog = document.createElement('div');
+      dialog.style.cssText = 'width:min(520px,calc(100vw - 32px));padding:26px;border:3px solid #ff668c;border-radius:16px;background:linear-gradient(145deg,#3b2034,#111522);box-shadow:0 10px 0 #000,0 20px 55px #000b;text-align:center;';
+      dialog.innerHTML = '<h2 style="margin:0 0 14px;color:#ff668c">PHOTOSENSITIVE EPILEPSY WARNING</h2><p style="margin:0 0 20px;line-height:1.5;color:#eee">This level contains rapidly alternating flashing colors. It may trigger seizures in people with photosensitive epilepsy. Continue only if you are comfortable viewing flashing effects.</p><div style="display:flex;gap:10px;justify-content:center"><button type="button" data-continue style="padding:11px 18px;border:0;border-radius:8px;background:#ff668c;font-weight:bold;cursor:pointer">Continue</button><button type="button" data-cancel style="padding:11px 18px;border:0;border-radius:8px;background:#999;font-weight:bold;cursor:pointer">Go Back</button></div>';
+      shade.appendChild(dialog); document.body.appendChild(shade);
+      const finish = value => { shade.remove(); resolve(value); };
+      dialog.querySelector('[data-continue]').addEventListener('click', () => finish(true));
+      dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(false));
+      shade.addEventListener('click', event => { if (event.target === shade) finish(false); });
+    });
     this._saveOnlineLevelToSavedList = (lvl) => {
       if (!lvl || !lvl.id) return;
       try {
@@ -1917,7 +1926,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (!data || data.error || !data.level_string) return false;
 
         const levelString = data.level_string;
-        if (levelContainsNineCircles(levelString) && !confirmNineCirclesWarning()) return false;
+        if (levelContainsNineCircles(levelString) && !(await confirmNineCirclesWarning())) return false;
         window._onlineLevelId    = "online_" + lvl.id;
         window._onlineLevelString = levelString;
         window._onlineLevelName   = lvl.name || "Online Level";
@@ -2785,7 +2794,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         container.add([nameBox, titleText, titleCursor, descBox, descText, descCursor, playBtn, editBtn, shareBtn, backBtn, deleteBtn, lengthIcon, lengthLabel, songIcon, songLabel, statusIcon, statusLabel, versionText, idText]);
     };
     this._startCreatedLevel = async (level, isEditor, onBeforeRestart = null) => {
-        if (!isEditor && levelContainsNineCircles(level?.levelString) && !confirmNineCirclesWarning()) {
+        if (!isEditor && levelContainsNineCircles(level?.levelString) && !(await confirmNineCirclesWarning())) {
           return false;
         }
         const loadingOverlay = this.add.graphics().setScrollFactor(0).setDepth(1000);
