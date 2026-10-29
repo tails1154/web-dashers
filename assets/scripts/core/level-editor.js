@@ -111,6 +111,9 @@ class LevelEditor {
     this._editorPlaytestSavedView = null;
     this._editorPlaytestPauseView = null;
     this._editorPlaytestLastTrailPoint = null;
+    this._editorProceduralMode = false;
+    this._editorProceduralObjectId = 1;
+    this._editorProceduralHud = null;
     this._editorCollabClient = null;
     this._editorCollabBroadcastTimer = null;
     this._editorCollabApplying = false;
@@ -225,6 +228,17 @@ class LevelEditor {
                 return;
             }
         }
+        if (this._editorProceduralMode && pointer.event?.target === this.game.canvas) {
+            const isEditorCanvasArea = pointer.y < screenHeight - 175 && pointer.x > 90 && pointer.x < screenWidth - 90;
+            if (isEditorCanvasArea) {
+                this._placeProceduralObject();
+                this._lastSwipeGridX = -1;
+                this._lastSwipeGridY = -1;
+                this._isDragging = false;
+                this._isDraggingSlider = false;
+                return;
+            }
+        }
         if (!this._isSwipeEnabled && !this._isDragging && !this._isDraggingSlider && (this._hitObjects?.length || 0) === 0) {
             this._editorAction();
         }
@@ -236,16 +250,34 @@ class LevelEditor {
 
     this.input.keyboard.on('keydown-ONE', () => {
         if (this._editorTextInputFocused) return;
+        if (this._editorProceduralMode) {
+            this._setProceduralObject(1, "BLOCK");
+            return;
+        }
         this._setEditorTab("build");
     });
     this.input.keyboard.on('keydown-TWO', () => {
         if (this._editorTextInputFocused) return;
+        if (this._editorProceduralMode) {
+            this._setProceduralObject(39, "SPIKE");
+            return;
+        }
         this._setEditorTab("edit");
     });
     this.input.keyboard.on('keydown-THREE', () => {
         if (this._editorTextInputFocused) return;
+        if (this._editorProceduralMode) {
+            this._setProceduralObject(36, "JUMP ORB");
+            return;
+        }
         this._setEditorTab("delete");
     });
+    for (const [key, objectId, label] of [["FOUR", 201, "1X SPEED"], ["FIVE", 202, "2X SPEED"], ["SIX", 203, "3X SPEED"]]) {
+        this.input.keyboard.on(`keydown-${key}`, () => {
+            if (this._editorTextInputFocused || !this._editorProceduralMode) return;
+            this._setProceduralObject(objectId, label);
+        });
+    }
     const categoryShortcutKeys = [
         ["FOUR", "pinned"],
         ["FIVE", "recent"],
@@ -257,7 +289,7 @@ class LevelEditor {
     ];
     for (const [key, category] of categoryShortcutKeys) {
         this.input.keyboard.on(`keydown-${key}`, () => {
-            if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+            if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused || this._editorProceduralMode) return;
             this._setEditorTab("build");
             this._currentBuildCategory = category;
             this._editorPage = 0;
@@ -332,6 +364,11 @@ class LevelEditor {
         this._editorSnapGridCheck?.setTexture("GJ_GameSheet03", window.wdEditorSnapToGrid ? "GJ_checkOn_001.png" : "GJ_checkOff_001.png");
     });
     this.input.keyboard.on('keydown-F1', () => this._openEditorShortcutsDialog());
+    this.input.keyboard.on('keydown-P', (event) => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+        event?.preventDefault?.();
+        this._toggleEditorProceduralMode();
+    });
     const adjustEditorGrid = delta => {
         this._editorGridSize = Phaser.Math.Clamp(Number(this._editorGridSize || 60) + delta, 15, 240);
         this._editorGridSize = Math.round(this._editorGridSize / 5) * 5;
@@ -363,6 +400,13 @@ class LevelEditor {
     const bottomY = screenHeight - 100;
 
     this._editorGui = this.add.container(screenWidth - 40, 40).setScrollFactor(0).setDepth(1000);
+    this._editorProceduralHud = this.add.bitmapText(
+        screenWidth / 2,
+        76,
+        "bigFont",
+        "",
+        16
+    ).setOrigin(0.5).setScrollFactor(0).setDepth(2001).setTint(0xffd84d).setVisible(false);
     const editorSettings = this.add.image(-87, 0, "GJ_GameSheet03", "GJ_optionsBtn02_001.png").setInteractive();
     const editorPause = this.add.image(0, 0, "GJ_GameSheet03", "GJ_pauseBtn_001.png").setInteractive();
     this._deleteButton = this.add.image(-(screenWidth - 40) + 50, 0, "GJ_GameSheet03", "GJ_trashBtn_001.png").setInteractive();
@@ -3537,6 +3581,36 @@ class LevelEditor {
   } else if (this._editorTab === "delete") {
     this._deleteObjectAtPointer();
   }
+  }
+
+  _setProceduralObject(objectId, label = "OBJECT") {
+    if (!this._editorProceduralMode || !getObjectFromId(objectId)) return;
+    this._editorProceduralObjectId = objectId;
+    window.selectedObjId = objectId;
+    this._editorProceduralHud?.setVisible(true).setText(`PROCEDURAL: ${label}   [1] BLOCK  [2] SPIKE  [3] ORB  [4-6] SPEED   CLICK TO PLACE   [P] EXIT`);
+  }
+
+  _placeProceduralObject() {
+    if (!this._editorProceduralMode) return;
+    const objectId = this._editorProceduralObjectId || 1;
+    if (!getObjectFromId(objectId)) return;
+    window.selectedObjId = objectId;
+    this._editorTab = "build";
+    this._placeObject();
+  }
+
+  _toggleEditorProceduralMode(force = null) {
+    const nextValue = force === null ? !this._editorProceduralMode : !!force;
+    this._editorProceduralMode = nextValue;
+    if (nextValue) {
+        this._editorTab = "build";
+        this._setProceduralObject(1, "BLOCK");
+        this._showEditorPauseMenu(false);
+        this._showEditorSaveNotice("Procedural mode ON — click to build");
+    } else {
+        this._editorProceduralHud?.setText("").setVisible(false);
+        this._showEditorSaveNotice("Procedural mode OFF");
+    }
   }
 
 
@@ -10075,6 +10149,7 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
+        { text: "Procedural mode", cb: () => this._toggleEditorProceduralMode(true) },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -10672,6 +10747,9 @@ LevelEditor.methodNames = [
   "_updateEditorActionButtons",
   "_updateEditorGrid",
   "_editorAction",
+  "_setProceduralObject",
+  "_placeProceduralObject",
+  "_toggleEditorProceduralMode",
   "_setTeleportExitYOffset",
   "_refreshTeleportExitVisualsForSaveObject",
   "_applyTeleportExitPlacement",
