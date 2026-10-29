@@ -285,10 +285,7 @@ class LevelEditor {
         if (event?.ctrlKey || event?.metaKey) {
             if (!this._editorTextInputFocused && !this._editorPlaytestActive && !this._editorPlaytestPaused) {
                 this._saveEditorLevel();
-                this._editorAutosaveNotice?.setText("Saved").setVisible(true).setAlpha(0.86);
-                this.time.delayedCall(1400, () => {
-                    if (window.isEditor && this._editorAutosaveNotice?.active) this._editorAutosaveNotice.setVisible(false);
-                });
+                this._showEditorSaveNotice();
             }
             return;
         }
@@ -10312,6 +10309,13 @@ _serializeObject(object) {
     this.scene.restart();
   }
 
+  _showEditorSaveNotice(message = "Saved") {
+    this._editorAutosaveNotice?.setText(message).setVisible(true).setAlpha(0.86);
+    this.time.delayedCall(1400, () => {
+      if (window.isEditor && this._editorAutosaveNotice?.active) this._editorAutosaveNotice.setVisible(false);
+    });
+  }
+
   _saveEditorLevel() {
     const levelData = {
         objects: window.levelObjects,
@@ -10325,7 +10329,10 @@ _serializeObject(object) {
 
     if (levelIndex !== -1) {
         const hasPendingSong = this._editorPendingSongId !== undefined || this._editorPendingSongName !== undefined;
-        if (createdLevels[levelIndex].levelString === newLevelString && !hasPendingSong) return;
+        if (createdLevels[levelIndex].levelString === newLevelString && !hasPendingSong) {
+            this._showEditorSaveNotice("Already saved");
+            return;
+        }
 
         createdLevels[levelIndex].levelString = newLevelString;
         createdLevels[levelIndex].lastModified = Date.now();
@@ -10354,6 +10361,7 @@ _serializeObject(object) {
         this._editorPendingSongId = undefined;
         this._editorPendingSongName = undefined;
     }
+    this._showEditorSaveNotice();
     this._broadcastEditorState();
   }
 
@@ -10669,6 +10677,7 @@ LevelEditor.methodNames = [
   "_showEditorPauseMenu",
   "_serializeLevel",
   "_serializeObject",
+  "_showEditorSaveNotice",
   "_saveEditorLevel",
   "_initEditorTimeline",
   "_getEditorLevelWidth",
