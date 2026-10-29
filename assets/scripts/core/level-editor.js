@@ -2075,7 +2075,12 @@ class LevelEditor {
           window.showNativePhaserDialog(this, { title: "OBJECT SEARCH", message: `No objects matched “${term}”.` });
           return;
         }
-        const [id, object] = matches[0];
+        const previousTerm = this._lastEditorSearchTerm;
+        const previousIndex = Number.isInteger(this._lastEditorSearchIndex) ? this._lastEditorSearchIndex : -1;
+        const nextIndex = previousTerm === term ? (previousIndex + 1) % matches.length : 0;
+        this._lastEditorSearchTerm = term;
+        this._lastEditorSearchIndex = nextIndex;
+        const [id, object] = matches[nextIndex];
         window.selectedObjId = Number(id);
         this._editorTab = "build";
         this._currentBuildCategory = "all";
@@ -2084,7 +2089,7 @@ class LevelEditor {
         this._editorPage = index >= 0 ? Math.floor(index / this._maxPerPage) : 0;
         this._updateTabVisuals();
         this._buildObjectGrid();
-        window.showNativePhaserDialog(this, { title: "OBJECT FOUND", message: `Selected #${id} (${object?.type || "object"}). Click it in the highlighted build page to place it.` });
+        window.showNativePhaserDialog(this, { title: "OBJECT FOUND", message: `Result ${nextIndex + 1}/${matches.length}: #${id} (${object?.type || "object"}). Click it in the highlighted build page to place it.` });
       }
     });
   }
