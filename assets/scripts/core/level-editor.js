@@ -317,6 +317,13 @@ class LevelEditor {
         event.preventDefault();
         this._toggleEditorMeasureMode();
     });
+    this.input.keyboard.on('keydown-G', (event) => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused) return;
+        event.preventDefault();
+        window.wdEditorSnapToGrid = window.wdEditorSnapToGrid === false;
+        localStorage.setItem("wd_editor_snap_to_grid", window.wdEditorSnapToGrid ? "true" : "false");
+        this._editorSnapGridCheck?.setTexture("GJ_GameSheet03", window.wdEditorSnapToGrid ? "GJ_checkOn_001.png" : "GJ_checkOff_001.png");
+    });
     const adjustEditorGrid = delta => {
         this._editorGridSize = Phaser.Math.Clamp(Number(this._editorGridSize || 60) + delta, 15, 240);
         this._editorGridSize = Math.round(this._editorGridSize / 5) * 5;
@@ -9955,6 +9962,7 @@ class LevelEditor {
     const createToggle = (container, x, y, label, getVal, setVal, callback = null) => {
         const getTex = () => getVal() ? "GJ_checkOn_001.png" : "GJ_checkOff_001.png";
         const check = this.add.image(x - 120, y, "GJ_GameSheet03", getTex()).setScale(0.8).setInteractive();
+        if (label === "Snap Grid") this._editorSnapGridCheck = check;
         const txt = this.add.bitmapText(x - 70, y, "bigFont", label, 25).setOrigin(0, 0.5);
         container.add([check, txt]);
 
