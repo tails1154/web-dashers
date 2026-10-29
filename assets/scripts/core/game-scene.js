@@ -7028,7 +7028,7 @@ _buildPauseOverlay() {
     if (!Number.isFinite(fps) || fps <= 0) return;
     const activeObjects = (this._level?.objectSprites || []).reduce((count, sprites) => count + (Array.isArray(sprites) ? sprites.filter(sprite => sprite?.active).length : 0), 0);
     this._performanceSamples = Array.isArray(this._performanceSamples) ? this._performanceSamples : [];
-    this._performanceSamples.push({ fps, activeObjects });
+    this._performanceSamples.push({ fps, activeObjects, lowFps: fps < 55 });
     this._performanceSamples = this._performanceSamples.slice(-30);
   }
   _openPerformanceDialog() {
@@ -7038,9 +7038,12 @@ _buildPauseOverlay() {
     const minimum = fpsValues.length ? Math.min(...fpsValues) : 0;
     const maximum = fpsValues.length ? Math.max(...fpsValues) : 0;
     const activeObjects = samples.length ? samples[samples.length - 1].activeObjects : 0;
+    const lowFpsSamples = samples.filter(sample => sample.lowFps || Number(sample.fps) < 55).length;
+    const objectValues = samples.map(sample => Number(sample.activeObjects)).filter(value => Number.isFinite(value));
+    const averageObjects = objectValues.length ? objectValues.reduce((sum, value) => sum + value, 0) / objectValues.length : 0;
     window.showNativePhaserDialog(this, {
       title: "PERFORMANCE",
-      message: `FPS average: ${average.toFixed(1)}\nFPS range: ${minimum.toFixed(1)}–${maximum.toFixed(1)}\nActive objects: ${activeObjects}\nSamples: ${samples.length}`
+      message: `FPS average: ${average.toFixed(1)}\nFPS range: ${minimum.toFixed(1)}–${maximum.toFixed(1)}\nLow-FPS samples: ${lowFpsSamples}\nActive objects: ${activeObjects} (avg ${averageObjects.toFixed(0)})\nSamples: ${samples.length}`
     });
   }
   _saveRunSnapshot() {
