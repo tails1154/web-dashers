@@ -3539,22 +3539,18 @@ if (this.p.isFlying || this.p.isUfo) {
       ? Math.abs(surfaceB.y - surfaceA.y)
       : slopeObj.h;
     const slopeYVelocity = (surfaceRise / Math.max(1, surfaceRun)) * playerSpeed;
-    const nativeSlopeMultiplier = Math.min(1.12 / angleRad, 1.54);
-    let tangentVelocity = slopeYVelocity * nativeSlopeMultiplier * this.flipMod();
-    if (slopeObj.slopeFlipY) tangentVelocity = -tangentVelocity;
+    const cachedSlopeVelocity = Number(this._slopeVelocity);
+    let tangentVelocity = Number.isFinite(cachedSlopeVelocity) && cachedSlopeVelocity !== 0
+      ? cachedSlopeVelocity
+      : slopeYVelocity * Math.max(1.1, 40 / angleRad) * 0.8 * this.flipMod();
+    if (this.p.isFlying) tangentVelocity *= 0.75;
     if (this.p.isBall && surfaceA && surfaceB && Math.abs(surfaceB.x - surfaceA.x) > 0.001) {
-      // Ball exits follow the actual transformed ramp tangent. The cached
-      // slope velocity is only a normalized tracking value and can point in
-      // the wrong gravity direction when the ball leaves a rotated slope.
+      // Ball exits use the native cached magnitude, but the transformed ramp
+      // tangent determines its sign after rotated/flipped slopes.
       const surfaceGradient = (surfaceB.y - surfaceA.y) / (surfaceB.x - surfaceA.x);
       const travelDirection = pieceWidth >= contactX ? 1 : -1;
-      tangentVelocity = surfaceGradient * playerSpeed * travelDirection;
-    }
-    // Ships need the full tangent impulse from the slope geometry. The cached
-    // slope velocity is a normalized tracking value and is too small to launch
-    // a ship when it replaces this calculated impulse.
-    if (!this.p.isFlying && !this.p.isBall && Number.isFinite(this._slopeVelocity) && this._slopeVelocity !== 0) {
-      tangentVelocity = this._slopeVelocity;
+      const tangentSign = Math.sign(surfaceGradient * travelDirection) || this.flipMod();
+      tangentVelocity = Math.abs(tangentVelocity) * tangentSign;
     }
     const maxSlopeLaunch = this.p.isFlying ? 16 : 22.360064;
     tangentVelocity = Phaser.Math.Clamp(tangentVelocity, -maxSlopeLaunch, maxSlopeLaunch);
@@ -5649,10 +5645,12 @@ if (this.p.isFlying || this.p.isUfo) {
       const slopeRatio = surfaceRise / Math.max(1, surfaceRun);
       this._slopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
       const slopeAngle = Math.max(0.05, Math.abs(bestSlopeCandidate.slopeAngle));
-      const slopeVelocityMagnitude = Math.min(1.1, 0.8 / slopeAngle) * this._slopeYVelocity * 1.4;
+      // Native GD: max(1.1, 40 / angle) * slopeYVelocity * 0.8.
+      const slopeVelocityMagnitude = Math.max(1.1, 40 / slopeAngle) *
+        this._slopeYVelocity * 0.8;
       this._slopeVelocity = slopeVelocityMagnitude * this.flipMod();
       if (bestSlopeCandidate.slopeSlidingDown) this._slopeVelocity *= -1;
-      if (this.p.isFlying || this.p.isBall) this._slopeVelocity *= 0.75;
+      if (this.p.isFlying) this._slopeVelocity *= 0.75;
       this._lastSlopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
       _0x30410f = true;
     }
