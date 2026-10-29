@@ -6662,6 +6662,10 @@ _buildPauseOverlay() {
     const notesLogLabel = this.add.bitmapText(textureY - 20, 80, "bigFont", "LOG", 17).setOrigin(0.5);
     this._pauseContainer.add([notesLogButton, notesLogLabel]);
     this._makeCompositeBouncyButton(notesLogButton, [notesLogButton, notesLogLabel], 0.7, () => this._openRunNotesLog());
+    const runHistoryButton = this.add.nineslice(textureY - 280, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const runHistoryLabel = this.add.bitmapText(textureY - 280, 80, "bigFont", "RUNS", 17).setOrigin(0.5);
+    this._pauseContainer.add([runHistoryButton, runHistoryLabel]);
+    this._makeCompositeBouncyButton(runHistoryButton, [runHistoryButton, runHistoryLabel], 0.7, () => this._openRunHistoryDialog());
     const snapshotButton = this.add.nineslice(textureY + 110, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
     const snapshotLabel = this.add.bitmapText(textureY + 110, 80, "bigFont", "SHOT", 17).setOrigin(0.5);
     this._pauseContainer.add([snapshotButton, snapshotLabel]);
@@ -6883,6 +6887,30 @@ _buildPauseOverlay() {
       ? currentNotes.map(note => `${note.percent}% — ${String(note.text).slice(0, 120)}`).join("\n")
       : "No notes saved for this level yet.";
     window.showNativePhaserDialog(this, { title: "RUN NOTES", message });
+  }
+  _runHistoryKey() {
+    return `wd_run_history_${String(window.currentlevel?.[2] || "level_1")}`;
+  }
+  _recordRunHistory(result, percent) {
+    if (window.isEditor) return;
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(this._runHistoryKey()) || "[]"); } catch (_) {}
+    if (!Array.isArray(history)) history = [];
+    const time = Number(this._playTime || 0);
+    history.push({ result, percent: Math.max(0, Math.min(100, Math.floor(Number(percent) || 0))), time, jumps: Number(this._levelJumps || 0), disqualified: !!this._runDisqualified, timestamp: Date.now() });
+    try { localStorage.setItem(this._runHistoryKey(), JSON.stringify(history.slice(-50))); } catch (_) {}
+  }
+  _openRunHistoryDialog() {
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem(this._runHistoryKey()) || "[]"); } catch (_) {}
+    const rows = (Array.isArray(history) ? history : []).slice(-8).reverse();
+    const message = rows.length
+      ? rows.map((run, index) => {
+        const time = Number(run.time || 0);
+        return `${index + 1}. ${String(run.result || "RUN").toUpperCase()}  ${run.percent || 0}%  ${Math.floor(time / 60)}:${(time % 60).toFixed(2).padStart(5, "0")}  ${run.jumps || 0} jumps${run.disqualified ? "  [DISQUALIFIED]" : ""}`;
+      }).join("\n")
+      : "No attempts recorded for this level yet.";
+    window.showNativePhaserDialog(this, { title: "RUN HISTORY", message });
   }
   _runGoalKey() {
     return `wd_run_goal_${String(window.currentlevel?.[2] || "level_1")}`;
@@ -9462,6 +9490,7 @@ _buildSettingsPopup() {
     this._newBestShown = false;
     this._deathSummaryShown = false;
     this._deathCauseHint = "";
+    this._runHistoryRecorded = false;
     if (this._deathSummaryContainer) {
       this._deathSummaryContainer.destroy(true);
       this._deathSummaryContainer = null;
@@ -10453,6 +10482,10 @@ _buildSettingsPopup() {
       const _0x448396 = 600;
       if (this._playerWorldX >= this._level.endXPos - _0x448396) {
         this._levelWon = true;
+        if (!this._runHistoryRecorded) {
+          this._runHistoryRecorded = true;
+          this._recordRunHistory("complete", 100);
+        }
         if (this._versusActive && !this._versusFinished) this._showVersusResult("YOU WIN");
         this._endPortalGameY = this._level._endPortalGameY || 240;
         this._triggerEndPortal();
@@ -10498,6 +10531,10 @@ _buildSettingsPopup() {
         let _0x435587 = this._level.endXPos || 6000;
         let _0x169d53 = this._playerWorldX;
         this._lastPercent = Math.min(99, Math.max(0, Math.floor(_0x169d53 / _0x435587 * 100)));
+        if (!this._runHistoryRecorded) {
+          this._runHistoryRecorded = true;
+          this._recordRunHistory("death", this._lastPercent);
+        }
         this._deathCauseHint = window.deathCauseHints ? this._getDeathCauseHint() : "";
         if (!this._deathSummaryShown) {
           this._deathSummaryShown = true;
