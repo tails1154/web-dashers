@@ -7060,25 +7060,38 @@ _buildPauseOverlay() {
       this._runRecorder.stop();
       return;
     }
-    const canvas = this.game?.canvas;
     const notify = message => {
       if (this.scene?.isActive?.()) this.InfoBoxDoAThing(message);
     };
-    if (!canvas?.captureStream || typeof MediaRecorder === "undefined") {
-      notify("Browser recording is not supported here. Use Chromebook screen sharing instead.");
+    if (typeof MediaRecorder === "undefined") {
+      notify("Browser recording is not supported in this browser.");
       return;
     }
-    try {
-      const stream = canvas.captureStream(60);
+
+    const canvas = this.game?.canvas;
+    const canvasStream = canvas?.captureStream ? canvas.captureStream(60) : null;
+    const displayCapture = !canvasStream && navigator.mediaDevices?.getDisplayMedia
+      ? navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 60 },
+          audio: false
+        })
+      : Promise.resolve(null);
+
+    displayCapture.then(stream => {
+      if (!stream && !canvasStream) {
+        notify("This browser cannot capture gameplay. Try Chrome screen sharing.");
+        return;
+      }
+      const recordingStream = stream || canvasStream;
       const mimeType = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
         .find(type => MediaRecorder.isTypeSupported(type)) || "";
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(recordingStream, mimeType ? { mimeType } : undefined);
       const chunks = [];
       recorder.ondataavailable = event => {
         if (event.data?.size) chunks.push(event.data);
       };
       recorder.onstop = () => {
-        stream.getTracks().forEach(track => track.stop());
+        recordingStream.getTracks().forEach(track => track.stop());
         this._runRecorder = null;
         if (!chunks.length) {
           notify("No gameplay was recorded.");
@@ -7100,15 +7113,15 @@ _buildPauseOverlay() {
       };
       recorder.onerror = () => {
         this._runRecorder = null;
-        stream.getTracks().forEach(track => track.stop());
+        recordingStream.getTracks().forEach(track => track.stop());
         notify("The browser could not record this canvas.");
       };
       recorder.start(1000);
       this._runRecorder = recorder;
       if (this._paused) this._resumeGame();
-    } catch (_) {
-      notify("The browser could not start recording.");
-    }
+    }).catch(() => {
+      notify("Screen sharing was cancelled or blocked by the browser.");
+    });
   }
 _buildSettingsPopup() {
     if (this._settingsPopup) return;
