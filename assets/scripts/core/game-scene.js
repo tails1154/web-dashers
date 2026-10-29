@@ -8506,6 +8506,7 @@ _buildSettingsPopup() {
     this._level.resetAlphaTriggers();
     this._level.resetRotateTriggers();
     this._level.resetLikeTriggers?.();
+    this._level.resetNineCirclesTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
@@ -8832,6 +8833,7 @@ _buildSettingsPopup() {
     this._level.resetAlphaTriggers();
     this._level.resetRotateTriggers();
     this._level.resetLikeTriggers?.();
+    this._level.resetNineCirclesTriggers?.();
     this._level.resetPulseTriggers();
     this._level.resetEnterEffectTriggers();
     this._level.resetSpawnTriggers();
@@ -9747,11 +9749,13 @@ _buildSettingsPopup() {
     this._level.stepAlphaTriggers(deltaTime / 1000);
     this._level.checkRotateTriggers(playerX);
     this._level.checkLikeTriggers?.(playerX);
+    this._level.checkNineCirclesTriggers?.(playerX);
     this._level.stepRotateTriggers(deltaTime / 1000);
     this._level.checkPulseTriggers(playerX);
     this._level.stepPulseTriggers(deltaTime / 1000, this._colorManager);
     this._colorManager.step(deltaTime / 1000);
     this._level.applyColorChannels(this._colorManager);
+    this._level.stepNineCirclesEffect?.(deltaTime / 1000);
     this._bg.setTint(this._colorManager.getHex(fs));
     this._level.setGroundColor(this._colorManager.getHex(gs));
     this._level.setGround2Color?.(this._colorManager.getHex(1009));

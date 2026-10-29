@@ -533,6 +533,12 @@ allObjects[5050] = {
   default_detail_color_channel: -1, default_z_layer: 4, default_z_order: -6,
   speedValue: SpeedPortal.FIFTY_TIMES
 };
+if (!allObjects[5070]) {
+  allObjects[5070] = { can_color: false, frame: "nine-circles-on.png", editorFrame: "nine-circles-on.png", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "nine_circles_on", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
+}
+if (!allObjects[5071]) {
+  allObjects[5071] = { can_color: false, frame: "nine-circles-off.png", editorFrame: "nine-circles-off.png", gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "trigger", sub: "nine_circles_off", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
+}
 allObjects[5051] = {
   can_color: false, frame: "speed025-portal.png", glow_frame: "speed025-portal.png", autoFlipX: true,
   gridH: 1, gridW: 1, spritesheet: "GJ_GameSheet02-uhd", type: "speed", z: -6,
@@ -747,6 +753,10 @@ window.LevelObject = class LevelObject {
     this._activeRotateTweens = [];
     this._likeTriggers = [];
     this._likeTriggerIdx = 0;
+    this._nineCirclesTriggers = [];
+    this._nineCirclesTriggerIdx = 0;
+    this._nineCirclesEnabled = false;
+    this._nineCirclesPhase = 0;
     this._headBlocks = [];
     this._letterBlocks = [];
     this._pulseTriggers = [];
@@ -2105,6 +2115,10 @@ window.LevelObject = class LevelObject {
       });
     }
 
+    if (levelObj.id === 5070 || levelObj.id === 5071) {
+      this._nineCirclesTriggers.push({ ...triggerBase, x: levelObj.x * 2, enabled: levelObj.id === 5070 });
+    }
+
     if (levelObj.id === 1006) {
       const _raw = levelObj._raw;
       const targetType = parseInt(_raw[52] ?? 0, 10);
@@ -2888,6 +2902,7 @@ window.LevelObject = class LevelObject {
     this._alphaTriggers.sort((a, b) => a.x - b.x);
     this._rotateTriggers.sort((a, b) => a.x - b.x);
     this._likeTriggers.sort((a, b) => a.x - b.x);
+    this._nineCirclesTriggers.sort((a, b) => a.x - b.x);
     this._pulseTriggers.sort((a, b) => a.x - b.x);
 
     for (let si = 0; si < this._sectionContainers.length; si++) {
@@ -3885,6 +3900,48 @@ window.LevelObject = class LevelObject {
 
   resetLikeTriggers() {
     this._likeTriggerIdx = 0;
+  }
+
+  checkNineCirclesTriggers(playerX) {
+    while (this._nineCirclesTriggerIdx < this._nineCirclesTriggers.length) {
+      const trigger = this._nineCirclesTriggers[this._nineCirclesTriggerIdx];
+      if (trigger.x > playerX) break;
+      if (this._isTriggerSaveObjectLive(trigger.uid)) {
+        this._nineCirclesEnabled = !!trigger.enabled;
+        if (!this._nineCirclesEnabled) this._clearNineCirclesEffect();
+      }
+      this._nineCirclesTriggerIdx++;
+    }
+  }
+
+  _clearNineCirclesEffect() {
+    this._nineCirclesEnabled = false;
+    for (const section of this._sections) {
+      for (const sprite of section || []) {
+        if (sprite?._eeNineCirclesTinted && sprite.active) sprite.clearTint?.();
+        if (sprite) sprite._eeNineCirclesTinted = false;
+      }
+    }
+  }
+
+  stepNineCirclesEffect(dt) {
+    if (!this._nineCirclesEnabled || window.enableLDM) return;
+    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * 5.5;
+    const pulse = (Math.sin(this._nineCirclesPhase) + 1) * 0.5;
+    const tint = (Math.round(105 + pulse * 110) << 16) | (Math.round(35 + pulse * 45) << 8) | Math.round(175 + (1 - pulse) * 70);
+    for (const section of this._sections) {
+      for (const sprite of section || []) {
+        if (!sprite || !sprite.active || sprite._eeIsGlowSprite || sprite._eeEditorTriggerSprite) continue;
+        sprite.setTint?.(tint);
+        sprite._eeNineCirclesTinted = true;
+      }
+    }
+  }
+
+  resetNineCirclesTriggers() {
+    this._nineCirclesTriggerIdx = 0;
+    this._nineCirclesPhase = 0;
+    this._clearNineCirclesEffect();
   }
 
   stepRotateTriggers(dt) {

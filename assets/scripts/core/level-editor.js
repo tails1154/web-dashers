@@ -2015,6 +2015,14 @@ class LevelEditor {
                 itemsForGrid.push({ type: "object", id: 5064, frame: likeTrigger.frame });
             }
         }
+        if (activeCatDef?.types?.includes("trigger")) {
+            for (const triggerId of [5070, 5071]) {
+                const trigger = getObjectFromId(triggerId);
+                if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
+                    itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
+                }
+            }
+        }
         if (activeCatDef?.types?.includes("head_block")) {
             for (const letterId of [5065, 5066, 5067, 5068, 5069]) {
                 const letterBlock = getObjectFromId(letterId);
