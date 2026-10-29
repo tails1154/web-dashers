@@ -2627,6 +2627,12 @@ class LevelEditor {
 
         const clone = JSON.parse(JSON.stringify(src));
         delete clone._eeObjectId;
+        if (window.wdEditorDuplicateMemory) {
+            const offset = Number(localStorage.getItem("wd_v3_duplicate_offset") || 30);
+            clone.x = Number(clone.x || 0) + (Number.isFinite(offset) ? offset : 30);
+            clone.y = Number(clone.y || 0) - (Number.isFinite(offset) ? offset : 30);
+            localStorage.setItem("wd_v3_duplicate_offset", String(offset));
+        }
 
         window.levelObjects.push(clone);
         this._level._spawnObject(clone);

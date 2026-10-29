@@ -56,7 +56,12 @@
     open_icon_kit: scene => scene._openIconSelector?.(),
     show_run_stats: scene => {
       const level = window.currentlevel || [];
-      notice(scene, "RUN STATISTICS", `Attempts: ${scene._levelAttempts || 0}\nBest: ${scene._bestPercent || 0}%\nLevel: ${level[1] || "Unknown"}`);
+      const history = readList("wd_v3_run_history");
+      const deaths = history.filter(item => item.outcome === "death").length;
+      const completions = history.filter(item => item.outcome === "complete").length;
+      let streak = 0;
+      try { streak = JSON.parse(localStorage.getItem("wd_v3_daily_streak") || "{}").count || 0; } catch (_) {}
+      notice(scene, "RUN STATISTICS", `Attempts: ${scene._levelAttempts || 0}\nBest: ${scene._bestPercent || 0}%\nRecorded deaths: ${deaths}\nRecorded completions: ${completions}\nDaily streak: ${streak}\nLevel: ${level[1] || "Unknown"}`);
     },
     copy_level_id: scene => copyText(scene, String(window.currentlevel?.[2] || "")),
     copy_report_id: scene => copyText(scene, String(window._wdLastCrashReport?.id || "")),
@@ -101,7 +106,12 @@
         attempts: scene._attempts || 0,
         levelAttempts: scene._levelAttempts || 0,
         levelId: window.currentlevel?.[2] || null,
-        featureState: state
+        featureState: state,
+        runHistory: readList("wd_v3_run_history"),
+        attemptHistory: readList("wd_v3_attempt_history"),
+        deathHeatmap: readList("wd_v3_death_heatmap"),
+        personalRecords: readList("wd_v3_personal_records"),
+        dailyStreak: (() => { try { return JSON.parse(localStorage.getItem("wd_v3_daily_streak") || "{}"); } catch (_) { return {}; } })()
       });
       notice(scene, "STATISTICS", "Your statistics export has started.");
     }
@@ -275,8 +285,12 @@
         ensureLabel(scene, "_v3ObjectCountLabel", screenW() - 14, 104, { align: "right" }).setOrigin(1, 0).setText(`Objects: ${count}${count > 1000 ? "  HIGH" : ""}`).setTint(count > 1000 ? 0xff7777 : 0xffffff).setVisible(true);
       } else if (scene._v3ObjectCountLabel) scene._v3ObjectCountLabel.setVisible(false);
       if (this.isEnabled("accessibility_input_key_display") && !scene._menuActive) {
-        ensureLabel(scene, "_v3InputLabel", 14, screenH() - 28).setText("INPUT DISPLAY ON").setVisible(true);
+        ensureLabel(scene, "_v3InputLabel", 14, screenH() - 28).setText(`Last input: ${scene._v3LastKey || "--"}`).setVisible(true);
       } else if (scene._v3InputLabel) scene._v3InputLabel.setVisible(false);
+      if (this.isEnabled("input_input_buffer_display") && !scene._menuActive) {
+        const state = scene._state || {};
+        ensureLabel(scene, "_v3BufferLabel", 14, screenH() - 52).setText(`Jump buffer: ${state.queuedHold ? "HELD" : (state.upKeyPressed ? "QUEUED" : "CLEAR")}`).setVisible(true);
+      } else if (scene._v3BufferLabel) scene._v3BufferLabel.setVisible(false);
       if (this.isEnabled("diagnostics_memory_estimate") && !scene._menuActive) {
         const used = window.performance?.memory?.usedJSHeapSize;
         const value = used ? `${Math.round(used / 1048576)} MB` : "browser unavailable";
@@ -307,6 +321,7 @@
         if (feature.kind === "toggle" && this.isEnabled(feature.id)) applyToggle(scene, feature.id, true);
       });
       scene._v3FeatureKeyHandler = event => {
+        scene._v3LastKey = event.key;
         if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === "p") {
           event.preventDefault();
           scene._openV3FeatureMenu?.();
