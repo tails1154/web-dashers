@@ -1192,6 +1192,17 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._searchOverlayObjects = [];
     this._playOverlay = null;
     this._playOverlayObjects = [];
+    const levelContainsNineCircles = (levelString) => {
+      if (!levelString) return false;
+      try {
+        return parseLevel(levelString).objects.some(object => Number(object?.id) === 5070);
+      } catch (_error) {
+        return false;
+      }
+    };
+    const confirmNineCirclesWarning = () => window.confirm(
+      "PHOTOSENSITIVE EPILEPSY WARNING\n\nThis level contains rapidly alternating flashing colors. It may trigger seizures in people with photosensitive epilepsy. Continue only if you are comfortable viewing flashing effects."
+    );
     this._saveOnlineLevelToSavedList = (lvl) => {
       if (!lvl || !lvl.id) return;
       try {
@@ -1906,6 +1917,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         if (!data || data.error || !data.level_string) return false;
 
         const levelString = data.level_string;
+        if (levelContainsNineCircles(levelString) && !confirmNineCirclesWarning()) return false;
         window._onlineLevelId    = "online_" + lvl.id;
         window._onlineLevelString = levelString;
         window._onlineLevelName   = lvl.name || "Online Level";
@@ -2773,6 +2785,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         container.add([nameBox, titleText, titleCursor, descBox, descText, descCursor, playBtn, editBtn, shareBtn, backBtn, deleteBtn, lengthIcon, lengthLabel, songIcon, songLabel, statusIcon, statusLabel, versionText, idText]);
     };
     this._startCreatedLevel = async (level, isEditor, onBeforeRestart = null) => {
+        if (!isEditor && levelContainsNineCircles(level?.levelString) && !confirmNineCirclesWarning()) {
+          return false;
+        }
         const loadingOverlay = this.add.graphics().setScrollFactor(0).setDepth(1000);
         loadingOverlay.fillStyle(0x000000, 0.85);
         loadingOverlay.fillRect(0, 0, screenWidth, screenHeight);
