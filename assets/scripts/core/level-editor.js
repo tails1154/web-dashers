@@ -2810,7 +2810,8 @@ class LevelEditor {
       { key: "evenX", label: "EVEN X" },
       { key: "evenY", label: "EVEN Y" },
       { key: "mirrorX", label: "MIRROR X" },
-      { key: "mirrorY", label: "MIRROR Y" }
+      { key: "mirrorY", label: "MIRROR Y" },
+      { key: "snap", label: "SNAP GRID" }
     ];
     this._openEditorHorizontalOptionPopup(
       "ALIGN OBJECTS",
@@ -2900,6 +2901,7 @@ class LevelEditor {
     const maxY = sortedY[sortedY.length - 1];
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
+    const saveGridSize = Math.max(1, Number(this._editorGridSize || 60) / 2);
     const xOrder = [...entries].sort((a, b) => Number(a.saveObj.x || 0) - Number(b.saveObj.x || 0));
     const yOrder = [...entries].sort((a, b) => Number(a.saveObj.y || 0) - Number(b.saveObj.y || 0));
 
@@ -2919,6 +2921,10 @@ class LevelEditor {
       }
       if (mode === "mirrorX") nextX = centerX * 2 - Number(saveObj.x || 0);
       if (mode === "mirrorY") nextY = centerY * 2 - Number(saveObj.y || 0);
+      if (mode === "snap") {
+        nextX = Math.round(nextX / saveGridSize) * saveGridSize;
+        nextY = Math.round(nextY / saveGridSize) * saveGridSize;
+      }
       const dx = (nextX - Number(saveObj.x || 0)) * 2;
       const dy = (Number(saveObj.y || 0) - nextY) * 2;
       if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001 || mode === "mirrorX" || mode === "mirrorY") {
