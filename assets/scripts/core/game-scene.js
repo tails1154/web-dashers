@@ -6226,11 +6226,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
   }
   _resetRunTimer() {
     this._runTimerSeconds = 0;
+    if (this._runTimerLabel && (this._runTimerLabel.scene !== this || this._runTimerLabel.active === false || !this._runTimerLabel.texture)) {
+      this._runTimerLabel = null;
+    }
     if (this._runTimerLabel) this._runTimerLabel.setText("0:00.00");
   }
   _updateRunTimer(deltaTime = 0) {
     if (!window.runTimer || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) {
-      if (this._runTimerLabel) this._runTimerLabel.setVisible(!!window.runTimer && !window.isEditor && !this._menuActive);
+      if (this._runTimerLabel && this._runTimerLabel.scene === this && this._runTimerLabel.active !== false && this._runTimerLabel.texture) {
+        this._runTimerLabel.setVisible(!!window.runTimer && !window.isEditor && !this._menuActive);
+      } else {
+        this._runTimerLabel = null;
+      }
       return;
     }
     this._runTimerSeconds = (this._runTimerSeconds || 0) + Math.max(0, Number(deltaTime) || 0) / 1000;
@@ -6241,7 +6248,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     }
     const minutes = Math.floor(this._runTimerSeconds / 60);
     const seconds = (this._runTimerSeconds % 60).toFixed(2).padStart(5, "0");
-    this._runTimerLabel.setText(`${minutes}:${seconds}`).setVisible(true);
+    if (this._runTimerLabel && this._runTimerLabel.scene === this && this._runTimerLabel.active !== false && this._runTimerLabel.texture) {
+      this._runTimerLabel.setText(`${minutes}:${seconds}`).setVisible(true);
+    }
   }
   _updateBestSplit() {
     if (!window.bestSplit || window.isEditor || this._menuActive || this._levelWon) {
