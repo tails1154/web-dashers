@@ -525,6 +525,7 @@ class GameScene extends Phaser.Scene {
     this._bg.setTint(this._colorManager.getHex(fs));
     this._level.setGroundColor(this._colorManager.getHex(gs));
     this._level.setGround2Color?.(this._colorManager.getHex(1009));
+    this._level.applyNineCirclesEnvironment?.(this._colorManager.getHex(fs), this._colorManager.getHex(gs), this._colorManager.getHex(1009));
     this._level.additiveContainer.setVisible(false);
     this._level.container.setVisible(false);
     this._level.topContainer.setVisible(false);
@@ -9792,6 +9793,7 @@ _buildSettingsPopup() {
     this._bg.setTint(this._colorManager.getHex(fs));
     this._level.setGroundColor(this._colorManager.getHex(gs));
     this._level.setGround2Color?.(this._colorManager.getHex(1009));
+    this._level.applyNineCirclesEnvironment?.(this._colorManager.getHex(fs), this._colorManager.getHex(gs), this._colorManager.getHex(1009));
     this._level.updateVisibility(this._cameraX);
     this._level.updateObjectDebugIds();
     this._level.checkEnterEffectTriggers(playerX);

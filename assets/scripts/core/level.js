@@ -799,6 +799,8 @@ window.LevelObject = class LevelObject {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesEnabled = false;
     this._nineCirclesPhase = 0;
+    this._nineCirclesEnvironmentApplied = false;
+    this._nineCirclesPreviousEnvironment = null;
     this._headBlocks = [];
     this._letterBlocks = [];
     this._pulseTriggers = [];
@@ -3994,6 +3996,34 @@ window.LevelObject = class LevelObject {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesPhase = 0;
     this._clearNineCirclesEffect();
+    this._nineCirclesEnvironmentApplied = false;
+    this._nineCirclesPreviousEnvironment = null;
+  }
+
+  applyNineCirclesEnvironment(backgroundColor, groundColor, ground2Color) {
+    const scene = this._scene;
+    if (!scene || window.isEditor) return;
+    if (this._nineCirclesEnabled) {
+      if (!this._nineCirclesEnvironmentApplied) {
+        this._nineCirclesPreviousEnvironment = {
+          background: backgroundColor,
+          ground: groundColor,
+          ground2: ground2Color
+        };
+        this._nineCirclesEnvironmentApplied = true;
+      }
+      scene._bg?.setTint?.(0x000000);
+      this.setGroundColor(0x000000);
+      this.setGround2Color?.(0x000000);
+      return;
+    }
+    if (!this._nineCirclesEnvironmentApplied) return;
+    const previous = this._nineCirclesPreviousEnvironment || {};
+    scene._bg?.setTint?.(previous.background ?? backgroundColor ?? 0xffffff);
+    this.setGroundColor(previous.ground ?? groundColor ?? 0xffffff);
+    this.setGround2Color?.(previous.ground2 ?? ground2Color ?? 0xffffff);
+    this._nineCirclesEnvironmentApplied = false;
+    this._nineCirclesPreviousEnvironment = null;
   }
 
   stepRotateTriggers(dt) {
