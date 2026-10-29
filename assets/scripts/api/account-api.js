@@ -692,19 +692,16 @@ window.AccountAPI = {
     dialog.innerHTML = `<h2 style="margin:0 0 3px;color:#ffd84d;font-size:30px">${safeDisplay}</h2><div style="color:#aaa;margin-bottom:16px">@${safeName}</div><p data-bio style="margin:0 0 18px;color:#ddd;min-height:22px">${safeBio}</p><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#ffe45c">${Number(profile.stars) || 0}</b><small>Stars</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#8de8ff">${Number(profile.coins) || 0}</b><small>Coins</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#d98cff">${Number(profile.diamonds) || 0}</b><small>Diamonds</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#88ffbb">${Number(profile.levels) || 0}</b><small>Levels</small></div></div><div data-levels style="display:none;margin-top:16px;text-align:left;max-height:180px;overflow:auto;padding:10px;border-radius:10px;background:#151c2e"></div><p data-error style="min-height:18px;margin:12px 0;color:#ff8d8d;font-size:13px"></p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px">${isSelf ? '<button type="button" data-edit style="padding:10px 14px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">Edit Profile</button><button type="button" data-friends style="padding:10px 14px;border:0;border-radius:9px;background:#88ffbb;font-weight:bold;cursor:pointer">Friends</button><button type="button" data-inbox style="padding:10px 14px;border:0;border-radius:9px;background:#d98cff;font-weight:bold;cursor:pointer">Messages</button>' : '<button type="button" data-friend style="padding:10px 14px;border:0;border-radius:9px;background:#88ffbb;font-weight:bold;cursor:pointer">Add Friend</button><button type="button" data-message style="padding:10px 14px;border:0;border-radius:9px;background:#d98cff;font-weight:bold;cursor:pointer">Message</button>'}<button type="button" data-levels-button style="padding:10px 14px;border:0;border-radius:9px;background:#ffd84d;font-weight:bold;cursor:pointer">Levels</button><button type="button" data-close style="padding:10px 14px;border:0;border-radius:9px;background:#999;font-weight:bold;cursor:pointer">Close</button></div>`;
     shade.appendChild(dialog); document.body.appendChild(shade);
     const close = () => shade.remove();
+    const setProfileError = message => {
+      const errorNode = dialog.querySelector('[data-error]');
+      if (errorNode) errorNode.textContent = message || '';
+    };
     dialog.querySelector('[data-close]').addEventListener('click', close);
     dialog.querySelector('[data-levels-button]').addEventListener('click', () => {
-      const target = dialog.querySelector('[data-levels]');
       const levels = Array.isArray(profile.level_list) ? profile.level_list : [];
-      target.style.display = 'block';
-      target.innerHTML = levels.length
-        ? levels.map(level => `<button type="button" data-profile-level="${String(level.id || '').replace(/[^0-9]/g, '')}" style="display:block;width:100%;padding:9px 4px;border:0;border-bottom:1px solid #303b55;background:transparent;color:#fff;text-align:left;cursor:pointer"><b>${String(level.name || 'Untitled').replace(/[<>&"']/g, '')}</b><small style="color:#aaa"> #${String(level.id || '').replace(/[^0-9]/g, '')}</small></button>`).join('')
-        : '<span style="color:#aaa">This user has not uploaded any levels.</span>';
-      target.querySelectorAll('[data-profile-level]').forEach(button => button.addEventListener('click', () => {
-        const selected = levels.find(level => String(level.id) === String(button.dataset.profileLevel));
-        if (!selected) return;
-        shade.remove();
-        window.dispatchEvent(new CustomEvent('wd-profile-level-selected', { detail: { level: selected } }));
+      shade.remove();
+      window.dispatchEvent(new CustomEvent('wd-profile-levels-selected', {
+        detail: { username: profile.username, displayName: profile.display_name, levels }
       }));
     });
     dialog.querySelector('[data-edit]')?.addEventListener('click', async () => {
@@ -720,11 +717,11 @@ window.AccountAPI = {
         profile.display_name = displayName.slice(0, 32); profile.bio = bio.slice(0, 240);
         dialog.querySelector('h2').textContent = profile.display_name;
         dialog.querySelector('[data-bio]').textContent = profile.bio || 'No bio yet.';
-      } catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not update profile'; }
+      } catch (error) { setProfileError(error.message || 'Could not update profile'); }
     });
     dialog.querySelector('[data-friend]')?.addEventListener('click', async event => {
       try { await this.updateFriend(profile.username, 'request'); event.currentTarget.textContent = 'Request Sent'; event.currentTarget.disabled = true; }
-      catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not send friend request'; }
+      catch (error) { setProfileError(error.message || 'Could not send friend request'); }
     });
     dialog.querySelector('[data-friends]')?.addEventListener('click', async () => {
       try {
@@ -733,14 +730,14 @@ window.AccountAPI = {
         this._socialList('Friends', `<p style="color:#aaa">Friends: ${(data.friends || []).length}</p>${incoming ? `<h3 style="color:#ffd84d">Requests</h3>${incoming}` : ''}`, (listDialog, closeList) => {
           listDialog.querySelectorAll('[data-accept]').forEach(button => button.addEventListener('click', async () => { await this.updateFriend(button.dataset.accept, 'accept'); button.textContent = 'Accepted'; button.disabled = true; }));
         });
-      } catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not load friends'; }
+      } catch (error) { setProfileError(error.message || 'Could not load friends'); }
     });
     dialog.querySelector('[data-inbox]')?.addEventListener('click', async () => {
       try {
         const data = await this.getMessages();
         const messages = (data.messages || []).slice().reverse().map(item => `<div style="padding:9px 0;border-bottom:1px solid #303b55"><b>@${String(item.from_username || '').replace(/[<>&"']/g, '')}</b><p style="margin:5px 0;color:#ddd">${String(item.text || '').replace(/[<>&"']/g, '')}</p></div>`).join('');
         this._socialList('Messages', messages || '<span style="color:#aaa">No messages yet.</span>');
-      } catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not load messages'; }
+      } catch (error) { setProfileError(error.message || 'Could not load messages'); }
     });
     dialog.querySelector('[data-message]')?.addEventListener('click', async () => {
       const values = await this._socialForm(`Message @${profile.username}`, [
@@ -748,8 +745,12 @@ window.AccountAPI = {
       ], 'Send Message');
       const text = String(values?.text || '').trim();
       if (!text) return;
-      try { await this.sendMessage(profile.username, text); dialog.querySelector('[data-error]').style.color = '#88ffbb'; dialog.querySelector('[data-error]').textContent = 'Message sent.'; }
-      catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not send message'; }
+      try {
+        await this.sendMessage(profile.username, text);
+        const errorNode = dialog.querySelector('[data-error]');
+        if (errorNode) { errorNode.style.color = '#88ffbb'; errorNode.textContent = 'Message sent.'; }
+      }
+      catch (error) { setProfileError(error.message || 'Could not send message'); }
     });
     shade.addEventListener('click', event => { if (event.target === shade) close(); });
     return profile;

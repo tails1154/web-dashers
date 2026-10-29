@@ -729,6 +729,16 @@ this._menuFsBtn = this.add.image(33, 33, "GJ_WebSheet", _0x28fa5b ? "toggleFulls
       };
       window.addEventListener('wd-profile-level-selected', this._profileLevelListener);
     }
+    if (!this._profileLevelsListener) {
+      this._profileLevelsListener = event => {
+        const levels = Array.isArray(event.detail?.levels) ? event.detail.levels : [];
+        this._openOnlineLevelsScene?.({
+          title: `${event.detail?.displayName || event.detail?.username || 'User'}'s Levels`,
+          staticLevels: levels
+        });
+      };
+      window.addEventListener('wd-profile-levels-selected', this._profileLevelsListener);
+    }
     window.AccountAPI?.checkSession?.().then(user => {
       if (this._menuAccountBtn?.active) this._menuAccountBtn.setText(user?.username || "SIGN IN");
     }).catch(() => {});
@@ -12814,6 +12824,10 @@ _applyMirrorEffect() {
 
       try {
         let response = cache[page];
+        if (!response && Array.isArray(params.staticLevels)) {
+          response = { levels: params.staticLevels };
+          cache[page] = response;
+        }
         if (!response) {
           const PROXY_BASE = (window._gdProxyUrl || "").replace(/\/$/, "");
           if (!PROXY_BASE) throw new Error("no proxy configured");
