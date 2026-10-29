@@ -390,23 +390,6 @@ class LevelEditor {
         }
     });
 
-    const objectSearchButton = this.add.nineslice(screenWidth - 104, screenHeight - 218, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
-    const objectSearchLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 218, "bigFont", "SEARCH", 15).setOrigin(0.5);
-    this._toolbox.add([objectSearchButton, objectSearchLabel]);
-    this._makeCompositeBouncyButton(objectSearchButton, [objectSearchButton, objectSearchLabel], 0.78, () => this._openEditorObjectSearch());
-    const gridSizeButton = this.add.nineslice(screenWidth - 104, screenHeight - 170, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
-    const gridSizeLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 170, "bigFont", "GRID", 15).setOrigin(0.5);
-    this._toolbox.add([gridSizeButton, gridSizeLabel]);
-    this._makeCompositeBouncyButton(gridSizeButton, [gridSizeButton, gridSizeLabel], 0.78, () => this._openEditorGridSizeDialog());
-    const overviewButton = this.add.nineslice(screenWidth - 104, screenHeight - 122, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
-    const overviewLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 122, "bigFont", "MAP", 15).setOrigin(0.5);
-    this._toolbox.add([overviewButton, overviewLabel]);
-    this._makeCompositeBouncyButton(overviewButton, [overviewButton, overviewLabel], 0.78, () => this._openEditorOverviewPopup());
-    this._measureModeButton = this.add.nineslice(screenWidth - 104, screenHeight - 74, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
-    this._measureModeLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 74, "bigFont", "MEASURE", 14).setOrigin(0.5);
-    this._toolbox.add([this._measureModeButton, this._measureModeLabel]);
-    this._makeCompositeBouncyButton(this._measureModeButton, [this._measureModeButton, this._measureModeLabel], 0.78, () => this._toggleEditorMeasureMode());
-
     const tabX = (screenWidth / 2) - 475;
     const tabYStart = screenHeight - 150;
     const tabSpacing = 55;
@@ -434,6 +417,7 @@ class LevelEditor {
     });
 
     this._sideButtons = this.add.container(screenWidth - 48, 120).setScrollFactor(0).setDepth(1000);
+    this._sideButtons.setVisible(false);
     this._copyPasteBtn = this.add.image(0, 0, "GJ_GameSheet03", "GJ_duplicateObjectBtn2_001.png").setInteractive().setScale(1);
     this._editObjectBtn = this._addSafeFrameImage(0, 75, "GJ_editObjBtn3_001.png", 1);
     if (this._editObjectBtn?.setInteractive) this._editObjectBtn.setInteractive();
