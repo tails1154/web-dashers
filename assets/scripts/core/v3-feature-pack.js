@@ -3,7 +3,7 @@
     ["restart_level", "Restart level"], ["toggle_practice", "Toggle practice mode"], ["open_settings", "Open settings"], ["open_icon_kit", "Open icon kit"], ["show_run_stats", "Show run statistics"],
     ["copy_level_id", "Copy level ID"], ["copy_report_id", "Copy crash report ID"], ["take_screenshot", "Take screenshot"], ["reset_checkpoint", "Reset checkpoint"], ["toggle_fullscreen", "Toggle fullscreen"],
     ["replay_last_attempt", "Replay last attempt"], ["open_level_info", "Open level info"], ["open_achievements", "Open achievements"], ["open_update_log", "Open update log"], ["open_audio_browser", "Open audio browser"],
-    ["save_editor_level", "Save editor level"], ["play_editor_level", "Play editor level"], ["toggle_editor_grid", "Toggle editor grid"], ["focus_editor_camera", "Center editor camera"], ["clear_editor_selection", "Clear editor selection"]
+    ["save_editor_level", "Save editor level"], ["play_editor_level", "Play editor level"], ["toggle_editor_grid", "Toggle editor grid"], ["focus_editor_camera", "Center editor camera"], ["clear_editor_selection", "Clear editor selection"], ["reset_v3_preferences", "Reset V3 preferences"]
   ].map(([id, name]) => ({ id, name, kind: "command" }));
   const togglesByCategory = {
     Gameplay: ["Auto restart", "Death marker", "Attempt counter", "Best percent toast", "Level timer", "Session timer", "Completion confetti", "Coin route hints", "Practice ghost", "Practice split timer"],
@@ -76,6 +76,11 @@
     },
     focus_editor_camera: scene => { scene._cameraX = 0; scene._cameraY = 0; },
     clear_editor_selection: scene => scene._deselectEditorObject?.(),
+    reset_v3_preferences: scene => {
+      features.filter(feature => feature.kind === "toggle").forEach(feature => { state[feature.id] = false; toggleHandlers[feature.id]?.(scene, false); });
+      save();
+      notice(scene, "V3 PREFERENCES", "All V3 toggles were reset.");
+    },
     open_update_log: scene => scene._buildUpdateLogPopup?.(),
     open_achievements: scene => window.GDAchievements?.showPanel?.() || notice(scene, "ACHIEVEMENTS", "The achievements panel is unavailable here."),
     diagnostics_level_validation_report: scene => {

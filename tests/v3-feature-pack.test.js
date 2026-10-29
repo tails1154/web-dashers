@@ -35,4 +35,8 @@ assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), true);
 assert.equal(window.wdEditorSnapToGrid, true);
 window.WDV3.run("editor_snap_to_grid", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
+window.WDV3.run("editor_snap_to_grid", {});
+assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), true);
+window.WDV3.run("reset_v3_preferences", {});
+assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
 console.log(`V3 feature inventory OK: ${features.length} separate features`);
