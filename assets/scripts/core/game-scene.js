@@ -6216,6 +6216,25 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     const recent = (Array.isArray(entries) ? entries : []).filter(entry => entry.levelId === levelId).slice(-8);
     this._deathTimelineLabel.setText(recent.length ? `Recent deaths: ${recent.map(entry => `${entry.percent}%`).join(" • ")}` : "No recorded deaths").setVisible(true);
   }
+  _resetRunTimer() {
+    this._runTimerSeconds = 0;
+    if (this._runTimerLabel) this._runTimerLabel.setText("0:00.00");
+  }
+  _updateRunTimer(deltaTime = 0) {
+    if (!window.runTimer || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) {
+      if (this._runTimerLabel) this._runTimerLabel.setVisible(!!window.runTimer && !window.isEditor && !this._menuActive);
+      return;
+    }
+    this._runTimerSeconds = (this._runTimerSeconds || 0) + Math.max(0, Number(deltaTime) || 0) / 1000;
+    if (!this._runTimerLabel) {
+      this._runTimerLabel = this.add.text(screenWidth / 2, 58, "", {
+        fontFamily: "Arial", fontSize: "20px", color: "#ffffff", stroke: "#000000", strokeThickness: 4
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(90);
+    }
+    const minutes = Math.floor(this._runTimerSeconds / 60);
+    const seconds = (this._runTimerSeconds % 60).toFixed(2).padStart(5, "0");
+    this._runTimerLabel.setText(`${minutes}:${seconds}`).setVisible(true);
+  }
   _createStartPosGui() {
         const centerX = screenWidth / 2;
         const bottomY = screenHeight - 60;
@@ -6678,6 +6697,7 @@ _buildSettingsPopup() {
         "Hitbox Trail": "Shows the hitbox of exactly where your hitbox has been.",
         "Hitboxes on Death": "Shows hitboxes upon death in both normal and practice mode.",
         "Replay Ghost": "Shows a translucent replay of your previous attempt after you die. It never affects physics or rewards.",
+        "Run Timer": "Shows the active attempt duration and pauses while the game is paused or the player is dead.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Show FPS": "Shows the frames per second your game is running at.",
         "Solid Wave Trail": "Removes the extra details of the wave trail.",
@@ -6948,6 +6968,17 @@ _buildSettingsPopup() {
             true,
             "Replay Ghost"
         );
+        createToggle(container, column2X, startY + (spacingY * 4), "Run Timer",
+            () => !!window.runTimer,
+            (v) => {
+                window.runTimer = !!v;
+                if (!v && this._runTimerLabel) this._runTimerLabel.setVisible(false);
+            },
+            undefined,
+            22,
+            true,
+            "Run Timer"
+        );
     };
 
     const buildVisualPage = (container) => {
@@ -7145,6 +7176,7 @@ _buildSettingsPopup() {
         fastReset: !!window.fastReset,
         replayGhost: !!window.replayGhost,
         deathTimeline: !!window.deathTimeline,
+        runTimer: !!window.runTimer,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
@@ -7180,6 +7212,7 @@ _buildSettingsPopup() {
         fastReset: false,
         replayGhost: false,
         deathTimeline: false,
+        runTimer: false,
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
@@ -7209,6 +7242,7 @@ _buildSettingsPopup() {
     window.fastReset = !!data.fastReset;
     window.replayGhost = !!data.replayGhost;
     window.deathTimeline = !!data.deathTimeline;
+    window.runTimer = !!data.runTimer;
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
     window.createObjectIds = data.createObjectIds;
@@ -8335,6 +8369,7 @@ _buildSettingsPopup() {
     return container;
   }
   _startGame() {
+    this._resetRunTimer();
     if (!this._menuActive) {
       return;
     }
@@ -9435,6 +9470,7 @@ _buildSettingsPopup() {
   update(_0x54fa47, deltaTime) {
     this._updateReplayGhost(deltaTime);
     this._updateDeathTimeline();
+    this._updateRunTimer(deltaTime);
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
       const _liveCoinCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
       if (_liveCoinCheatFlags.length && !this._coinCheatWarningShown) {
