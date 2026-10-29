@@ -3216,6 +3216,10 @@ if (this.p.isFlying || this.p.isUfo) {
     // Native slope collision measures the player's radius along the slope
     // normal, not along the world-Y axis.
     const angle = Math.abs(gameObj.getSlopeAngleRad());
+    // The wave uses its small point-like hitbox against the slope line. Do
+    // not project that hitbox onto the slope normal, or diagonal slopes grow
+    // an artificial vertical collision margin.
+    if (this.p.isWave) return hitSize;
     const normalCos = Math.max(0.2, Math.cos(angle));
     return hitSize / normalCos;
   }
@@ -3415,9 +3419,23 @@ if (this.p.isFlying || this.p.isUfo) {
     const overlapping = pieceWidth + tightPad > left && pieceWidth - tightPad < right &&
       playersY + tightPad > top && playersY - tightPad < bottom;
     if (this.p.isWave && overlapping) {
-      return { landed: false, died: true };
-    } 
-    if (overlapping && !onSlopeSurface) {
+      // A slope is triangular, not a full rectangle. Test the wave's small
+      // hitbox against the actual solid half so the empty half of the slope
+      // remains traversable instead of acting like an invisible block.
+      const wavePoints = [
+        [0, 0],
+        [hitSize, 0], [-hitSize, 0],
+        [0, hitSize], [0, -hitSize],
+        [hitSize, hitSize], [hitSize, -hitSize],
+        [-hitSize, hitSize], [-hitSize, -hitSize]
+      ];
+      const waveTouchesSolid = gameObj.slopeIsFilled || wavePoints.some(([dx, dy]) =>
+        gameObj.isSlopeSolidAt(pieceWidth + dx, playersY + dy, this.p.gravityFlipped)
+      );
+      if (waveTouchesSolid) return { landed: false, died: true };
+      return { landed: false, died: false };
+    }
+    if (overlapping && !this.p.isWave && !onSlopeSurface) {
       if (!gameObj.slopeIsFilled && gameObj.isSlopeSolidAt(pieceWidth, playersY, this.p.gravityFlipped)) {
         if (window.noClip) this.p.diedThisFrame = true;
         else return { landed: false, died: true };
