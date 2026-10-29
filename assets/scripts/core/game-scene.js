@@ -719,6 +719,15 @@ this._menuFsBtn = this.add.image(33, 33, "GJ_WebSheet", _0x28fa5b ? "toggleFulls
         }).catch(error => window.alert(error.message || "Sign-in failed"));
       }
     }, () => this._menuActive);
+    if (!this._profileLevelListener) {
+      this._profileLevelListener = event => {
+        const level = event.detail?.level;
+        if (!level || typeof this._openPlayMenu !== 'function') return;
+        window._selectedLevelData = level;
+        this._openPlayMenu(() => this._openCreatorMenu());
+      };
+      window.addEventListener('wd-profile-level-selected', this._profileLevelListener);
+    }
     window.AccountAPI?.checkSession?.().then(user => {
       if (this._menuAccountBtn?.active) this._menuAccountBtn.setText(user?.username || "SIGN IN");
     }).catch(() => {});

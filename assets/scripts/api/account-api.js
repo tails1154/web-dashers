@@ -681,6 +681,7 @@ window.AccountAPI = {
     const profile = username ? await this.searchProfile(username) : await this.profilePrompt();
     if (!profile) return null;
     const shade = document.createElement('div');
+    shade.className = 'wd-profile-modal';
     shade.style.cssText = 'position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:rgba(0,0,0,.76);font-family:Arial,sans-serif;color:#fff;';
     const dialog = document.createElement('div');
     dialog.style.cssText = 'width:min(430px,calc(100vw - 32px));padding:28px;border:3px solid #ffd84d;border-radius:18px;background:linear-gradient(145deg,#30395c,#111522);box-shadow:0 10px 0 #000,0 20px 55px #000b;text-align:center;';
@@ -697,8 +698,14 @@ window.AccountAPI = {
       const levels = Array.isArray(profile.level_list) ? profile.level_list : [];
       target.style.display = 'block';
       target.innerHTML = levels.length
-        ? levels.map(level => `<div style="padding:7px 4px;border-bottom:1px solid #303b55"><b>${String(level.name || 'Untitled').replace(/[<>&"']/g, '')}</b><small style="color:#aaa"> #${String(level.id || '').replace(/[^0-9]/g, '')}</small></div>`).join('')
+        ? levels.map(level => `<button type="button" data-profile-level="${String(level.id || '').replace(/[^0-9]/g, '')}" style="display:block;width:100%;padding:9px 4px;border:0;border-bottom:1px solid #303b55;background:transparent;color:#fff;text-align:left;cursor:pointer"><b>${String(level.name || 'Untitled').replace(/[<>&"']/g, '')}</b><small style="color:#aaa"> #${String(level.id || '').replace(/[^0-9]/g, '')}</small></button>`).join('')
         : '<span style="color:#aaa">This user has not uploaded any levels.</span>';
+      target.querySelectorAll('[data-profile-level]').forEach(button => button.addEventListener('click', () => {
+        const selected = levels.find(level => String(level.id) === String(button.dataset.profileLevel));
+        if (!selected) return;
+        shade.remove();
+        window.dispatchEvent(new CustomEvent('wd-profile-level-selected', { detail: { level: selected } }));
+      }));
     });
     dialog.querySelector('[data-edit]')?.addEventListener('click', async () => {
       const values = await this._socialForm('Edit Profile', [
