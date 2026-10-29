@@ -3606,8 +3606,7 @@ class LevelEditor {
 
   _selectObjectAtPointer(addToSelection = false) {
     const pointer = this.input.activePointer;
-    let foundObjectIndex = -1;
-    let foundSprite = null;
+    const hits = [];
 
     for (let i = this._level.objectSprites.length - 1; i >= 0; i--) {
         if (this._isEditorObjectLocked(i)) continue;
@@ -3621,13 +3620,20 @@ class LevelEditor {
 
             const bounds = spr.getBounds();
             if (bounds.contains(pointer.x, pointer.y)) {
-                foundObjectIndex = i;
-                foundSprite = spr;
+                hits.push({ objectIndex: i, sprite: spr });
                 break;
             }
         }
+    }
 
-        if (foundObjectIndex !== -1) break;
+    let foundObjectIndex = hits[0]?.objectIndex ?? -1;
+    let foundSprite = hits[0]?.sprite || null;
+    if (pointer.event?.altKey && hits.length > 1) {
+        const currentId = this._getCurrentSelectedEditorObjectIds()[0];
+        const currentHitIndex = hits.findIndex(hit => hit.objectIndex === currentId);
+        const nextHit = hits[(currentHitIndex + 1 + hits.length) % hits.length];
+        foundObjectIndex = nextHit.objectIndex;
+        foundSprite = nextHit.sprite;
     }
 
     if (foundObjectIndex === -1) {
