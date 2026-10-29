@@ -105,6 +105,7 @@ class LevelEditor {
     window.editorSelectedObject = -1;
     this._editorZoom = 1.0;
     this._editorGridSize = this._loadEditorGridSize();
+    window.wdEditorSnapToGrid = localStorage.getItem("wd_editor_snap_to_grid") !== "false";
     this._editorPlaytestActive = false;
     this._editorPlaytestPaused = false;
     this._editorPlaytestSavedView = null;
@@ -9970,6 +9971,10 @@ class LevelEditor {
         this._buildObjectGrid?.();
     }
 );
+    createToggle(this._editorMenuContainer, screenWidth - 190, screenHeight - 60, "Snap Grid", () => window.wdEditorSnapToGrid !== false, v => {
+        window.wdEditorSnapToGrid = !!v;
+        localStorage.setItem("wd_editor_snap_to_grid", window.wdEditorSnapToGrid ? "true" : "false");
+    });
 
     const bookmarkButton = (x, text, callback, y = screenHeight - 116) => {
         const button = this.add.nineslice(x, y, "GJ_button01", null, 170, 42, 14, 14, 14, 14).setScale(0.78).setInteractive();
