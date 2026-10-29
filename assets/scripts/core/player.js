@@ -1639,8 +1639,14 @@ class PlayerObject {
       this._shipDragActive = false;
       this._streak.stop();
       this._streak.reset();
-      this._waveTrail.stop();
-      this._waveTrail.reset();
+      if (window.disableWaveTrail) {
+        this._waveTrail.stop();
+        this._waveTrail.reset();
+      } else {
+        this._waveTrail.setPosition(this._scene._playerWorldX, b(this.p.y));
+        this._waveTrail.setMiniScale(this.p.isMini);
+        this._waveTrail.update(_0x5af874);
+      }
       return;
     }
 
