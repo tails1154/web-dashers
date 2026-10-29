@@ -6540,6 +6540,10 @@ _buildPauseOverlay() {
     const runNoteLabel = this.add.bitmapText(textureY - 150, 80, "bigFont", "NOTE", 17).setOrigin(0.5);
     this._pauseContainer.add([runNoteButton, runNoteLabel]);
     this._makeCompositeBouncyButton(runNoteButton, [runNoteButton, runNoteLabel], 0.7, () => this._openRunNoteDialog());
+    const notesLogButton = this.add.nineslice(textureY - 20, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
+    const notesLogLabel = this.add.bitmapText(textureY - 20, 80, "bigFont", "LOG", 17).setOrigin(0.5);
+    this._pauseContainer.add([notesLogButton, notesLogLabel]);
+    this._makeCompositeBouncyButton(notesLogButton, [notesLogButton, notesLogLabel], 0.7, () => this._openRunNotesLog());
 
     this._pauseContainer.add(this.add.bitmapText(textureY, 65, "bigFont", window.currentlevel[1], 40).setOrigin(0.5, 0.5));
 
@@ -6667,6 +6671,16 @@ _buildPauseOverlay() {
         localStorage.setItem("wd_run_notes", JSON.stringify(notes.slice(-500)));
       }
     });
+  }
+  _openRunNotesLog() {
+    let notes = [];
+    try { notes = JSON.parse(localStorage.getItem("wd_run_notes") || "[]"); } catch (_) {}
+    const levelId = String(window.currentlevel?.[2] || "level_1");
+    const currentNotes = (Array.isArray(notes) ? notes : []).filter(note => note.levelId === levelId).slice(-8);
+    const message = currentNotes.length
+      ? currentNotes.map(note => `${note.percent}% — ${String(note.text).slice(0, 120)}`).join("\n")
+      : "No notes saved for this level yet.";
+    window.showNativePhaserDialog(this, { title: "RUN NOTES", message });
   }
 _buildSettingsPopup() {
     if (this._settingsPopup) return;
