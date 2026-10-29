@@ -4195,17 +4195,24 @@ class LevelEditor {
 
     this._makeCompositeBouncyButton(songOffsetButton, [songOffsetButton, songOffsetText], 1, () => {
         const currentOffset = this._getEditorSongStartOffset();
-        const entered = window.prompt("Song offset in seconds:", String(currentOffset));
-        if (entered === null) return;
-
-        const parsed = Number(String(entered).trim());
-        if (!Number.isFinite(parsed)) {
-            window.alert("Enter a valid number of seconds.");
-            return;
-        }
-
-        this._setEditorSongStartOffset(parsed);
-        refreshSongOffsetButton();
+        window.showNativePhaserDialog(this, {
+            title: "SONG OFFSET",
+            message: "Enter the song offset in seconds.",
+            input: true,
+            defaultValue: String(currentOffset),
+            placeholder: "Seconds",
+            confirmLabel: "SAVE",
+            cancelLabel: "CANCEL",
+            onConfirm: entered => {
+                const parsed = Number(String(entered).trim());
+                if (!Number.isFinite(parsed)) {
+                    window.showNativePhaserDialog(this, { title: "SONG OFFSET", message: "Enter a valid number of seconds." });
+                    return;
+                }
+                this._setEditorSongStartOffset(parsed);
+                refreshSongOffsetButton();
+            }
+        });
     }, () => true);
     refreshSongOffsetButton();
 
@@ -6657,18 +6664,28 @@ class LevelEditor {
 
 
   _openEditorZoomTriggerOptionsPopup(saveObj) {
-    const zoom = window.prompt("Zoom amount (1 = normal):", String(this._getEditorZoomTriggerValue(saveObj)));
-    if (zoom === null) return;
-    this._setEditorZoomTriggerValue(saveObj, zoom);
-    const duration = window.prompt("Duration in seconds (0 = instant):", String(parseFloat(saveObj?._raw?.[10] ?? saveObj?._raw?.["10"] ?? 0) || 0));
-    if (duration === null) return;
-    const value = Math.max(0, parseFloat(duration) || 0);
-    saveObj._raw[10] = String(Number(value.toFixed(2)));
-    saveObj._raw["10"] = saveObj._raw[10];
-    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-    for (const trigger of this._level?._zoomTriggers || []) {
-      if (trigger?.uid === linkedId) trigger.duration = value;
-    }
+    window.showNativePhaserDialog(this, {
+      title: "ZOOM TRIGGER", message: "Enter zoom amount (1 = normal).", input: true,
+      defaultValue: String(this._getEditorZoomTriggerValue(saveObj)), placeholder: "Zoom amount",
+      confirmLabel: "NEXT", cancelLabel: "CANCEL",
+      onConfirm: zoom => {
+        this._setEditorZoomTriggerValue(saveObj, zoom);
+        window.showNativePhaserDialog(this, {
+          title: "ZOOM TRIGGER", message: "Enter duration in seconds (0 = instant).", input: true,
+          defaultValue: String(parseFloat(saveObj?._raw?.[10] ?? saveObj?._raw?.["10"] ?? 0) || 0),
+          placeholder: "Duration", confirmLabel: "SAVE", cancelLabel: "CANCEL",
+          onConfirm: duration => {
+            const value = Math.max(0, parseFloat(duration) || 0);
+            saveObj._raw[10] = String(Number(value.toFixed(2)));
+            saveObj._raw["10"] = saveObj._raw[10];
+            const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+            for (const trigger of this._level?._zoomTriggers || []) {
+              if (trigger?.uid === linkedId) trigger.duration = value;
+            }
+          }
+        });
+      }
+    });
   }
 
 

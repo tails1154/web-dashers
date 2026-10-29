@@ -412,6 +412,84 @@ class MacroBot {
 }
 
 
+function showNativePhaserDialog(scene, options = {}) {
+  if (!scene || !scene.add) return null;
+  if (scene._nativePhaserDialog) scene._nativePhaserDialog.close();
+
+  const sw = screenWidth;
+  const sh = screenHeight;
+  const wantsInput = !!options.input;
+  const root = scene.add.container(0, 0).setScrollFactor(0).setDepth(3000);
+  const shade = scene.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.76).setInteractive();
+  const panelW = Math.min(660, sw - 48);
+  const panelH = wantsInput ? 300 : 250;
+  const panel = scene.add.rectangle(sw / 2, sh / 2, panelW, panelH, 0x182642, 1)
+    .setStrokeStyle(5, options.tone || 0x8de8ff, 1);
+  const inner = scene.add.rectangle(sw / 2, sh / 2, panelW - 16, panelH - 16, 0x0d172a, 0.98)
+    .setStrokeStyle(2, 0x365477, 1);
+  const title = scene.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 38, "goldFont", String(options.title || "NOTICE"), 30).setOrigin(0.5);
+  const message = scene.add.text(sw / 2, sh / 2 - (wantsInput ? 72 : 45), String(options.message || ""), {
+    fontFamily: "Arial", fontSize: "20px", color: "#ffffff", align: "center", wordWrap: { width: panelW - 64 }
+  }).setOrigin(0.5);
+  root.add([shade, panel, inner, title, message]);
+
+  let value = String(options.defaultValue ?? "");
+  let focused = wantsInput;
+  const inputBox = wantsInput ? scene.add.rectangle(sw / 2, sh / 2 - 10, panelW - 100, 52, 0x09101e, 1)
+    .setStrokeStyle(3, 0x8de8ff, 1).setInteractive() : null;
+  const inputText = wantsInput ? scene.add.bitmapText(sw / 2 - (panelW - 100) / 2 + 16, sh / 2 - 10, "bigFont", value || String(options.placeholder || "Enter value"), 20)
+    .setOrigin(0, 0.5).setTint(value ? 0xffffff : 0x7891b2) : null;
+  if (inputBox) {
+    inputBox.on("pointerdown", () => { focused = true; inputBox.setStrokeStyle(3, 0x8de8ff, 1); });
+    root.add([inputBox, inputText]);
+  }
+
+  const buttonY = sh / 2 + panelH / 2 - 42;
+  const makeButton = (x, label, frame, callback) => {
+    const button = scene.add.image(x, buttonY, "GJ_GameSheet03", frame).setScale(0.86).setInteractive();
+    const text = scene.add.bitmapText(x, buttonY, "bigFont", label, 20).setOrigin(0.5);
+    root.add([button, text]);
+    if (typeof scene._makeBouncyButton === "function") scene._makeBouncyButton(button, 0.86, callback);
+    else button.on("pointerup", callback);
+    return button;
+  };
+  const cleanup = () => {
+    window.removeEventListener("keydown", onKeyDown);
+    scene._nativePhaserDialog = null;
+    root.destroy(true);
+  };
+  const finish = confirmed => {
+    const result = value;
+    cleanup();
+    if (confirmed) options.onConfirm?.(result);
+    else options.onCancel?.();
+  };
+  const onKeyDown = event => {
+    if (!focused) return;
+    event.stopPropagation();
+    if (event.key === "Escape") { event.preventDefault(); finish(false); return; }
+    if (event.key === "Enter") { event.preventDefault(); finish(true); return; }
+    if (event.key === "Backspace") { value = value.slice(0, -1); updateInput(); return; }
+    if (event.key.length === 1 && value.length < 128 && !event.ctrlKey && !event.metaKey) {
+      value += event.key;
+      updateInput();
+    }
+  };
+  const updateInput = () => {
+    if (inputText) inputText.setText(value || String(options.placeholder || "Enter value")).setTint(value ? 0xffffff : 0x7891b2);
+  };
+  scene._nativePhaserDialog = { close: () => finish(false) };
+  window.addEventListener("keydown", onKeyDown);
+  if (wantsInput) {
+    makeButton(sw / 2 - 90, String(options.confirmLabel || "OK"), "GJ_longBtn06_001.png", () => finish(true));
+    makeButton(sw / 2 + 90, String(options.cancelLabel || "CANCEL"), "GJ_longBtn07_001.png", () => finish(false));
+  } else {
+    makeButton(sw / 2, String(options.confirmLabel || (options.confirm ? "YES" : "OK")), "GJ_longBtn06_001.png", () => finish(true));
+  }
+  return scene._nativePhaserDialog;
+}
+window.showNativePhaserDialog = showNativePhaserDialog;
+
 class GameScene extends Phaser.Scene {
   constructor() {
     super({
@@ -618,7 +696,10 @@ class GameScene extends Phaser.Scene {
           this._bestPercent = 0;
           this._practiceBestPercent = 0;
           close();
-          window.alert(`Progress deleted for ${levelName}.`);
+          showNativePhaserDialog(this, {
+            title: "PROGRESS DELETED",
+            message: `Progress deleted for ${levelName}.`
+          });
         } catch (error) {
           dialog.querySelector('[data-error]').textContent = 'Could not delete local progress.';
         }
@@ -713,11 +794,11 @@ this._menuFsBtn = this.add.image(33, 33, "GJ_WebSheet", _0x28fa5b ? "toggleFulls
     this._makeBouncyButton(this._menuAccountBtn, 1, () => {
       if (window.AccountAPI?.currentUser) {
         window.AccountAPI.findProfilePrompt?.(window.AccountAPI.currentUser.username)
-          .catch(error => window.alert(error.message || "Profile not found"));
+          .catch(error => showNativePhaserDialog(this, { title: "PROFILE", message: error.message || "Profile not found" }));
       } else {
         window.AccountAPI?.signInPrompt?.().then(user => {
           if (this._menuAccountBtn?.active) this._menuAccountBtn.setText(user?.username || "SIGN IN");
-        }).catch(error => window.alert(error.message || "Sign-in failed"));
+        }).catch(error => showNativePhaserDialog(this, { title: "SIGN IN", message: error.message || "Sign-in failed" }));
       }
     }, () => this._menuActive);
     if (!this._profileLevelListener) {
@@ -1127,7 +1208,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               const data = await window.AccountAPI[`get${label}Level`]();
               if (!data.level) {
                 clearLoading();
-                window.alert(`No ${label} Level has been selected yet.`);
+                showNativePhaserDialog(this, { title: `${label.toUpperCase()} LEVEL`, message: `No ${label} Level has been selected yet.` });
                 this._openCreatorMenu();
                 return;
               }
@@ -1136,7 +1217,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               this._openPlayMenu(() => this._openCreatorMenu());
             } catch (error) {
               clearLoading();
-              window.alert(error.message || `Could not load ${label} Level`);
+              showNativePhaserDialog(this, { title: `${label.toUpperCase()} LEVEL`, message: error.message || `Could not load ${label} Level` });
               this._openCreatorMenu();
             }
           }, () => true);
@@ -1169,7 +1250,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               const daily = await window.AccountAPI.getDailyLevel();
               if (!daily.level) {
                 clearDailyLoading();
-                window.alert("No Daily Level has been selected yet.");
+                showNativePhaserDialog(this, { title: "DAILY LEVEL", message: "No Daily Level has been selected yet." });
                 this._openCreatorMenu();
                 return;
               }
@@ -1181,7 +1262,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               this._openPlayMenu(() => this._openCreatorMenu());
             } catch (error) {
               clearDailyLoading();
-              window.alert(error.message || "Could not load Daily Level");
+              showNativePhaserDialog(this, { title: "DAILY LEVEL", message: error.message || "Could not load Daily Level" });
               this._openCreatorMenu();
             }
           }, () => true);
@@ -1378,7 +1459,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       if (authorName && authorName.toLowerCase() !== "unknown") {
         authorText.setInteractive({ useHandCursor: true });
         authorText.on("pointerup", () => {
-          window.AccountAPI?.findProfilePrompt?.(authorName).catch(error => window.alert(error.message || "Profile not found"));
+          window.AccountAPI?.findProfilePrompt?.(authorName).catch(error => showNativePhaserDialog(this, { title: "PROFILE", message: error.message || "Profile not found" }));
         });
       }
       this._playOverlayObjects.push(authorText);
@@ -1639,17 +1720,23 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           const deleteButton = event.target.closest("[data-delete-comment]");
           if (!deleteButton) return;
           const commentId = deleteButton.dataset.deleteComment;
-          if (!commentId || !window.confirm("Delete this comment?")) return;
-          deleteButton.disabled = true;
-          try {
-            await window.AccountAPI.deleteLevelComment(lvl.id, commentId);
-            comments = comments.filter(comment => String(comment.id) !== String(commentId));
-            render(comments);
-            error.textContent = "";
-          } catch (errorValue) {
-            deleteButton.disabled = false;
-            error.textContent = errorValue.message || "Could not delete comment";
-          }
+          if (!commentId) return;
+          showNativePhaserDialog(this, {
+            title: "DELETE COMMENT", message: "Delete this comment?", confirm: true,
+            confirmLabel: "DELETE", cancelLabel: "CANCEL",
+            onConfirm: async () => {
+              deleteButton.disabled = true;
+              try {
+                await window.AccountAPI.deleteLevelComment(lvl.id, commentId);
+                comments = comments.filter(comment => String(comment.id) !== String(commentId));
+                render(comments);
+                error.textContent = "";
+              } catch (errorValue) {
+                deleteButton.disabled = false;
+                error.textContent = errorValue.message || "Could not delete comment";
+              }
+            }
+          });
         });
         form.addEventListener("submit", async event => {
           event.preventDefault();
@@ -1687,16 +1774,22 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const ownerDeleteLabel = this.add.bitmapText(sideBtnX - 78, sideBtnY0 + sideBtnGap * 5, "bigFont", "DELETE", 18)
           .setScrollFactor(0).setDepth(505).setOrigin(0.5);
         this._makeBouncyButton(ownerDeleteBtn, 1, async () => {
-          if (!window.confirm(`Delete \"${lvl.name || "this level"}\" from the server? This cannot be undone.`)) return;
-          ownerDeleteBtn.disableInteractive();
-          try {
-            await window.AccountAPI.deleteLevel(lvl.id);
-            window.alert("Level deleted from the server.");
-            this._closePlayMenu(false, () => this._playMenuBackTarget());
-          } catch (errorValue) {
-            ownerDeleteBtn.setInteractive();
-            window.alert(errorValue.message || "Could not delete level");
-          }
+          showNativePhaserDialog(this, {
+            title: "DELETE LEVEL",
+            message: `Delete \"${lvl.name || "this level"}\" from the server? This cannot be undone.`,
+            confirm: true, confirmLabel: "DELETE", cancelLabel: "CANCEL",
+            onConfirm: async () => {
+              ownerDeleteBtn.disableInteractive();
+              try {
+                await window.AccountAPI.deleteLevel(lvl.id);
+                showNativePhaserDialog(this, { title: "LEVEL DELETED", message: "Level deleted from the server." });
+                this._closePlayMenu(false, () => this._playMenuBackTarget());
+              } catch (errorValue) {
+                ownerDeleteBtn.setInteractive();
+                showNativePhaserDialog(this, { title: "DELETE FAILED", message: errorValue.message || "Could not delete level" });
+              }
+            }
+          });
         });
         this._playOverlayObjects.push(ownerDeleteBtn, ownerDeleteLabel);
       }
@@ -1736,18 +1829,27 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           shade.querySelector("[data-map]").addEventListener("click", async event => {
             const button = event.currentTarget;
             const error = shade.querySelector("[data-error]");
-            const answer = window.prompt("Add this level to which Map world? (1-5)", "1");
-            const worldId = Number(answer);
-            if (!Number.isInteger(worldId) || worldId < 1 || worldId > 5) return;
-            button.disabled = true;
-            try {
-              await window.AccountAPI.addLevelToMap(lvl.id, worldId);
-              error.style.color = "#88ddff";
-              error.textContent = `Added to Map world ${worldId}.`;
-            } catch (errorValue) {
-              error.textContent = errorValue.message || "Could not add level to Map";
-              button.disabled = false;
-            }
+            showNativePhaserDialog(this, {
+              title: "ADD TO MAP", message: "Choose the Map world for this level (1-5).",
+              input: true, defaultValue: "1", placeholder: "World number",
+              confirmLabel: "ADD", cancelLabel: "CANCEL",
+              onConfirm: async answer => {
+                const worldId = Number(answer);
+                if (!Number.isInteger(worldId) || worldId < 1 || worldId > 5) {
+                  showNativePhaserDialog(this, { title: "INVALID WORLD", message: "Enter a whole number from 1 to 5." });
+                  return;
+                }
+                button.disabled = true;
+                try {
+                  await window.AccountAPI.addLevelToMap(lvl.id, worldId);
+                  error.style.color = "#88ddff";
+                  error.textContent = `Added to Map world ${worldId}.`;
+                } catch (errorValue) {
+                  error.textContent = errorValue.message || "Could not add level to Map";
+                  button.disabled = false;
+                }
+              }
+            });
           });
           [
             ["weekly", "Weekly"],
@@ -2429,7 +2531,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
                 } catch (err) {
                     console.error("GMD Import Error:", err);
-                    alert("Failed to parse .gmd: " + err.message);
+                    showNativePhaserDialog(this, { title: "IMPORT FAILED", message: "Failed to parse .gmd: " + err.message });
                 }
             };
             reader.readAsText(file);
@@ -2552,13 +2654,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 localStorage.setItem("created_levels", JSON.stringify(levels));
             }
         };
-        const deleteLevel = async () => {
-            if (!confirm(`Are you sure you want to delete ${level.levelName}?`)) return;
+        const deleteLevelConfirmed = async () => {
             if (level.uploaded && level.levelId) {
                 try {
                     await window.AccountAPI.deleteLevel(level.levelId);
                 } catch (error) {
-                    window.alert(error.message || "You must be signed in as the owner to delete this level.");
+                    showNativePhaserDialog(this, { title: "DELETE FAILED", message: error.message || "You must be signed in as the owner to delete this level." });
                     return;
                 }
             }
@@ -2568,6 +2669,14 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             localStorage.setItem("created_levels", JSON.stringify(levels));
             cleanup();
             this._openEditorMenu();
+        };
+        const deleteLevel = () => {
+            showNativePhaserDialog(this, {
+                title: "DELETE LEVEL",
+                message: `Are you sure you want to delete ${level.levelName}?`,
+                confirm: true, confirmLabel: "DELETE", cancelLabel: "CANCEL",
+                onConfirm: deleteLevelConfirmed
+            });
         };
         this._activeInput = null;
         let cursorVisible = true;
@@ -2768,7 +2877,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
         const uploadLocalLevel = async (forceVerify = false) => {
             if (!forceVerify && _isHackVerified) {
-                window.alert("This level cannot be uploaded because it was verified with cheats or StartPos.");
+                showNativePhaserDialog(this, { title: "UPLOAD BLOCKED", message: "This level cannot be uploaded because it was verified with cheats or StartPos." });
                 return;
             }
             if (!forceVerify && !_isVerified) return;
@@ -2816,15 +2925,15 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                         saveToLS("hackVerified", false);
                         saveToLS("verification_hacks", false);
                         saveToLS("verification_start_pos", false);
-                        window.alert("Level uploaded and force verified.");
+                        showNativePhaserDialog(this, { title: "UPLOAD COMPLETE", message: "Level uploaded and force verified." });
                     }
                 }
             } catch (err) {
                 if (err.status === 409 && err.response?.duplicate) {
                     const duplicate = err.response.duplicate;
-                    window.alert(`This level is already uploaded as \"${duplicate.name || "Untitled"}\" (ID ${duplicate.id}).`);
+                    showNativePhaserDialog(this, { title: "ALREADY UPLOADED", message: `This level is already uploaded as \"${duplicate.name || "Untitled"}\" (ID ${duplicate.id}).` });
                 } else {
-                    window.alert(err.message || "Upload failed. Please try again.");
+                    showNativePhaserDialog(this, { title: "UPLOAD FAILED", message: err.message || "Upload failed. Please try again." });
                 }
                 console.warn("Upload failed", err);
             }
@@ -3081,7 +3190,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setScrollFactor(0).setDepth(105).setOrigin(0.5, 0.5).setInteractive();
       this._makeBouncyButton(innerBtn2, 1, async () => {
         try { await window.AccountAPI.findProfilePrompt(); }
-        catch (error) { window.alert(error.message || "Profile search failed"); }
+        catch (error) { showNativePhaserDialog(this, { title: "PROFILE SEARCH", message: error.message || "Profile search failed" }); }
       });
       const profileButtonLabel = this.add.bitmapText(innerBtnX + 137, innerBtnY, "bigFont", "PROFILES", 21)
         .setScrollFactor(0).setDepth(106).setOrigin(0.5).setTint(0xffffff);
@@ -4532,7 +4641,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
               if (window.WDCoinEconomy && !window.WDCoinEconomy.ownsIcon(capturedFrame)) {
                 if (window.WDCoinEconomy.isDiamondShopIcon?.(capturedFrame)) {
-                  window.alert("You can buy this cube in the icon shop!");
+                  showNativePhaserDialog(this, { title: "ICON SHOP", message: "You can buy this cube in the icon shop!" });
                   return;
                 }
                 window.WDOpenIconPurchase?.(this, capturedFrame, () => {
@@ -4913,10 +5022,15 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._versusClient.connect("host");
       });
       joinBtn.on("pointerup", () => {
-        const room = window.prompt("Enter the host room code:");
-        if (!room) return;
-        hostBtn.disableInteractive(); joinBtn.disableInteractive();
-        this._versusClient.connect("join", room);
+        showNativePhaserDialog(this, {
+          title: "JOIN ROOM", message: "Enter the host room code.", input: true,
+          placeholder: "Room code", confirmLabel: "JOIN", cancelLabel: "CANCEL",
+          onConfirm: room => {
+            if (!room.trim()) return;
+            hostBtn.disableInteractive(); joinBtn.disableInteractive();
+            this._versusClient.connect("join", room.trim());
+          }
+        });
       });
       const hello = { type: "versus-hello", role: this._versusClient.role, clientId: this._versusClient.clientId, player: window.currentPlayer || "player_01", mainColor: window.mainColor };
       const helloTimer = setInterval(() => { if (!this._versusOverlay) return clearInterval(helloTimer); this._versusClient.send(hello); }, 500);
@@ -7037,8 +7151,11 @@ _buildSettingsPopup() {
 
       this._makeBouncyButton(optionsBtn, 0.45, () => {
           if (!this._macroLoaded) return;
-          const renamePrompt = prompt("New name", this._macroName);
-          if (renamePrompt && renamePrompt.trim() !== "") {
+          showNativePhaserDialog(this, {
+            title: "RENAME MACRO", message: "Enter a new name.", input: true,
+            defaultValue: this._macroName, placeholder: "Macro name", confirmLabel: "SAVE", cancelLabel: "CANCEL",
+            onConfirm: renamePrompt => {
+              if (!renamePrompt || renamePrompt.trim() === "") return;
               const cleanName = renamePrompt.trim();
               if (!this._macroBot) this._initMacroBot();
               
@@ -7048,7 +7165,8 @@ _buildSettingsPopup() {
               this._macroBot.meta.name = cleanName;
               this._macroName = cleanName;
               this._refreshMacroButtons();
-          }
+            }
+          });
       });
 
       this._makeBouncyButton(importBtn, 1, () => {
@@ -7066,15 +7184,20 @@ _buildSettingsPopup() {
 
       this._makeBouncyButton(createBtn, 1.2, () => {
           if (this._macroBot?.playing || this._macroBot?.recording || this._macroLoaded) return;
-          const name = prompt("Enter macro name");
-          if (name) {
+          showNativePhaserDialog(this, {
+            title: "CREATE MACRO", message: "Enter a macro name.", input: true,
+            placeholder: "Macro name", confirmLabel: "CREATE", cancelLabel: "CANCEL",
+            onConfirm: name => {
+            if (name) {
               if (!this._macroBot) this._initMacroBot();
               this._macroBot.resetAll();
               this._macroBot.meta.name = name;
               this._macroName = name;
               this._macroLoaded = true;
               this._refreshMacroButtons();
-          }
+            }
+            }
+          });
       });
 
       this._makeBouncyButton(playbackBtn, 0.25, () => {
@@ -8431,7 +8554,7 @@ _buildSettingsPopup() {
         this._macroName = macroName;
         this._macroLoaded = true;
       } catch (err) {
-        alert("Failed to import: " + err.message);
+        showNativePhaserDialog(this, { title: "MACRO IMPORT FAILED", message: "Failed to import: " + err.message });
       }
     };
 
@@ -11921,7 +12044,7 @@ _applyMirrorEffect() {
             claimButton.setTint(0x666666);
           } catch (error) {
             claimButton.setInteractive();
-            window.alert(error.message || "Could not claim Gauntlet reward");
+            showNativePhaserDialog(this, { title: "GAUNTLET REWARD", message: error.message || "Could not claim Gauntlet reward" });
           }
         });
       }
@@ -12018,17 +12141,22 @@ _applyMirrorEffect() {
         deleteButton.textContent = "Delete";
         deleteButton.style.cssText = "padding:8px 10px;border:0;border-radius:7px;background:#ff7777;font-weight:bold";
         deleteButton.addEventListener("click", async () => {
-          if (!window.confirm(`Delete the gauntlet \"${gauntlet.name}\"?`)) return;
-          deleteButton.disabled = true;
-          try {
-            await window.AccountAPI.deleteGauntlet(gauntlet.id);
-            row.remove();
-            status.style.color = "#88ffbb";
-            status.textContent = `Deleted ${gauntlet.name}.`;
-          } catch (error) {
-            status.textContent = error.message || "Could not delete gauntlet";
-            deleteButton.disabled = false;
-          }
+          showNativePhaserDialog(this, {
+            title: "DELETE GAUNTLET", message: `Delete the gauntlet \"${gauntlet.name}\"?`,
+            confirm: true, confirmLabel: "DELETE", cancelLabel: "CANCEL",
+            onConfirm: async () => {
+              deleteButton.disabled = true;
+              try {
+                await window.AccountAPI.deleteGauntlet(gauntlet.id);
+                row.remove();
+                status.style.color = "#88ffbb";
+                status.textContent = `Deleted ${gauntlet.name}.`;
+              } catch (error) {
+                status.textContent = error.message || "Could not delete gauntlet";
+                deleteButton.disabled = false;
+              }
+            }
+          });
         });
         const actions = document.createElement("span");
         actions.style.cssText = "display:flex;gap:6px";
@@ -12098,7 +12226,7 @@ _applyMirrorEffect() {
       shade.querySelector("[data-close]").addEventListener("click", close);
       shade.addEventListener("click", event => { if (event.target === shade) close(); });
     } catch (error) {
-      window.alert(error.message || "Could not load quests");
+      showNativePhaserDialog(this, { title: "DAILY QUESTS", message: error.message || "Could not load quests" });
     }
   }
 
@@ -12415,15 +12543,20 @@ _applyMirrorEffect() {
           const deleteButton = this.add.text(sw / 2 + 278, y, "DELETE", { fontFamily: "Arial", fontSize: "13px", color: "#ff9b9b", backgroundColor: "#572b3a", padding: { x: 6, y: 4 } }).setOrigin(0.5).setInteractive();
           root.add(deleteButton);
           this._makeBouncyButton(deleteButton, 1, async () => {
-            if (!window.confirm(`Delete the list \"${list.name}\"?`)) return;
-            try {
-              await window.AccountAPI.deleteList(list.id);
-              root.destroy(true);
-              this._listsOverlay = null;
-              this._openListsMenu();
-            } catch (error) {
-              status.setText(error.message || "Could not delete list");
-            }
+            showNativePhaserDialog(this, {
+              title: "DELETE LIST", message: `Delete the list \"${list.name}\"?`,
+              confirm: true, confirmLabel: "DELETE", cancelLabel: "CANCEL",
+              onConfirm: async () => {
+                try {
+                  await window.AccountAPI.deleteList(list.id);
+                  root.destroy(true);
+                  this._listsOverlay = null;
+                  this._openListsMenu();
+                } catch (error) {
+                  status.setText(error.message || "Could not delete list");
+                }
+              }
+            });
           });
         }
       });
@@ -12494,9 +12627,14 @@ _applyMirrorEffect() {
           const del = this.add.text(sw / 2 + 278, y, "DELETE", { fontFamily: "Arial", fontSize: "12px", color: "#ff9b9b", backgroundColor: "#572b3a", padding: { x: 5, y: 3 } }).setOrigin(0.5).setInteractive();
           root.add(del);
           this._makeBouncyButton(del, 1, async () => {
-            if (!window.confirm(`Delete the map pack \"${pack.name}\"?`)) return;
-            try { await window.AccountAPI.deleteMapPack(pack.id); root.destroy(true); this._mapPacksOverlay = null; this._openMapPacksMenu(); }
-            catch (error) { status.setText(error.message || "Could not delete pack"); }
+            showNativePhaserDialog(this, {
+              title: "DELETE MAP PACK", message: `Delete the map pack \"${pack.name}\"?`,
+              confirm: true, confirmLabel: "DELETE", cancelLabel: "CANCEL",
+              onConfirm: async () => {
+                try { await window.AccountAPI.deleteMapPack(pack.id); root.destroy(true); this._mapPacksOverlay = null; this._openMapPacksMenu(); }
+                catch (error) { status.setText(error.message || "Could not delete pack"); }
+              }
+            });
           });
         }
       });
