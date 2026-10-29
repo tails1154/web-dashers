@@ -460,6 +460,25 @@ window.AccountAPI = {
     return data;
   },
 
+  async getCustomSongs(page = 1) {
+    const res = await fetch(`${window._gdProxyUrl}?action=custom_songs&page=${encodeURIComponent(page)}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load custom songs');
+    return data;
+  },
+
+  async uploadCustomSong(file) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required to upload songs');
+    const form = new FormData();
+    form.append('song', file, file.name || 'custom-song.mp3');
+    const res = await fetch(`${window._gdProxyUrl}?action=upload_custom_song`, {
+      method: 'POST', credentials: 'include', body: form
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not upload custom song');
+    return data;
+  },
+
   async uploadLevelPrompt(level) {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required to upload levels');
     return new Promise(resolve => {

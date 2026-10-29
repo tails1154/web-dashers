@@ -18,6 +18,14 @@ const storedCrashReporting = localStorage.getItem("wd_crash_reporting");
 window.crashReportingEnabled = storedCrashReporting !== "false";
 window._gdProxyUrl = window._gdProxyUrl || "https://tails1154.com:9782/cgi-bin/gd/server.py";
 window._ngSongProxyUrl = window._ngSongProxyUrl || "https://tails1154.com:9782/cgi-bin/ngpx.py";
+window.getSongDownloadUrl = function (songId) {
+  const encodedId = encodeURIComponent(songId);
+  if (Number(songId) >= 900000000) {
+    const proxyBase = (window._gdProxyUrl || "").replace(/\/$/, "");
+    return `${proxyBase}?action=custom_song&id=${encodedId}`;
+  }
+  return `${window._ngSongProxyUrl || "/cgi-bin/ngpx.py"}?id=${encodedId}`;
+};
 window.getGdApiBase = function () {
   if (window.useDirectInternet) return "https://www.boomlings.com/database";
   return (window._gdProxyUrl || "").replace(/\/$/, "");

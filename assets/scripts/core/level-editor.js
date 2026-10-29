@@ -7377,6 +7377,91 @@ class LevelEditor {
   }
 
 
+  _openCustomSongSelector(onSelect) {
+    if (this._customSongSelectorOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(4000);
+    this._customSongSelectorOverlay = root;
+    const panelW = Math.min(760, sw - 48);
+    const panelH = Math.min(560, sh - 44);
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.82).setInteractive();
+    const panel = this.add.rectangle(sw / 2, sh / 2, panelW, panelH, 0x14223d, 1).setStrokeStyle(5, 0xffd84d, 1);
+    const inner = this.add.rectangle(sw / 2, sh / 2, panelW - 16, panelH - 16, 0x091326, 0.98).setStrokeStyle(2, 0x47648e, 1);
+    const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 34, "goldFont", "CUSTOM SONGS", 34).setOrigin(0.5);
+    const status = this.add.text(sw / 2, sh / 2 - panelH / 2 + 70, "Upload an MP3 or select an existing custom song.", { fontFamily: "Arial", fontSize: "16px", color: "#b9d4f5" }).setOrigin(0.5);
+    const results = this.add.container(0, 0);
+    const pageLabel = this.add.bitmapText(sw / 2, sh / 2 + panelH / 2 - 50, "bigFont", "PAGE 1", 18).setOrigin(0.5);
+    root.add([shade, panel, inner, title, status, results, pageLabel]);
+    let page = 1;
+    let pages = 1;
+    let loading = false;
+    const close = () => {
+      this._customSongSelectorOverlay = null;
+      root.destroy(true);
+    };
+    const render = songs => {
+      results.removeAll(true);
+      songs.forEach((song, index) => {
+        const y = sh / 2 - panelH / 2 + 120 + index * 38;
+        const row = this.add.nineslice(sw / 2, y, "GJ_button01", null, panelW - 90, 32, 10, 10, 10, 10).setInteractive();
+        const label = this.add.bitmapText(sw / 2 - (panelW - 90) / 2 + 14, y, "bigFont", `${song.title}  •  by ${song.author}`, 16).setOrigin(0, 0.5);
+        results.add([row, label]);
+        this._makeCompositeBouncyButton(row, [row, label], 1, () => {
+          onSelect?.({ id: song.id, title: song.title });
+          close();
+        }, () => !loading);
+      });
+      if (!songs.length) status.setText("No uploaded songs yet.").setColor("#ffcf83");
+    };
+    const loadPage = async () => {
+      if (loading) return;
+      loading = true;
+      status.setText("Loading custom songs...").setColor("#b9d4f5");
+      try {
+        const data = await window.AccountAPI.getCustomSongs(page);
+        pages = Math.max(1, Number(data.pages) || 1);
+        pageLabel.setText(`PAGE ${page} / ${pages}`);
+        render(Array.isArray(data.songs) ? data.songs : []);
+      } catch (error) {
+        status.setText(error.message || "Could not load custom songs").setColor("#ff9b9b");
+      } finally {
+        loading = false;
+      }
+    };
+    const previous = this.add.image(sw / 2 - 110, sh / 2 + panelH / 2 - 50, "GJ_GameSheet03", "edit_leftBtn_001.png").setScale(0.75).setInteractive();
+    const next = this.add.image(sw / 2 + 110, sh / 2 + panelH / 2 - 50, "GJ_GameSheet03", "edit_leftBtn_001.png").setScale(0.75).setFlipX(true).setInteractive();
+    const upload = this.add.nineslice(sw / 2, sh / 2 + panelH / 2 - 92, "GJ_button01", null, 230, 38, 12, 12, 12, 12).setInteractive();
+    const uploadLabel = this.add.bitmapText(upload.x, upload.y, "bigFont", "UPLOAD MP3", 17).setOrigin(0.5);
+    const closeButton = this.add.image(sw / 2 - panelW / 2 + 30, sh / 2 - panelH / 2 + 30, "GJ_WebSheet", "GJ_closeBtn_001.png").setScale(0.72).setInteractive();
+    root.add([previous, next, upload, uploadLabel, closeButton]);
+    this._makeBouncyButton(previous, 0.75, () => { if (!loading && page > 1) { page--; loadPage(); } });
+    this._makeBouncyButton(next, 0.75, () => { if (!loading && page < pages) { page++; loadPage(); } });
+    this._makeCompositeBouncyButton(upload, [upload, uploadLabel], 1, () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".mp3,audio/mpeg";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        if (file.size > 12 * 1024 * 1024) { status.setText("MP3 must be smaller than 12 MB").setColor("#ff9b9b"); return; }
+        loading = true;
+        status.setText("Uploading MP3...").setColor("#b9d4f5");
+        try {
+          const song = await window.AccountAPI.uploadCustomSong(file);
+          onSelect?.({ id: song.id, title: song.title });
+          close();
+        } catch (error) {
+          status.setText(error.message || "Could not upload custom song").setColor("#ff9b9b");
+          loading = false;
+        }
+      };
+      input.click();
+    });
+    this._makeBouncyButton(closeButton, 0.72, close);
+    loadPage();
+  }
+
   _openEditorZoomTriggerOptionsPopup(saveObj) {
     window.showNativePhaserDialog(this, {
       title: "ZOOM TRIGGER", message: "Enter zoom amount (1 = normal).", input: true,
@@ -9563,7 +9648,9 @@ class LevelEditor {
 
     const prevSong = this.add.image(-250, songTextY + 2, "GJ_GameSheet03", "edit_leftBtn_001.png").setScale(1.2).setFlipX(false).setInteractive();
     const nextSong = this.add.image(250, songTextY + 2, "GJ_GameSheet03", "edit_leftBtn_001.png").setScale(1.2).setFlipX(true).setInteractive();
-    inner.add([prevSong, nextSong]);
+    const customSongsButton = this.add.nineslice(0, songTextY + 60, "GJ_button01", null, 260, 42, 14, 14, 14, 14).setInteractive();
+    const customSongsLabel = this.add.bitmapText(0, songTextY + 58, "bigFont", "CUSTOM SONGS", 16).setOrigin(0.5);
+    inner.add([prevSong, nextSong, customSongsButton, customSongsLabel]);
 
     let customInputBeforeFocus = customInput;
 
@@ -9679,6 +9766,8 @@ class LevelEditor {
 
         prevSong.setVisible(songCategory === "normal");
         nextSong.setVisible(songCategory === "normal");
+        customSongsButton.setVisible(songCategory === "custom");
+        customSongsLabel.setVisible(songCategory === "custom");
         drawCustomSongInput();
 
         if (songCategory === "normal") {
@@ -9754,6 +9843,17 @@ class LevelEditor {
         commitNormalSongDraft();
         updateSongUi();
     });
+
+    this._makeCompositeBouncyButton(customSongsButton, [customSongsButton, customSongsLabel], 1, () => {
+        if (songCategory !== "custom") return;
+        blurCustomSongInput(false);
+        this._openCustomSongSelector(song => {
+            customInput = String(song.id);
+            customInputBeforeFocus = customInput;
+            commitCustomSongDraft();
+            updateSongUi();
+        });
+    }, () => songCategory === "custom");
 
     customSongInputHit.on("pointerdown", (pointer) => {
         focusCustomSongInput(pointer);
@@ -10466,6 +10566,7 @@ LevelEditor.methodNames = [
   "_setEditorSpawnTriggerRandomDelay",
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
+  "_openCustomSongSelector",
   "_openEditorZoomTriggerOptionsPopup",
   "_isEditorNineCirclesTriggerId",
   "_getEditorNineCirclesSpeed",

@@ -2062,7 +2062,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           updateBtnState();
           abortController = new AbortController();
           try {
-            const workerUrl = `${window._ngSongProxyUrl || "/cgi-bin/ngpx.py"}?id=${encodeURIComponent(lvl.customSongID)}`;
+            const workerUrl = window.getSongDownloadUrl(lvl.customSongID);
             const audioRes = await fetch(workerUrl, { signal: abortController.signal });
             if (!audioRes.ok) throw new Error("Failed to download audio from worker");
             const arrayBuf = await audioRes.arrayBuffer();
@@ -2193,7 +2193,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           const songKey = `ng_song_${customSongId}`;
           let arrayBuf = await window.SongDB.load(customSongId);
           if (!arrayBuf) {
-            const audioRes = await fetch(`${window._ngSongProxyUrl || "/cgi-bin/ngpx.py"}?id=${encodeURIComponent(customSongId)}`);
+            const audioRes = await fetch(window.getSongDownloadUrl(customSongId));
             if (!audioRes.ok) throw new Error(`Song download failed with HTTP ${audioRes.status}`);
             arrayBuf = await audioRes.arrayBuffer();
             if (!arrayBuf.byteLength) throw new Error("Downloaded song was empty");
@@ -3142,7 +3142,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
             let arrayBuf = await window.SongDB.load(songId);
             if (!arrayBuf) {
-              const audioRes = await fetch(`${window._ngSongProxyUrl || "/cgi-bin/ngpx.py"}?id=${encodeURIComponent(songId)}`);
+              const audioRes = await fetch(window.getSongDownloadUrl(songId));
               if (!audioRes.ok) throw new Error(`Song download failed with HTTP ${audioRes.status}`);
               arrayBuf = await audioRes.arrayBuffer();
               if (!arrayBuf.byteLength) throw new Error("Downloaded song was empty");

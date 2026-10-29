@@ -202,7 +202,7 @@ class AudioManager {
         let arrayBuf = await window.SongDB.load(songId);
 
         if (!arrayBuf) {
-          const downloadUrl = `${window._ngSongProxyUrl || "/cgi-bin/ngpx.py"}?id=${encodeURIComponent(songId)}`;
+          const downloadUrl = window.getSongDownloadUrl(songId);
           const audioRes = await fetch(downloadUrl);
           if (!audioRes.ok) throw new Error(`Song download failed with HTTP ${audioRes.status}`);
           arrayBuf = await audioRes.arrayBuffer();
