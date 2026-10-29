@@ -9318,6 +9318,34 @@ class LevelEditor {
         this._buildObjectGrid?.();
     }
 );
+
+    const bookmarkButton = (x, text, callback) => {
+        const button = this.add.nineslice(x, screenHeight - 116, "GJ_button01", null, 170, 42, 14, 14, 14, 14).setScale(0.78).setInteractive();
+        const label = this.add.bitmapText(x, screenHeight - 116, "bigFont", text, 17).setOrigin(0.5);
+        this._editorMenuContainer.add([button, label]);
+        this._makeCompositeBouncyButton(button, [button, label], 0.78, callback, () => true);
+    };
+    bookmarkButton(screenWidth / 2 - 190, "SAVE VIEW", () => this._saveEditorCameraBookmark());
+    bookmarkButton(screenWidth / 2, "JUMP TO VIEW", () => this._restoreEditorCameraBookmark());
+    bookmarkButton(screenWidth / 2 + 190, "CLEAR VIEW", () => this._clearEditorCameraBookmark());
+  }
+
+  _editorCameraBookmarkKey() {
+    return `editor_camera_bookmark_${String(window.currentlevel?.[2] || "local")}`;
+  }
+  _saveEditorCameraBookmark() {
+    localStorage.setItem(this._editorCameraBookmarkKey(), JSON.stringify({
+      cameraX: Number(this._cameraX || 0), cameraY: Number(this._cameraY || 0), zoom: Number(this._editorZoom || 1)
+    }));
+  }
+  _restoreEditorCameraBookmark() {
+    let bookmark = null;
+    try { bookmark = JSON.parse(localStorage.getItem(this._editorCameraBookmarkKey()) || "null"); } catch (_) {}
+    if (!bookmark) return;
+    this._setEditorZoomInstant(Number(bookmark.zoom) || 1, Number(bookmark.cameraX) || 0, Number(bookmark.cameraY) || 0);
+  }
+  _clearEditorCameraBookmark() {
+    localStorage.removeItem(this._editorCameraBookmarkKey());
   }
 
 
