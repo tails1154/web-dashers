@@ -1671,7 +1671,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const popup = this.add.container(centerX, sh / 2).setScrollFactor(0).setDepth(800);
         const bg = this.add.rectangle(0, 0, Math.min(650, sw - 50), 300, 0x171717, 0.98).setStrokeStyle(4, 0xffd84d, 1);
         const heading = this.add.bitmapText(0, -115, "bigFont", "Level Description", 34).setOrigin(0.5).setTint(0xffd84d);
-        const body = this.add.text(0, -35, String(lvl.description || "No description").replace(/\s+/g, " ").trim(), {
+        const description = String(lvl.description || "No description").replace(/\s+/g, " ").trim();
+        const body = this.add.text(0, -35, `ID: ${String(lvl.id || "Unknown")}\n\n${description}`, {
           fontFamily: "Arial", fontSize: "22px", color: "#ffffff", align: "center",
           wordWrap: { width: Math.min(570, sw - 110) }, lineSpacing: 6
         }).setOrigin(0.5);
