@@ -229,6 +229,14 @@
         const value = used ? `${Math.round(used / 1048576)} MB` : "browser unavailable";
         ensureLabel(scene, "_v3MemoryLabel", screenW() - 14, screenH() - 28, { align: "right" }).setOrigin(1, 0).setText(`Memory: ${value}`).setVisible(true);
       } else if (scene._v3MemoryLabel) scene._v3MemoryLabel.setVisible(false);
+      if (this.isEnabled("visuals_camera_bounds_guide") && !scene._menuActive) {
+        if (!scene._v3BoundsGuide) scene._v3BoundsGuide = scene.add.graphics().setScrollFactor(0).setDepth(8999);
+        scene._v3BoundsGuide.clear().lineStyle(2, 0x7ad7ff, 0.7).strokeRect(4, 4, screenW() - 8, screenH() - 8).setVisible(true);
+      } else if (scene._v3BoundsGuide) scene._v3BoundsGuide.setVisible(false);
+      if (this.isEnabled("input_input_latency_meter") && !scene._menuActive) {
+        const fps = Number(scene.game?.loop?.actualFps || 0);
+        ensureLabel(scene, "_v3LatencyLabel", screenW() - 14, 78, { align: "right" }).setOrigin(1, 0).setText(`Frame: ${fps ? `${Math.round(1000 / fps)}ms` : "--"}`).setVisible(true);
+      } else if (scene._v3LatencyLabel) scene._v3LatencyLabel.setVisible(false);
     },
     run(id, scene = window._wdGameScene) {
       const feature = features.find(item => item.id === id);
