@@ -1821,7 +1821,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       let ownerDeleteBtn = null;
       let openModeratorMenuNext = false;
       if (window.AccountAPI?.isModerator?.()) {
-        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
+        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet04", "GJ_featuredBtn_001.png")
           .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
         this._makeBouncyButton(moderatorBtn, sideBtnScale, () => {
           openModeratorMenuNext = true;
@@ -6398,8 +6398,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
   }
   _updateBestSplit() {
     if (!window.bestSplit || window.streamMode || window.isEditor || this._menuActive || this._levelWon) {
-      if (this._bestSplitLabel) this._bestSplitLabel.setVisible(false);
+      if (this._bestSplitLabel?.scene === this && this._bestSplitLabel.active !== false) this._bestSplitLabel.setVisible(false);
       return;
+    }
+    if (this._bestSplitLabel && (this._bestSplitLabel.scene !== this || this._bestSplitLabel.active === false || !this._bestSplitLabel.texture)) {
+      this._bestSplitLabel = null;
     }
     if (!this._bestSplitLabel) {
       this._bestSplitLabel = this.add.text(screenWidth / 2, 84, "", {
