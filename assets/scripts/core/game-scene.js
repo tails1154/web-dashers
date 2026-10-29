@@ -9175,7 +9175,8 @@ _buildSettingsPopup() {
       // slope surface. Follow that corrected contact point directly instead
       // of waiting for the normal flat-ground dead-zone, otherwise the player
       // can visibly drift toward the top/bottom of the viewport on ramps.
-      const activeSlope = this._player?._activeSlopeObj || this._player?._prevSlopeObj;
+      const activeSlope = this._player?._activeSlopeObj || this._player?._prevSlopeObj ||
+        this._player2?._activeSlopeObj || this._player2?._prevSlopeObj;
       if (activeSlope) {
         _0x1a27be = _0x2bc8fb - 320 + (typeof o !== 'undefined' ? o : 0);
       }
