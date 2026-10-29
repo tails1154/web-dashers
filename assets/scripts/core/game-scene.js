@@ -6826,6 +6826,57 @@ _buildPauseOverlay() {
     }
     this._runGoalLabel.setVisible(true);
   }
+  _segmentSplitsKey() {
+    return `wd_segment_splits_${String(window.currentlevel?.[2] || "level_1")}`;
+  }
+  _loadSegmentSplitBests() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(this._segmentSplitsKey()) || "{}");
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (_) { return {}; }
+  }
+  _updateSegmentSplits() {
+    if (!window.segmentSplits || window.streamMode || window.isEditor || this._menuActive || this._paused || this._state?.isDead || this._levelWon) return;
+    const endX = Number(this._level?.endXPos || 0);
+    if (endX <= 0) return;
+    const current = Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100)));
+    this._segmentSplitsShown = this._segmentSplitsShown instanceof Set ? this._segmentSplitsShown : new Set();
+    const split = [75, 50, 25].find(value => current >= value && !this._segmentSplitsShown.has(value));
+    if (split === undefined) return;
+    this._segmentSplitsShown.add(split);
+    const elapsed = Math.max(0, Number(this._playTime || 0));
+    const previous = Number(this._segmentSplitBests?.[split]);
+    const hasPrevious = Number.isFinite(previous) && previous > 0;
+    const delta = hasPrevious ? elapsed - previous : 0;
+    if (!hasPrevious || elapsed < previous) {
+      this._segmentSplitBests[split] = elapsed;
+      localStorage.setItem(this._segmentSplitsKey(), JSON.stringify(this._segmentSplitBests));
+    }
+    if (this._segmentSplitToast) {
+      this.tweens.killTweensOf(this._segmentSplitToast);
+      this._segmentSplitToast.destroy(true);
+    }
+    const comparison = hasPrevious ? `  ${delta <= 0 ? "-" : "+"}${Math.abs(delta).toFixed(2)}s` : "  FIRST SPLIT";
+    const toast = this.add.container(screenWidth / 2, 166).setScrollFactor(0).setDepth(95);
+    const background = this.add.rectangle(0, 0, 330, 54, 0x162f27, 0.95).setStrokeStyle(3, 0x86f5b2, 1);
+    const label = this.add.bitmapText(0, 0, "bigFont", `${split}% SPLIT  ${elapsed.toFixed(2)}s${comparison}`, 20).setOrigin(0.5).setTint(0x86f5b2);
+    toast.add([background, label]);
+    toast.alpha = 0;
+    this._segmentSplitToast = toast;
+    this.tweens.add({
+      targets: toast,
+      alpha: 1,
+      duration: 180,
+      hold: 1000,
+      yoyo: true,
+      onComplete: () => {
+        if (this._segmentSplitToast === toast) {
+          toast.destroy(true);
+          this._segmentSplitToast = null;
+        }
+      }
+    });
+  }
   _saveRunSnapshot() {
     const endX = Number(this._level?.endXPos || 0);
     const percent = endX > 0 ? Math.max(0, Math.min(100, Math.floor(Number(this._playerWorldX || 0) / endX * 100))) : 0;
@@ -7025,6 +7076,7 @@ _buildSettingsPopup() {
         "Best Split": "Shows whether your current progress is ahead of or behind your saved best percentage.",
         "Milestone Toasts": "Shows a short celebration when you pass 25%, 50%, or 75% of a level during an attempt.",
         "Death Summary": "Shows your attempt time, progress, and jump count briefly after dying.",
+        "Segment Splits": "Times your 25%, 50%, and 75% checkpoints and compares them with local best splits.",
         "Death Timeline": "Keeps a local timeline of where you died on each level and shows the recent percentages.",
         "Input History": "Shows the last eight gameplay input events without changing how the player moves.",
         "Stream Mode": "Hides gameplay HUD elements so the game is ready for Chromebook screen sharing or browser capture.",
@@ -7493,6 +7545,21 @@ _buildSettingsPopup() {
             true,
             "Input History"
         );
+        createToggle(container, column2X, startY + (spacingY * 2), "Segment Splits",
+            () => !!window.segmentSplits,
+            (v) => {
+                window.segmentSplits = !!v;
+                if (!v && this._segmentSplitToast) {
+                    this.tweens.killTweensOf(this._segmentSplitToast);
+                    this._segmentSplitToast.destroy(true);
+                    this._segmentSplitToast = null;
+                }
+            },
+            undefined,
+            22,
+            true,
+            "Segment Splits"
+        );
         createNumberInput(container, column2X, startY + spacingY, "Ghost Opacity",
             () => typeof window.replayGhostOpacity === "number" ? window.replayGhostOpacity : 0.34,
             (v) => window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(v) || 0.34)),
@@ -7580,6 +7647,7 @@ _buildSettingsPopup() {
         milestoneToasts: !!window.milestoneToasts,
         streamMode: !!window.streamMode,
         deathSummary: !!window.deathSummary,
+        segmentSplits: !!window.segmentSplits,
         replayGhostOpacity: Number(window.replayGhostOpacity) || 0.34,
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
@@ -7622,6 +7690,7 @@ _buildSettingsPopup() {
         milestoneToasts: false,
         streamMode: false,
         deathSummary: false,
+        segmentSplits: false,
         replayGhostOpacity: 0.34,
         showGlow: true,
         showEditorGlow: false,
@@ -7658,6 +7727,7 @@ _buildSettingsPopup() {
     window.milestoneToasts = !!data.milestoneToasts;
     window.streamMode = !!data.streamMode;
     window.deathSummary = !!data.deathSummary;
+    window.segmentSplits = !!data.segmentSplits;
     window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(data.replayGhostOpacity) || 0.34));
     window.showGlow = data.showGlow;
     window.showEditorGlow = data.showEditorGlow;
@@ -8816,6 +8886,13 @@ _buildSettingsPopup() {
     this._practiceBestPercent = parseFloat(localStorage.getItem("practiceBestPercent_" + (window.currentlevel[2] || "level_1")) || "0");
     this._runGoalPercent = this._loadRunGoal();
     this._runGoalReachedShown = false;
+    this._segmentSplitsShown = new Set();
+    this._segmentSplitBests = this._loadSegmentSplitBests();
+    if (this._segmentSplitToast) {
+      this.tweens.killTweensOf(this._segmentSplitToast);
+      this._segmentSplitToast.destroy(true);
+      this._segmentSplitToast = null;
+    }
     
     this._menuActive = false;
     this._coinCheatWarningShown = false;
@@ -9272,6 +9349,12 @@ _buildSettingsPopup() {
     }
     this._runGoalReachedShown = false;
     if (this._runGoalLabel) this._runGoalLabel.setVisible(false);
+    this._segmentSplitsShown = new Set();
+    if (this._segmentSplitToast) {
+      this.tweens.killTweensOf(this._segmentSplitToast);
+      this._segmentSplitToast.destroy(true);
+      this._segmentSplitToast = null;
+    }
     this._hadNewBest = false;
     this._levelWon = false;
     this._pendingStarReward = 0;
@@ -9906,6 +9989,7 @@ _buildSettingsPopup() {
     this._updateRunTimer(deltaTime);
     this._updateMilestoneToasts();
     this._updateRunGoal();
+    this._updateSegmentSplits();
     this._updateInputHistory();
     this._updateBestSplit();
     if (!this._menuActive && !this._levelWon && !window.isEditor) {
