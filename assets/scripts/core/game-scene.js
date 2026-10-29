@@ -13295,9 +13295,19 @@ _applyMirrorEffect() {
           return;
         }
         const code = rawCode.toLowerCase();
-        if (code === "featured") {
+        const vaultCodeActions = {
+          featured: () => this._openOnlineLevelsScene({ type: 6 }),
+          shop: () => this._openDiamondShop(true),
+          quests: () => this._showQuestPanel(),
+          paths: () => this._openPathsScene(),
+          gauntlets: () => this._openGauntletsMenu(),
+          lists: () => this._openListsMenu(),
+          packs: () => this._openMapPacksMenu()
+        };
+        const vaultAction = vaultCodeActions[code];
+        if (vaultAction) {
           close();
-          this._openOnlineLevelsScene({ type: 6 });
+          vaultAction();
           return;
         }
         if (challengeLocked) {
