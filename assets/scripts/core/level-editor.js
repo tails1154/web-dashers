@@ -285,6 +285,10 @@ class LevelEditor {
         if (event?.ctrlKey || event?.metaKey) {
             if (!this._editorTextInputFocused && !this._editorPlaytestActive && !this._editorPlaytestPaused) {
                 this._saveEditorLevel();
+                this._editorAutosaveNotice?.setText("Saved").setVisible(true).setAlpha(0.86);
+                this.time.delayedCall(1400, () => {
+                    if (window.isEditor && this._editorAutosaveNotice?.active) this._editorAutosaveNotice.setVisible(false);
+                });
             }
             return;
         }
