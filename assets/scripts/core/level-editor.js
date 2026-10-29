@@ -6626,6 +6626,13 @@ class LevelEditor {
   _openSelectedEditorInspector() {
     const selected = this._getSelectedEditorSaveObjects();
     if (!selected.length) return;
+    const xs = selected.map(object => Number(object.x || 0));
+    const ys = selected.map(object => Number(object.y || 0));
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const groups = [...new Set(selected.flatMap(object => this._getEditorObjectGroupIds(object)))].sort((a, b) => a - b);
     const lines = selected.slice(0, 8).map((object, index) => {
       const groups = this._getEditorObjectGroupIds(object).join(".") || "-";
       return `${index + 1}. ID ${object.id}  X ${Number(object.x || 0).toFixed(1)}  Y ${Number(object.y || 0).toFixed(1)}  R ${Number(object.rot || 0)}°  S ${Number(object.scale || 1).toFixed(2)}  G ${groups}`;
@@ -6633,7 +6640,7 @@ class LevelEditor {
     const suffix = selected.length > 8 ? `\n…and ${selected.length - 8} more selected objects.` : "";
     window.showNativePhaserDialog(this, {
       title: "OBJECT INSPECTOR",
-      message: `${selected.length} object${selected.length === 1 ? "" : "s"} selected.\n${lines.join("\n")}${suffix}`
+      message: `${selected.length} object${selected.length === 1 ? "" : "s"} selected.\nBounds X ${minX.toFixed(1)}..${maxX.toFixed(1)}  Y ${minY.toFixed(1)}..${maxY.toFixed(1)}\nGroups: ${groups.join(".") || "-"}\n${lines.join("\n")}${suffix}`
     });
   }
 
