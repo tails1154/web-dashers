@@ -10669,6 +10669,48 @@ _applyMirrorEffect() {
     this._pendingStarReward = Math.max(0, Number(amount) || 0);
   }
 
+  // Port of the native EndLevelLayer::starEnterFinished effect: a short
+  // reward burst followed by an expanding circle wave at the star counter.
+  _playNativeStarEnterEffect(x, y) {
+    const ring = this.add.graphics()
+      .setScrollFactor(0)
+      .setDepth(222)
+      .setPosition(x, y)
+      .setAlpha(0.95);
+    ring.lineStyle(4, 0xfff2a1, 0.95).strokeCircle(0, 0, 10);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 5.5,
+      scaleY: 5.5,
+      alpha: 0,
+      duration: 360,
+      ease: "Quad.Out",
+      onComplete: () => ring.destroy()
+    });
+
+    const sparks = [];
+    for (let index = 0; index < 8; index++) {
+      const spark = this.add.rectangle(x, y, 5, 12, 0xfff2a1)
+        .setScrollFactor(0)
+        .setDepth(223)
+        .setOrigin(0.5);
+      const angle = (Math.PI * 2 * index) / 8;
+      sparks.push(spark);
+      this.tweens.add({
+        targets: spark,
+        x: x + Math.cos(angle) * 42,
+        y: y + Math.sin(angle) * 42,
+        angle: Phaser.Math.RadToDeg(angle) + 90,
+        alpha: 0,
+        scale: 0.35,
+        duration: 320,
+        ease: "Quad.Out",
+        onComplete: () => spark.destroy()
+      });
+    }
+    this._audio.playEffect("highscoreGet02");
+  }
+
   _showRewardAnimationTest() {
     if (this._rewardAnimationTestActive) return;
     this._rewardAnimationTestActive = true;
@@ -11526,6 +11568,9 @@ _applyMirrorEffect() {
               arrivedStars += 1;
               starCounter.setText(`Stars: ${startingStars + arrivedStars}`);
               this._refreshIconCoinHud?.();
+              if (arrivedStars === count) {
+                this._playNativeStarEnterEffect(targetX, targetY);
+              }
             }
           });
         }
