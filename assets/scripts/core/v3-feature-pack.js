@@ -317,6 +317,18 @@
         const fps = Number(scene.game?.loop?.actualFps || 0);
         ensureLabel(scene, "_v3LatencyLabel", screenW() - 14, 78, { align: "right" }).setOrigin(1, 0).setText(`Frame: ${fps ? `${Math.round(1000 / fps)}ms` : "--"}`).setVisible(true);
       } else if (scene._v3LatencyLabel) scene._v3LatencyLabel.setVisible(false);
+      const currentLevelId = String(window.currentlevel?.[2] || "level_1");
+      if (!scene._menuActive && (this.isEnabled("progression_progress_graph") || this.isEnabled("progression_death_heatmap") || this.isEnabled("progression_personal_records"))) {
+        const history = readList("wd_v3_run_history").filter(item => item.levelId === currentLevelId);
+        const last = history.at(-1);
+        const deaths = readList("wd_v3_death_heatmap").filter(item => item.levelId === currentLevelId).reduce((sum, item) => sum + Number(item.count || 0), 0);
+        const record = readList("wd_v3_personal_records").find(item => item.levelId === currentLevelId);
+        const parts = [];
+        if (this.isEnabled("progression_progress_graph")) parts.push(`Last ${last?.percent ?? 0}%`);
+        if (this.isEnabled("progression_death_heatmap")) parts.push(`Deaths ${deaths}`);
+        if (this.isEnabled("progression_personal_records")) parts.push(`Best attempts ${record?.attempts ?? "--"}`);
+        ensureLabel(scene, "_v3ProgressLabel", screenW() / 2, 28, { align: "center" }).setOrigin(0.5, 0).setText(parts.join("  •  ")).setVisible(true);
+      } else if (scene._v3ProgressLabel) scene._v3ProgressLabel.setVisible(false);
     },
     run(id, scene = window._wdGameScene) {
       const feature = features.find(item => item.id === id);
