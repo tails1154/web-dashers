@@ -101,6 +101,7 @@ class LevelEditor {
     this._editorTab = "build";
     window.editorSelectedObject = -1;
     this._editorZoom = 1.0;
+    this._editorGridSize = this._loadEditorGridSize();
     this._editorPlaytestActive = false;
     this._editorPlaytestPaused = false;
     this._editorPlaytestSavedView = null;
@@ -324,6 +325,10 @@ class LevelEditor {
     const objectSearchLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 218, "bigFont", "SEARCH", 15).setOrigin(0.5);
     this._toolbox.add([objectSearchButton, objectSearchLabel]);
     this._makeCompositeBouncyButton(objectSearchButton, [objectSearchButton, objectSearchLabel], 0.78, () => this._openEditorObjectSearch());
+    const gridSizeButton = this.add.nineslice(screenWidth - 104, screenHeight - 170, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
+    const gridSizeLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 170, "bigFont", "GRID", 15).setOrigin(0.5);
+    this._toolbox.add([gridSizeButton, gridSizeLabel]);
+    this._makeCompositeBouncyButton(gridSizeButton, [gridSizeButton, gridSizeLabel], 0.78, () => this._openEditorGridSizeDialog());
 
     const tabX = (screenWidth / 2) - 475;
     const tabYStart = screenHeight - 150;
@@ -2890,7 +2895,7 @@ class LevelEditor {
     const g = this._editorGridGraphics;
     g.clear();
     const zoom = this._editorZoom || 1.0;
-    const gridSize = 60;
+    const gridSize = this._editorGridSize || 60;
     g.lineStyle(1, 0x000000, 0.4);
 
     const camX = this._cameraX / zoom;
@@ -3053,8 +3058,9 @@ class LevelEditor {
     const worldY = (this.input.activePointer.y + this._cameraY) / this._editorZoom;
 
     const useV3Snap = window.wdEditorSnapToGrid !== false;
-    const snapX = useV3Snap ? Math.floor(worldX / 60) * 60 : worldX;
-    const snapY = useV3Snap ? Math.floor((worldY + 20) / 60) * 60 : worldY;
+    const gridSize = this._editorGridSize || 60;
+    const snapX = useV3Snap ? Math.floor(worldX / gridSize) * gridSize : worldX;
+    const snapY = useV3Snap ? Math.floor((worldY + 20) / gridSize) * gridSize : worldY;
 
     const transformedX = (snapX / 2) + 15;
     const transformedY = -(snapY / 2) + 225;
@@ -9441,6 +9447,31 @@ class LevelEditor {
   _clearEditorCameraBookmark() {
     localStorage.removeItem(this._editorCameraBookmarkKey());
   }
+  _editorGridSizeKey() {
+    return `editor_grid_size_${String(window.currentlevel?.[2] || "local")}`;
+  }
+  _loadEditorGridSize() {
+    const value = Number(localStorage.getItem(this._editorGridSizeKey()) || 60);
+    return Number.isFinite(value) ? Phaser.Math.Clamp(Math.round(value / 5) * 5, 15, 240) : 60;
+  }
+  _openEditorGridSizeDialog() {
+    window.showNativePhaserDialog(this, {
+      title: "EDITOR GRID SIZE",
+      message: `Current grid: ${this._editorGridSize}px. Enter a value from 15 to 240.`,
+      input: true,
+      defaultValue: String(this._editorGridSize || 60),
+      placeholder: "Grid size",
+      confirmLabel: "APPLY",
+      cancelLabel: "CANCEL",
+      onConfirm: value => {
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return;
+        this._editorGridSize = Phaser.Math.Clamp(Math.round(parsed / 5) * 5, 15, 240);
+        localStorage.setItem(this._editorGridSizeKey(), String(this._editorGridSize));
+        this._updateEditorGrid();
+      }
+    });
+  }
   _editorSelectionSetsKey() {
     return `editor_selection_sets_${String(window.currentlevel?.[2] || "local")}`;
   }
@@ -9757,6 +9788,9 @@ LevelEditor.methodNames = [
   "_saveEditorCameraBookmark",
   "_restoreEditorCameraBookmark",
   "_clearEditorCameraBookmark",
+  "_editorGridSizeKey",
+  "_loadEditorGridSize",
+  "_openEditorGridSizeDialog",
   "_editorSelectionSetsKey",
   "_readEditorSelectionSets",
   "_saveEditorSelectionSet",
