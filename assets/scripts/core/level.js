@@ -1041,7 +1041,9 @@ window.LevelObject = class LevelObject {
       .filter(levelObj => levelObj && (Number(levelObj.id) === 5070 || Number(levelObj.id) === 5071))
       .map(levelObj => ({
         x: Number(levelObj.x || 0) * 2,
-        enabled: Number(levelObj.id) === 5070
+        enabled: Number(levelObj.id) === 5070,
+        saveObj: levelObj,
+        speed: Math.max(0.1, Math.min(60, parseFloat(levelObj._raw?.[28] ?? levelObj._raw?.["28"] ?? 8) || 8))
       }))
       .sort((a, b) => a.x - b.x);
     this._nineCirclesTriggerIdx = 0;
@@ -3959,6 +3961,7 @@ window.LevelObject = class LevelObject {
       const trigger = this._nineCirclesTriggers[this._nineCirclesTriggerIdx];
       if (trigger.x > playerX) break;
       this._nineCirclesEnabled = !!trigger.enabled;
+      this._nineCirclesSpeed = trigger.speed || 8;
       if (!this._nineCirclesEnabled) this._clearNineCirclesEffect();
       this._nineCirclesTriggerIdx++;
     }
@@ -3981,7 +3984,8 @@ window.LevelObject = class LevelObject {
     // Nine Circles is a traveling four-bar flash: each connected-looking
     // diagonal band alternates between a bright neon block and a near-black
     // block, then the ON bar advances to the next band.
-    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * 8;
+    const flashSpeed = Math.max(0.1, Math.min(60, Number(this._nineCirclesSpeed) || 8));
+    this._nineCirclesPhase += Math.max(0, Number(dt) || 0) * flashSpeed;
     const activeBand = Math.floor(this._nineCirclesPhase) % 4;
     const brightTint = 0xf044ff;
     const darkTint = 0x160b24;
@@ -4003,6 +4007,7 @@ window.LevelObject = class LevelObject {
   resetNineCirclesTriggers() {
     this._nineCirclesTriggerIdx = 0;
     this._nineCirclesPhase = 0;
+    this._nineCirclesSpeed = 8;
     this._clearNineCirclesEffect();
     this._nineCirclesEnvironmentApplied = false;
     this._nineCirclesPreviousEnvironment = null;

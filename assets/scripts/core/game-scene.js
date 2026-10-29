@@ -6429,6 +6429,7 @@ _buildSettingsPopup() {
         "Enable Portal Guide": "Enables extra indicators on portals.",
         "Enable Orb Guide": "Enables extra indicators on orbs.",
         "Practice Music Bypass": "Plays normal mode music in practice mode.",
+        "Fast Reset": "Cuts the death respawn delay from 1 second to 0.5 seconds.",
         "Show Percentage": "Shows the percentage you are at in a level.",
         "Percentage Decimals": "Shows decimals in level progress.",
         "Startpos Switcher": "Switches between start positions in a level.",

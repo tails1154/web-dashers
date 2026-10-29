@@ -6329,6 +6329,8 @@ class LevelEditor {
         this._openEditorSpawnTriggerOptionsPopup(saveObj);
     } else if (this._isEditorZoomTriggerId(saveObj.id)) {
         this._openEditorZoomTriggerOptionsPopup(saveObj);
+    } else if (this._isEditorNineCirclesTriggerId(saveObj.id)) {
+        this._openEditorNineCirclesOptionsPopup(saveObj);
     } else if (this._isEditorRotateTriggerId(saveObj.id)) {
         this._openEditorRotateTriggerOptionsPopup(saveObj);
     } else if (this._isEditorStartPositionId(saveObj.id)) {
@@ -6353,6 +6355,117 @@ class LevelEditor {
 
   _isEditorZoomTriggerId(id) {
     return parseInt(id ?? 0, 10) === 1913;
+  }
+
+
+  _isEditorNineCirclesTriggerId(id) {
+    return [5070, 5071].includes(parseInt(id ?? 0, 10));
+  }
+
+
+  _getEditorNineCirclesSpeed(saveObj) {
+    const raw = saveObj?._raw || {};
+    const speed = parseFloat(raw[28] ?? raw["28"] ?? 8);
+    return Number.isFinite(speed) ? Phaser.Math.Clamp(speed, 0.1, 60) : 8;
+  }
+
+
+  _setEditorNineCirclesSpeed(saveObj, value) {
+    if (!saveObj) return;
+    const parsed = parseFloat(value);
+    const speed = Phaser.Math.Clamp(Number.isFinite(parsed) ? parsed : 8, 0.1, 60);
+    saveObj._raw = saveObj._raw || {};
+    saveObj._raw[28] = String(Number(speed.toFixed(3)));
+    saveObj._raw["28"] = saveObj._raw[28];
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    for (const trigger of this._level?._nineCirclesTriggers || []) {
+      if (trigger?.uid === linkedId || trigger?.saveObj === saveObj) trigger.speed = speed;
+    }
+  }
+
+
+  _openEditorNineCirclesOptionsPopup(saveObj) {
+    if (!saveObj) return;
+    this._closeEditorObjectOptionsPopup();
+
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const panelW = 600;
+    const panelH = 300;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.5).setOrigin(0).setInteractive());
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 42, "bigFont", "Nine Circles Trigger", 36).setOrigin(0.5));
+
+    const close = this.add.image(-panelW / 2 + 18, -panelH / 2 + 18, "GJ_WebSheet", "GJ_closeBtn_001.png")
+      .setScale(0.75).setInteractive();
+    inner.add(close);
+    this._makeBouncyButton(close, 0.75, () => this._closeEditorObjectOptionsPopup());
+
+    const fieldWidth = 210;
+    const fieldX = 0;
+    const fieldY = -20;
+    const fieldBg = this.add.rectangle(fieldX, fieldY, fieldWidth, 52, 0x000000, 0.42).setInteractive();
+    const fieldText = this.add.bitmapText(fieldX, fieldY, "bigFont", "", 28).setOrigin(0.5);
+    const fieldLabel = this.add.bitmapText(fieldX, fieldY - 42, "goldFont", "Flash Speed", 24).setOrigin(0.5);
+    inner.add([fieldBg, fieldText, fieldLabel]);
+
+    let focused = false;
+    let value = String(this._getEditorNineCirclesSpeed(saveObj));
+    const render = () => fieldText.setText(`${focused ? value : String(this._getEditorNineCirclesSpeed(saveObj))}${focused ? "|" : ""}`);
+    const commit = () => {
+      this._setEditorNineCirclesSpeed(saveObj, value);
+      value = String(this._getEditorNineCirclesSpeed(saveObj));
+      render();
+    };
+    const blur = (save) => {
+      if (!focused) return;
+      if (save) commit();
+      focused = false;
+      this._editorTextInputFocused = false;
+      render();
+    };
+    fieldBg.on("pointerdown", (pointer) => {
+      value = String(this._getEditorNineCirclesSpeed(saveObj));
+      focused = true;
+      this._editorTextInputFocused = true;
+      render();
+      pointer?.event?.preventDefault?.();
+      pointer?.event?.stopPropagation?.();
+    });
+    this._editorGroupInputPointerDownHandler = (pointer) => {
+      if (focused && (Math.abs(pointer.x - (sw / 2 + fieldX)) > fieldWidth / 2 || Math.abs(pointer.y - (sh / 2 + fieldY)) > 30)) blur(true);
+    };
+    this.input.on("pointerdown", this._editorGroupInputPointerDownHandler);
+    this._editorObjectOptionsKeyHandler = (event) => {
+      if (event.key === "Escape") {
+        if (focused) blur(false);
+        else this._closeEditorObjectOptionsPopup();
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (!focused) return;
+      if (event.key === "Enter") blur(true);
+      else if (event.key === "Backspace") value = value.slice(0, -1);
+      else if (/^[0-9.]$/.test(event.key) && value.length < 8 && (event.key !== "." || !value.includes("."))) value += event.key;
+      else if (event.key.length !== 1) return;
+      event.preventDefault();
+      event.stopPropagation();
+      render();
+    };
+    window.addEventListener("keydown", this._editorObjectOptionsKeyHandler);
+    render();
+
+    this._makeEditorOkButton(inner, -100, panelH / 2 - 48, "CANCEL", () => this._closeEditorObjectOptionsPopup());
+    this._makeEditorOkButton(inner, 100, panelH / 2 - 48, "OK", () => {
+      blur(true);
+      this._closeEditorObjectOptionsPopup();
+    });
   }
 
 
@@ -9466,6 +9579,10 @@ LevelEditor.methodNames = [
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
   "_openEditorZoomTriggerOptionsPopup",
+  "_isEditorNineCirclesTriggerId",
+  "_getEditorNineCirclesSpeed",
+  "_setEditorNineCirclesSpeed",
+  "_openEditorNineCirclesOptionsPopup",
   "_openEditorRotateTriggerOptionsPopup",
   "_isEditorColorTriggerTouchTriggered",
   "_setEditorColorTriggerTouchTriggered",
