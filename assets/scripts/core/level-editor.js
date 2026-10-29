@@ -2818,7 +2818,7 @@ class LevelEditor {
 
   _duplicateSelectedObject() {
     const selectedObjectIds = this._getCurrentSelectedEditorObjectIds();
-    if (!selectedObjectIds.length) return;
+    if (!selectedObjectIds.length) return [];
 
     const newObjectIds = [];
 
@@ -2882,6 +2882,7 @@ class LevelEditor {
     this._applyEditorLayerFilter?.();
     this._refreshEditorCollisionCaches();
     this._buildObjectGrid();
+    return newObjectIds;
   }
 
 
@@ -2925,6 +2926,36 @@ class LevelEditor {
     );
   }
 
+  _duplicateSelectedObjectsMirrored(axis) {
+    const selectedObjectIds = this._getCurrentSelectedEditorObjectIds();
+    const sourceEntries = selectedObjectIds
+      .filter(objectId => !this._isEditorObjectLocked(objectId))
+      .map(objectId => ({ objectId, saveObj: this._getEditorSaveObjectForObjectId(objectId) }))
+      .filter(entry => entry.saveObj);
+    if (!sourceEntries.length) return;
+
+    const xs = sourceEntries.map(entry => Number(entry.saveObj.x || 0));
+    const ys = sourceEntries.map(entry => Number(entry.saveObj.y || 0));
+    const center = axis === "y"
+      ? (Math.min(...ys) + Math.max(...ys)) / 2
+      : (Math.min(...xs) + Math.max(...xs)) / 2;
+    const newObjectIds = this._duplicateSelectedObject();
+    if (!Array.isArray(newObjectIds) || !newObjectIds.length) return;
+
+    newObjectIds.forEach((newObjectId, index) => {
+      const source = sourceEntries[index]?.saveObj;
+      const clone = this._getEditorSaveObjectForObjectId(newObjectId);
+      if (!source || !clone) return;
+      const target = axis === "y" ? (center * 2 - Number(source.y || 0)) : (center * 2 - Number(source.x || 0));
+      this._selectEditorObjectsByIds([newObjectId], 0x00ffff);
+      if (axis === "y") this._moveObject(0, (Number(clone.y || 0) - target) * 2);
+      else this._moveObject((target - Number(clone.x || 0)) * 2, 0);
+      this._flipObject(axis);
+    });
+    this._selectEditorObjectsByIds(newObjectIds, 0x00ffff);
+    this._refreshEditorCollisionCaches();
+  }
+
   _openEditorAlignPopup() {
     const selected = this._getCurrentSelectedEditorObjectIds();
     if (selected.length < 2) return;
@@ -2939,13 +2970,19 @@ class LevelEditor {
       { key: "mirrorY", label: "MIRROR Y" },
       { key: "snap", label: "SNAP GRID" },
       { key: "rotate45", label: "ROTATE 45" },
-      { key: "rotate90", label: "ROTATE 90" }
+      { key: "rotate90", label: "ROTATE 90" },
+      { key: "duplicateMirrorX", label: "DUP MIRROR X" },
+      { key: "duplicateMirrorY", label: "DUP MIRROR Y" }
     ];
     this._openEditorHorizontalOptionPopup(
       "ALIGN OBJECTS",
       options,
       "",
-      option => this._alignSelectedEditorObjects(option.key),
+      option => option.key === "duplicateMirrorX"
+        ? this._duplicateSelectedObjectsMirrored("x")
+        : option.key === "duplicateMirrorY"
+          ? this._duplicateSelectedObjectsMirrored("y")
+          : this._alignSelectedEditorObjects(option.key),
       (parent, option, ox, oy, choose) => {
         const root = this.add.container(ox, oy);
         const background = this.add.nineslice(0, 0, "GJ_button01", null, 118, 42, 12, 12, 12, 12).setScale(0.8).setInteractive();
@@ -10243,6 +10280,7 @@ LevelEditor.methodNames = [
   "_duplicateSelectedObject",
   "_sendSelectedEditorObjectsToTop",
   "_focusEditorSelection",
+  "_duplicateSelectedObjectsMirrored",
   "_deleteSelectedObject",
   "_updateEditorActionButtons",
   "_updateEditorGrid",
