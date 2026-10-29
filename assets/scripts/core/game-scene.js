@@ -9171,10 +9171,22 @@ _buildSettingsPopup() {
         // only the primary player's lane.
         _0x2bc8fb = (Number(this._state.y) + Number(this._state2.y)) / 2;
       }
-      let _0x259956 = 140;
-      let _0x5025ec = 80;
+      // Slope collision snaps the player's corrected Y to the transformed
+      // slope surface. Follow that corrected contact point directly instead
+      // of waiting for the normal flat-ground dead-zone, otherwise the player
+      // can visibly drift toward the top/bottom of the viewport on ramps.
+      const activeSlope = this._player?._activeSlopeObj || this._player?._prevSlopeObj;
+      if (activeSlope) {
+        _0x1a27be = _0x2bc8fb - 320 + (typeof o !== 'undefined' ? o : 0);
+      }
+      let _0x259956 = activeSlope ? 24 : 140;
+      let _0x5025ec = activeSlope ? 24 : 80;
       let _0x1f7976 = explosionPiece - (typeof o !== 'undefined' ? o : 0) + 320;
-      if (this._state.gravityFlipped) {
+      if (activeSlope) {
+        // Keep the slope target above; the smaller thresholds are retained
+        // for readability and for callers that inspect this routine while a
+        // contact is being handed off.
+      } else if (this._state.gravityFlipped) {
         if (_0x2bc8fb > _0x1f7976 + _0x5025ec) {
           _0x1a27be = _0x2bc8fb - 320 - _0x5025ec + (typeof o !== 'undefined' ? o : 0);
         } else if (_0x2bc8fb < _0x1f7976 - _0x259956) {
