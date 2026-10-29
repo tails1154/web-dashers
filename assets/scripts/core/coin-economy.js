@@ -104,7 +104,8 @@
     // The normal speed setting is represented by 1 in the game/mod state.
     // Only an explicitly different value should disable coin collection.
     const speedhackValue = window.speedhack ?? window.speedHack ?? window.speedHackEnabled;
-    if (speedhackValue !== undefined && speedhackValue !== null && Number(speedhackValue) !== 1 && Boolean(speedhackValue)) flags.push("speedhack");
+    const numericSpeed = Number(speedhackValue);
+    if (speedhackValue !== undefined && speedhackValue !== null && Number.isFinite(numericSpeed) && numericSpeed !== 1) flags.push("speedhack");
     // A loaded/idle macro bot (or a recording) is not a hack. Only playback
     // injects inputs and should disable rewards.
     if (window.bot || window.botMode || scene?._macroBot?.playing === true) flags.push("bot");

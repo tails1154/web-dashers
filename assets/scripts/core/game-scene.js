@@ -10290,11 +10290,11 @@ _buildSettingsPopup() {
           this._level?.topContainer?.bringToTop?.(this._versusLevelIcon);
     }
 
+    const _activeRunCheatFlags = window.WDCoinEconomy?.getCheatFlags?.(this) || [];
+    const _activeRunHasHack = _activeRunCheatFlags.length > 0;
     if (this._versusActive && !this._versusFinished && (
       this._practicedMode?.practiceMode ||
-      window.noClip ||
-      this._macroBot?.playing === true ||
-      Number(window.speedHack || 0) > 1 ||
+      _activeRunHasHack ||
       this._startPosIndex !== -1
     )) {
       this._disqualifyVersusForCheating?.();
@@ -10303,7 +10303,7 @@ _buildSettingsPopup() {
 
     // Any assist invalidates this run.  Invalid runs still play normally, but
     // never write normal/practice percentage progress or completion rewards.
-    if (window.noClip || this._macroBot?.playing === true || Number(window.speedHack || 0) > 1 || this._startPosIndex !== -1) {
+    if (_activeRunHasHack || this._startPosIndex !== -1) {
       this._runDisqualified = true;
       window._gdAchievementsBlocked = true;
       const currentId = String(window.currentlevel?.[2] || "");
@@ -10313,7 +10313,7 @@ _buildSettingsPopup() {
           const record = levels.find(level => String(level?.createdId) === currentId);
           if (record) {
             record.hackVerified = true;
-            record.verification_hacks = Boolean(window.noClip || this._macroBot?.playing === true || Number(window.speedHack || 0) > 1);
+            record.verification_hacks = _activeRunHasHack;
             record.verification_start_pos = this._startPosIndex !== -1;
             localStorage.setItem("created_levels", JSON.stringify(levels));
           }
