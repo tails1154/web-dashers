@@ -576,6 +576,56 @@ window.AccountAPI = {
     return data.profile;
   },
 
+  async updateProfile(fields = {}) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=profile`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name: String(fields.display_name || '').slice(0, 32), bio: String(fields.bio || '').slice(0, 240) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not update profile');
+    return data;
+  },
+
+  async getFriends() {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=friends`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load friends');
+    return data;
+  },
+
+  async updateFriend(username, action = 'request') {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=friends`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, action })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not update friend list');
+    return data;
+  },
+
+  async getMessages(username = '') {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const suffix = username ? `&with=${encodeURIComponent(username)}` : '';
+    const res = await fetch(`${window._gdProxyUrl}?action=messages${suffix}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load messages');
+    return data;
+  },
+
+  async sendMessage(username, text) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=messages`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: username, text: String(text || '').slice(0, 1000) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not send message');
+    return data;
+  },
+
   async profilePrompt() {
     return new Promise(resolve => {
       const shade = document.createElement('div');
@@ -594,6 +644,39 @@ window.AccountAPI = {
     });
   },
 
+  _socialForm(title, fields, submitLabel) {
+    return new Promise(resolve => {
+      const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
+      const shade = document.createElement('div');
+      shade.style.cssText = 'position:fixed;inset:0;z-index:100001;display:grid;place-items:center;background:rgba(0,0,0,.78);font-family:Arial,sans-serif;color:#fff;';
+      const form = document.createElement('form');
+      form.style.cssText = 'width:min(430px,calc(100vw - 32px));padding:26px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(145deg,#30395c,#111522);box-shadow:0 10px 0 #000,0 20px 55px #000b;';
+      form.innerHTML = `<h2 style="margin:0 0 18px;text-align:center;color:#ffd84d">${escape(title)}</h2>${fields.map(field => `<label style="display:block;margin:10px 0 5px;font-weight:bold">${escape(field.label)}</label>${field.multiline ? `<textarea name="${escape(field.name)}" maxlength="${field.maxlength || 1000}" rows="4" style="box-sizing:border-box;width:100%;padding:10px;border-radius:7px;border:2px solid #777;font:16px Arial;resize:vertical">${escape(field.value)}</textarea>` : `<input name="${escape(field.name)}" maxlength="${field.maxlength || 100}" value="${escape(field.value)}" style="box-sizing:border-box;width:100%;padding:10px;border-radius:7px;border:2px solid #777;font-size:16px">`}`).join('')}<p data-error style="min-height:18px;margin:10px 0;color:#ff8d8d;font-size:13px"></p><div style="display:flex;gap:8px;justify-content:center"><button type="submit" style="padding:10px 16px;border:0;border-radius:8px;background:#ffd84d;font-weight:bold;cursor:pointer">${escape(submitLabel)}</button><button type="button" data-cancel style="padding:10px 16px;border:0;border-radius:8px;background:#999;font-weight:bold;cursor:pointer">Cancel</button></div>`;
+      shade.appendChild(form); document.body.appendChild(shade);
+      const guard = event => { if (shade.contains(event.target)) event.stopPropagation(); };
+      ['keydown', 'keyup', 'keypress'].forEach(type => document.addEventListener(type, guard));
+      const finish = value => { ['keydown', 'keyup', 'keypress'].forEach(type => document.removeEventListener(type, guard)); shade.remove(); resolve(value); };
+      form.addEventListener('submit', event => { event.preventDefault(); finish(Object.fromEntries(new FormData(form).entries())); });
+      form.querySelector('[data-cancel]').addEventListener('click', () => finish(null));
+      shade.addEventListener('click', event => { if (event.target === shade) finish(null); });
+      form.querySelector('input, textarea')?.focus();
+    });
+  },
+
+  _socialList(title, content, onReady = null) {
+    const shade = document.createElement('div');
+    shade.style.cssText = 'position:fixed;inset:0;z-index:100002;display:grid;place-items:center;background:rgba(0,0,0,.78);font-family:Arial,sans-serif;color:#fff;';
+    const dialog = document.createElement('div');
+    dialog.style.cssText = 'width:min(500px,calc(100vw - 32px));max-height:80vh;overflow:auto;padding:26px;border:3px solid #ffd84d;border-radius:16px;background:linear-gradient(145deg,#30395c,#111522);box-shadow:0 10px 0 #000,0 20px 55px #000b;';
+    dialog.innerHTML = `<h2 style="margin:0 0 18px;text-align:center;color:#ffd84d">${String(title).replace(/[<>&"']/g, '')}</h2><div data-content>${content || '<span style="color:#aaa">Nothing here yet.</span>'}</div><div style="text-align:center;margin-top:18px"><button type="button" data-close style="padding:10px 18px;border:0;border-radius:8px;background:#999;font-weight:bold;cursor:pointer">Close</button></div>`;
+    shade.appendChild(dialog); document.body.appendChild(shade);
+    const close = () => shade.remove();
+    dialog.querySelector('[data-close]').addEventListener('click', close);
+    shade.addEventListener('click', event => { if (event.target === shade) close(); });
+    onReady?.(dialog, close);
+    return { shade, dialog, close };
+  },
+
   async findProfilePrompt(username = '') {
     const profile = username ? await this.searchProfile(username) : await this.profilePrompt();
     if (!profile) return null;
@@ -602,10 +685,65 @@ window.AccountAPI = {
     const dialog = document.createElement('div');
     dialog.style.cssText = 'width:min(430px,calc(100vw - 32px));padding:28px;border:3px solid #ffd84d;border-radius:18px;background:linear-gradient(145deg,#30395c,#111522);box-shadow:0 10px 0 #000,0 20px 55px #000b;text-align:center;';
     const safeName = String(profile.username || 'Unknown').replace(/[<>&"']/g, '');
-    dialog.innerHTML = `<h2 style="margin:0 0 20px;color:#ffd84d;font-size:30px">${safeName}</h2><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#ffe45c">${Number(profile.stars) || 0}</b><small>Stars</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#8de8ff">${Number(profile.coins) || 0}</b><small>Coins</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#d98cff">${Number(profile.diamonds) || 0}</b><small>Diamonds</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#88ffbb">${Number(profile.levels) || 0}</b><small>Levels</small></div></div><button type="button" data-close style="margin-top:24px;padding:11px 24px;border:0;border-radius:9px;background:#ffd84d;font-weight:bold;font-size:16px;cursor:pointer">Close</button>`;
+    const safeDisplay = String(profile.display_name || profile.username || 'Unknown').replace(/[<>&"']/g, '');
+    const safeBio = String(profile.bio || 'No bio yet.').replace(/[<>&"']/g, '');
+    const isSelf = String(this.currentUser?.username || '').toLowerCase() === String(profile.username || '').toLowerCase();
+    dialog.innerHTML = `<h2 style="margin:0 0 3px;color:#ffd84d;font-size:30px">${safeDisplay}</h2><div style="color:#aaa;margin-bottom:16px">@${safeName}</div><p data-bio style="margin:0 0 18px;color:#ddd;min-height:22px">${safeBio}</p><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px"><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#ffe45c">${Number(profile.stars) || 0}</b><small>Stars</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#8de8ff">${Number(profile.coins) || 0}</b><small>Coins</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#d98cff">${Number(profile.diamonds) || 0}</b><small>Diamonds</small></div><div style="padding:14px 6px;border-radius:10px;background:#202943"><b style="display:block;font-size:25px;color:#88ffbb">${Number(profile.levels) || 0}</b><small>Levels</small></div></div><div data-levels style="display:none;margin-top:16px;text-align:left;max-height:180px;overflow:auto;padding:10px;border-radius:10px;background:#151c2e"></div><p data-error style="min-height:18px;margin:12px 0;color:#ff8d8d;font-size:13px"></p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px">${isSelf ? '<button type="button" data-edit style="padding:10px 14px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">Edit Profile</button><button type="button" data-friends style="padding:10px 14px;border:0;border-radius:9px;background:#88ffbb;font-weight:bold;cursor:pointer">Friends</button><button type="button" data-inbox style="padding:10px 14px;border:0;border-radius:9px;background:#d98cff;font-weight:bold;cursor:pointer">Messages</button>' : '<button type="button" data-friend style="padding:10px 14px;border:0;border-radius:9px;background:#88ffbb;font-weight:bold;cursor:pointer">Add Friend</button><button type="button" data-message style="padding:10px 14px;border:0;border-radius:9px;background:#d98cff;font-weight:bold;cursor:pointer">Message</button>'}<button type="button" data-levels-button style="padding:10px 14px;border:0;border-radius:9px;background:#ffd84d;font-weight:bold;cursor:pointer">Levels</button><button type="button" data-close style="padding:10px 14px;border:0;border-radius:9px;background:#999;font-weight:bold;cursor:pointer">Close</button></div>`;
     shade.appendChild(dialog); document.body.appendChild(shade);
     const close = () => shade.remove();
     dialog.querySelector('[data-close]').addEventListener('click', close);
+    dialog.querySelector('[data-levels-button]').addEventListener('click', () => {
+      const target = dialog.querySelector('[data-levels]');
+      const levels = Array.isArray(profile.level_list) ? profile.level_list : [];
+      target.style.display = 'block';
+      target.innerHTML = levels.length
+        ? levels.map(level => `<div style="padding:7px 4px;border-bottom:1px solid #303b55"><b>${String(level.name || 'Untitled').replace(/[<>&"']/g, '')}</b><small style="color:#aaa"> #${String(level.id || '').replace(/[^0-9]/g, '')}</small></div>`).join('')
+        : '<span style="color:#aaa">This user has not uploaded any levels.</span>';
+    });
+    dialog.querySelector('[data-edit]')?.addEventListener('click', async () => {
+      const values = await this._socialForm('Edit Profile', [
+        { name: 'display_name', label: 'Display name', value: profile.display_name || profile.username, maxlength: 32 },
+        { name: 'bio', label: 'Bio', value: profile.bio || '', maxlength: 240, multiline: true }
+      ], 'Save Changes');
+      if (!values) return;
+      const displayName = String(values.display_name || '').trim();
+      const bio = String(values.bio || '').trim();
+      try {
+        await this.updateProfile({ display_name: displayName, bio });
+        profile.display_name = displayName.slice(0, 32); profile.bio = bio.slice(0, 240);
+        dialog.querySelector('h2').textContent = profile.display_name;
+        dialog.querySelector('[data-bio]').textContent = profile.bio || 'No bio yet.';
+      } catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not update profile'; }
+    });
+    dialog.querySelector('[data-friend]')?.addEventListener('click', async event => {
+      try { await this.updateFriend(profile.username, 'request'); event.currentTarget.textContent = 'Request Sent'; event.currentTarget.disabled = true; }
+      catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not send friend request'; }
+    });
+    dialog.querySelector('[data-friends]')?.addEventListener('click', async () => {
+      try {
+        const data = await this.getFriends();
+        const incoming = (data.incoming || []).map(friend => `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #303b55"><span>@${String(friend.username).replace(/[<>&"']/g, '')}</span><button type="button" data-accept="${String(friend.username).replace(/[^a-z0-9_.-]/gi, '')}" style="padding:6px 10px;border:0;border-radius:7px;background:#88ffbb;font-weight:bold">Accept</button></div>`).join('');
+        this._socialList('Friends', `<p style="color:#aaa">Friends: ${(data.friends || []).length}</p>${incoming ? `<h3 style="color:#ffd84d">Requests</h3>${incoming}` : ''}`, (listDialog, closeList) => {
+          listDialog.querySelectorAll('[data-accept]').forEach(button => button.addEventListener('click', async () => { await this.updateFriend(button.dataset.accept, 'accept'); button.textContent = 'Accepted'; button.disabled = true; }));
+        });
+      } catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not load friends'; }
+    });
+    dialog.querySelector('[data-inbox]')?.addEventListener('click', async () => {
+      try {
+        const data = await this.getMessages();
+        const messages = (data.messages || []).slice().reverse().map(item => `<div style="padding:9px 0;border-bottom:1px solid #303b55"><b>@${String(item.from_username || '').replace(/[<>&"']/g, '')}</b><p style="margin:5px 0;color:#ddd">${String(item.text || '').replace(/[<>&"']/g, '')}</p></div>`).join('');
+        this._socialList('Messages', messages || '<span style="color:#aaa">No messages yet.</span>');
+      } catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not load messages'; }
+    });
+    dialog.querySelector('[data-message]')?.addEventListener('click', async () => {
+      const values = await this._socialForm(`Message @${profile.username}`, [
+        { name: 'text', label: 'Message', maxlength: 1000, multiline: true }
+      ], 'Send Message');
+      const text = String(values?.text || '').trim();
+      if (!text) return;
+      try { await this.sendMessage(profile.username, text); dialog.querySelector('[data-error]').style.color = '#88ffbb'; dialog.querySelector('[data-error]').textContent = 'Message sent.'; }
+      catch (error) { dialog.querySelector('[data-error]').textContent = error.message || 'Could not send message'; }
+    });
     shade.addEventListener('click', event => { if (event.target === shade) close(); });
     return profile;
   },
