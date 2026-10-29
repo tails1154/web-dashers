@@ -34,7 +34,7 @@
     scene.tweens.add({ targets: label, alpha: 0, delay: 1300, duration: 350, onComplete: () => label.destroy() });
   };
   const notice = (scene, title, message) => {
-    if (window.showNativePhaserDialog) return window.showNativePhaserDialog({ title, message, notice: true });
+    if (window.showNativePhaserDialog && scene) return window.showNativePhaserDialog(scene, { title, message });
     toast(scene, `${title}: ${message}`);
   };
   const copyText = (scene, value) => {

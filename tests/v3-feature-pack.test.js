@@ -29,6 +29,7 @@ assert.ok(features.some(feature => feature.kind === "command"));
 assert.ok(features.some(feature => feature.kind === "toggle"));
 assert.equal(`${source}\n${index}\n${sceneSource}`.includes("V3 Labs"), false, "the old Labs placeholder must stay removed");
 assert.equal(index.includes("v3-features.js"), false, "the old placeholder script must stay removed");
+assert.ok(source.includes("showNativePhaserDialog(scene, { title, message })"), "native notices must pass their Phaser scene");
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
 window.WDV3.run("editor_snap_to_grid", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), true);
