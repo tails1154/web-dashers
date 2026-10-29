@@ -5783,33 +5783,31 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
               return;
             }
             
-            this._ensureAutoRecordingConsent(() => {
-              this.input.enabled = false;
-              this.tweens.killTweensOf(cardBounceContainer, "scale");
-              cardBounceContainer.setScale(1);
+            this.input.enabled = false;
+            this.tweens.killTweensOf(cardBounceContainer, "scale");
+            cardBounceContainer.setScale(1);
 
-              const lvl = window.currentlevel;
-              const songID = lvl[0];
-              const levelFileName = lvl[2];
-              const songFileName = lvl[4] ? lvl[4] : lvl[1].replaceAll(" ", "");
+            const lvl = window.currentlevel; 
+            const songID = lvl[0];
+            const levelFileName = lvl[2];
+            const songFileName = lvl[4] ? lvl[4] : lvl[1].replaceAll(" ", "");
+            
+            const loadingText = this.add.bitmapText(cx, cy, "goldFont", "Downloading Level Assets...", 20).setOrigin(0.5).setDepth(200);
+            
+            this.load.text(levelFileName, "assets/levels/" + levelFileName.split("_")[1] + ".txt");
+            this.load.audio(songID, "assets/music/" + songFileName + ".mp3");
 
-              const loadingText = this.add.bitmapText(cx, cy, "goldFont", "Downloading Level Assets...", 20).setOrigin(0.5).setDepth(200);
-
-              this.load.text(levelFileName, "assets/levels/" + levelFileName.split("_")[1] + ".txt");
-              this.load.audio(songID, "assets/music/" + songFileName + ".mp3");
-
-              this.load.once("complete", () => {
-                  loadingText.destroy();
-                  this._audio.playEffect("playSound_01", { volume: 1 });
-                  this._closeLevelSelect(true);
-                  this._audio.stopMusic();
-                  this.input.enabled = true;
-                  this.game.registry.set("autoStartGame", true);
-                  this.scene.restart();
-              });
-
-              this.load.start();
+            this.load.once("complete", () => {
+                loadingText.destroy();
+                this._audio.playEffect("playSound_01", { volume: 1 });
+                this._closeLevelSelect(true);
+                this._audio.stopMusic();
+                this.input.enabled = true;
+                this.game.registry.set("autoStartGame", true);
+                this.scene.restart(); 
             });
+
+            this.load.start();
         } else {
           this.tweens.killTweensOf(cardBounceContainer, "scale");
           this.tweens.add({ targets: cardBounceContainer, scale: 1, duration: 200, ease: "Quad.Out" });
@@ -6678,10 +6676,6 @@ _buildPauseOverlay() {
     const recordLabel = this.add.bitmapText(textureY + 240, 80, "bigFont", this._runRecorder ? "STOP" : "REC", 17).setOrigin(0.5);
     this._pauseContainer.add([recordButton, recordLabel]);
     this._makeCompositeBouncyButton(recordButton, [recordButton, recordLabel], 0.7, () => this._toggleRunRecording());
-    const last30Button = this.add.nineslice(textureY + 240, 125, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
-    const last30Label = this.add.bitmapText(textureY + 240, 125, "bigFont", "LAST 30", 15).setOrigin(0.5);
-    this._pauseContainer.add([last30Button, last30Label]);
-    this._makeCompositeBouncyButton(last30Button, [last30Button, last30Label], 0.7, () => this._exportLast30Seconds());
     const goalButton = this.add.nineslice(textureY + 350, 80, "GJ_button01", null, 120, 42, 12, 12, 12, 12).setScale(0.7).setInteractive();
     const goalLabel = this.add.bitmapText(textureY + 350, 80, "bigFont", "GOAL", 17).setOrigin(0.5);
     this._pauseContainer.add([goalButton, goalLabel]);
@@ -7093,41 +7087,6 @@ _buildPauseOverlay() {
       this.InfoBoxDoAThing("Could not capture the gameplay canvas.");
     }
   }
-  _ensureAutoRecordingConsent(onReady) {
-    if (window.autoCompletionRecording === false || typeof MediaRecorder === "undefined" || !this.game?.canvas?.captureStream) {
-      onReady?.();
-      return;
-    }
-    const consent = localStorage.getItem("wd_auto_recording_consent");
-    if (consent === "enabled" || consent === "opted_out") {
-      onReady?.();
-      return;
-    }
-    if (this._autoRecordingConsentOpen) return;
-    this._autoRecordingConsentOpen = true;
-    showNativePhaserDialog(this, {
-      title: "AUTO GAMEPLAY RECORDING",
-      message: "Web Dashers can record your gameplay locally and automatically download the successful attempt as a WebM after you beat a level. Recording is on by default. The microphone is optional, controlled in Settings, and is never uploaded by Web Dashers. You can opt out at any time in Settings.",
-      large: true,
-      confirm: true,
-      confirmLabel: "ENABLE",
-      cancelLabel: "OPT OUT",
-      onConfirm: () => {
-        this._autoRecordingConsentOpen = false;
-        localStorage.setItem("wd_auto_recording_consent", "enabled");
-        window.autoCompletionRecording = true;
-        this._saveSettings();
-        onReady?.();
-      },
-      onCancel: () => {
-        this._autoRecordingConsentOpen = false;
-        localStorage.setItem("wd_auto_recording_consent", "opted_out");
-        window.autoCompletionRecording = false;
-        this._saveSettings();
-        onReady?.();
-      }
-    });
-  }
   _startAutoCompletionRecording() {
     if (window.autoCompletionRecording === false || window.isEditor || this._editorPlaytestActive) return;
     if (this._autoRunRecorder || this._autoRecorderCreating) {
@@ -7136,12 +7095,39 @@ _buildPauseOverlay() {
     }
     if (typeof MediaRecorder === "undefined" || !this.game?.canvas?.captureStream) return;
     if (this._autoRecordingStarting) return;
-    this._autoRecordingStarting = true;
-    this._ensureAutoRecordingConsent(() => {
+
+    const begin = () => {
       this._autoRecordingStarting = false;
       if (window.autoCompletionRecording === false || window.isEditor || this._editorPlaytestActive || this._autoRunRecorder) return;
       this._createAutoCompletionRecorder();
-    });
+    };
+    const consent = localStorage.getItem("wd_auto_recording_consent");
+    if (!consent) {
+      this._autoRecordingStarting = true;
+      showNativePhaserDialog(this, {
+        title: "AUTO GAMEPLAY RECORDING",
+        message: "Web Dashers can record your gameplay locally and automatically download the successful attempt as a WebM after you beat a level. Recording is on by default. The microphone is optional, controlled in Settings, and is never uploaded by Web Dashers. You can opt out at any time in Settings.",
+        large: true,
+        confirm: true,
+        confirmLabel: "ENABLE",
+        cancelLabel: "OPT OUT",
+        onConfirm: () => {
+          localStorage.setItem("wd_auto_recording_consent", "enabled");
+          window.autoCompletionRecording = true;
+          this._saveSettings();
+          begin();
+        },
+        onCancel: () => {
+          localStorage.setItem("wd_auto_recording_consent", "opted_out");
+          window.autoCompletionRecording = false;
+          this._saveSettings();
+          this._autoRecordingStarting = false;
+        }
+      });
+      return;
+    }
+    if (consent === "opted_out") return;
+    begin();
   }
   async _createAutoCompletionRecorder() {
     if (this._autoRecorderCreating) return;
@@ -7209,15 +7195,8 @@ _buildPauseOverlay() {
       return;
     }
     const chunks = [];
-    const recentChunks = [];
     recorder.ondataavailable = event => {
-      if (!event.data?.size) return;
-      chunks.push(event.data);
-      if (!this._autoRunHeaderChunk) this._autoRunHeaderChunk = event.data;
-      const now = performance.now();
-      recentChunks.push({ blob: event.data, time: now });
-      while (recentChunks.length && now - recentChunks[0].time > 30000) recentChunks.shift();
-      this._autoRunRecentChunks = recentChunks;
+      if (event.data?.size) chunks.push(event.data);
     };
     recorder.onstop = () => {
       if (this._autoRunStopTimer) {
@@ -7257,8 +7236,6 @@ _buildPauseOverlay() {
       this._autoRunExportPending = false;
       this._autoRunStopTimer = null;
     };
-    this._autoRunHeaderChunk = null;
-    this._autoRunRecentChunks = recentChunks;
     recorder.start(250);
     this._autoRunRecorder = recorder;
     this._autoRecorderCreating = false;
@@ -7281,34 +7258,6 @@ _buildPauseOverlay() {
       this._autoRunStopTimer = null;
       if (this._autoRunRecorder && this._autoRunRecorder.state !== "inactive") this._autoRunRecorder.stop();
     }, 5000);
-  }
-  _exportLast30Seconds() {
-    const recent = Array.isArray(this._autoRunRecentChunks) ? this._autoRunRecentChunks : [];
-    const recorder = this._autoRunRecorder;
-    if (!recent.length || !recorder) {
-      this.InfoBoxDoAThing("No automatic gameplay recording is active.");
-      return;
-    }
-    const header = this._autoRunHeaderChunk;
-    const parts = [];
-    if (header) parts.push(header);
-    recent.forEach(entry => {
-      if (entry?.blob && entry.blob !== header) parts.push(entry.blob);
-    });
-    if (!parts.length) {
-      this.InfoBoxDoAThing("The last 30 seconds are not available yet.");
-      return;
-    }
-    const blob = new Blob(parts, { type: recorder.mimeType || "video/webm" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `web-dashers_last-30-seconds_${new Date().toISOString().replace(/[:.]/g, "-")}.webm`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    this.InfoBoxDoAThing("Exported the most recent gameplay buffer.");
   }
   _toggleRunRecording() {
     if (this._runRecorder) {
