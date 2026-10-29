@@ -12103,8 +12103,7 @@ _applyMirrorEffect() {
   }
 
   _showDiamondGuard(canEnter, diamonds, required) {
-    const existing = document.querySelector("[data-wd-diamond-guard]");
-    if (existing) existing.remove();
+    if (this._diamondGuardOverlay) return;
     const lockedMessages = [
       "HALT! The Diamond Vault is sealed.",
       "The guard checks your pockets. Not enough sparkle.",
@@ -12116,28 +12115,57 @@ _applyMirrorEffect() {
     const message = canEnter
       ? (challengeLocked ? "The guardian watches in silence." : "The guard steps aside. Enter a vault code.")
       : lockedMessages[this._diamondGuardMessageIndex % lockedMessages.length];
-    const shade = document.createElement("div");
-    shade.dataset.wdDiamondGuard = "1";
-    shade.style.cssText = "position:fixed;inset:0;z-index:99999;display:grid;place-items:center;background:rgba(0,0,0,.72);font-family:Arial,sans-serif;color:#fff";
-    shade.innerHTML = `<div style="width:min(430px,calc(100vw - 32px));padding:24px;border:3px solid ${canEnter ? "#8de8ff" : "#888"};border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 12px;color:${canEnter ? "#8de8ff" : "#ddd"}">${canEnter ? "DIAMOND VAULT" : "VAULT GUARD"}</h2><p style="min-height:48px;margin:0 0 12px;font-size:18px">${message}</p><p style="color:#d98cff;margin:0 0 20px">${diamonds}/${required} diamonds</p>${canEnter ? '<input data-vault-code autocomplete="off" placeholder="Enter vault code" style="box-sizing:border-box;width:100%;padding:11px;border-radius:8px;border:2px solid #777;font-size:17px;margin-bottom:12px"><p data-vault-error style="min-height:20px;color:#ff9b9b;margin:0 0 10px"></p><button type="button" data-enter style="padding:11px 24px;border:0;border-radius:9px;background:#8de8ff;font-weight:bold;cursor:pointer">ENTER</button>' : ''}<button type="button" data-close style="display:block;margin:12px auto 0;padding:11px 24px;border:0;border-radius:9px;background:#888;font-weight:bold;cursor:pointer">CLOSE</button></div>`;
-    document.body.appendChild(shade);
-    // Let the input receive its normal text-editing behavior, but keep Phaser's
-    // global gameplay shortcuts from consuming those same key events.
-    const keyboardGuard = event => {
-      if (shade.contains(event.target)) event.stopPropagation();
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2000);
+    this._diamondGuardOverlay = root;
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.78).setInteractive();
+    const panelW = Math.min(620, sw - 48);
+    const panelH = canEnter ? 420 : 350;
+    const panel = this.add.rectangle(sw / 2, sh / 2 + 12, panelW, panelH, 0x182642, 1)
+      .setStrokeStyle(5, canEnter ? 0x8de8ff : 0x7b8799, 1);
+    const inner = this.add.rectangle(sw / 2, sh / 2 + 12, panelW - 18, panelH - 18, 0x0d172a, 0.92)
+      .setStrokeStyle(2, 0x365477, 1);
+    const lock = this.add.image(sw / 2, sh / 2 - panelH / 2 + 58, "GJ_GameSheet03", "GJ_secretLock_001.png")
+      .setScale(0.34).setTint(canEnter ? 0xffffff : 0x777f8e);
+    const title = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 124, "goldFont", canEnter ? "THE VAULT" : "VAULT GUARD", 34).setOrigin(0.5);
+    const body = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 168, "bigFont", message, 20)
+      .setOrigin(0.5).setMaxWidth(panelW - 70).setCenterAlign().setTint(0xffffff);
+    const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 208, "bigFont", `${diamonds} / ${required} DIAMONDS`, 19)
+      .setOrigin(0.5).setTint(0xd98cff);
+    root.add([shade, panel, inner, lock, title, body, count]);
+
+    let inputText = "";
+    let inputFocused = canEnter;
+    const inputY = sh / 2 - 2;
+    const inputBox = canEnter ? this.add.rectangle(sw / 2, inputY, panelW - 88, 52, 0x09101e, 1)
+      .setStrokeStyle(3, 0x6f89aa, 1).setInteractive() : null;
+    const inputLabel = canEnter ? this.add.bitmapText(sw / 2 - (panelW - 88) / 2 + 16, inputY, "bigFont", "ENTER VAULT CODE", 20)
+      .setOrigin(0, 0.5).setTint(0x7891b2) : null;
+    const errorLabel = canEnter ? this.add.bitmapText(sw / 2, inputY + 39, "bigFont", "", 17)
+      .setOrigin(0.5).setTint(0xff9b9b) : null;
+    const enterButton = canEnter ? this.add.image(sw / 2 - 92, sh / 2 + 112, "GJ_GameSheet03", "GJ_longBtn06_001.png")
+      .setScale(0.9).setInteractive() : null;
+    const enterLabel = canEnter ? this.add.bitmapText(sw / 2 - 92, sh / 2 + 112, "bigFont", "ENTER", 21).setOrigin(0.5) : null;
+    const closeButton = this.add.image(canEnter ? sw / 2 + 92 : sw / 2, sh / 2 + (canEnter ? 112 : 95), "GJ_GameSheet03", "GJ_longBtn07_001.png")
+      .setScale(0.9).setInteractive();
+    const closeLabel = this.add.bitmapText(closeButton.x, closeButton.y, "bigFont", "CLOSE", 21).setOrigin(0.5);
+    root.add([inputBox, inputLabel, errorLabel, enterButton, enterLabel, closeButton, closeLabel].filter(Boolean));
+    const updateInput = () => {
+      if (!canEnter) return;
+      inputLabel.setText(inputText || "ENTER VAULT CODE").setTint(inputText ? 0xffffff : 0x7891b2);
     };
-    ["keydown", "keyup", "keypress"].forEach(type => document.addEventListener(type, keyboardGuard));
-    const close = () => {
-      ["keydown", "keyup", "keypress"].forEach(type => document.removeEventListener(type, keyboardGuard));
-      shade.remove();
+    const cleanup = () => {
+      window.removeEventListener("keydown", onKeyDown);
+      this._diamondGuardOverlay = null;
+      root.destroy(true);
     };
-    shade.querySelector("[data-close]").addEventListener("click", close);
-    shade.addEventListener("click", event => { if (event.target === shade) close(); });
-    if (canEnter) {
-      const codeInput = shade.querySelector("[data-vault-code]");
-      const error = shade.querySelector("[data-vault-error]");
-      const enter = () => {
-        const rawCode = String(codeInput.value || "").trim();
+    const close = () => cleanup();
+    this._makeBouncyButton(closeButton, 0.9, close);
+    if (enterButton) this._makeBouncyButton(enterButton, 0.9, () => enter());
+    if (inputBox) inputBox.on("pointerdown", () => { inputFocused = true; inputBox.setStrokeStyle(3, 0x8de8ff, 1); });
+    const enter = () => {
+        const rawCode = inputText.trim();
         if (rawCode === "UNDO IT ALL") {
           localStorage.removeItem("wd_challenge_completed");
           localStorage.removeItem("wd_challenge_guardian_pending");
@@ -12149,8 +12177,9 @@ _applyMirrorEffect() {
             // The completion flag is still reset even if old achievement data is malformed.
           }
           challengeLocked = false;
-          error.textContent = "The Challenge has been reset.";
-          codeInput.value = "";
+          errorLabel.setText("The Challenge has been reset.").setTint(0x88ffbb);
+          inputText = "";
+          updateInput();
           return;
         }
         const code = rawCode.toLowerCase();
@@ -12160,11 +12189,11 @@ _applyMirrorEffect() {
           return;
         }
         if (challengeLocked) {
-          error.textContent = "Don't";
+          errorLabel.setText("Don't");
           return;
         }
         if (code !== "the challenge") {
-          error.textContent = "The guard does not recognize that code.";
+          errorLabel.setText("The guard does not recognize that code.");
           return;
         }
         close();
@@ -12185,21 +12214,36 @@ _applyMirrorEffect() {
         });
         this.load.start();
       };
-      shade.querySelector("[data-enter]").addEventListener("click", enter);
-      codeInput.addEventListener("keydown", event => { if (event.key === "Enter") enter(); });
-      codeInput.focus();
-    }
+    const onKeyDown = event => {
+      if (!canEnter || !inputFocused) return;
+      event.stopPropagation();
+      if (event.key === "Enter") { event.preventDefault(); enter(); return; }
+      if (event.key === "Backspace") { inputText = inputText.slice(0, -1); updateInput(); return; }
+      if (event.key.length === 1 && inputText.length < 64 && !event.ctrlKey && !event.metaKey) {
+        inputText += event.key;
+        updateInput();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    updateInput();
   }
 
   _showChallengeGuardianSpeech() {
-    const existing = document.querySelector("[data-wd-challenge-guardian]");
-    if (existing) existing.remove();
-    const shade = document.createElement("div");
-    shade.dataset.wdChallengeGuardian = "1";
-    shade.style.cssText = "position:fixed;inset:0;z-index:100000;display:grid;place-items:center;background:rgba(0,0,0,.82);font-family:Arial,sans-serif;color:#fff";
-    shade.innerHTML = '<div style="width:min(520px,calc(100vw - 32px));padding:28px;border:3px solid #8de8ff;border-radius:16px;background:linear-gradient(#303030,#111);box-shadow:0 8px 0 #000,0 18px 50px #000b;text-align:center"><h2 style="margin:0 0 18px;color:#8de8ff">THE GUARDIAN</h2><p style="margin:0;font-size:22px;line-height:1.45">You were never supposed to beat this...<br>You have no idea what you have done</p></div>';
-    document.body.appendChild(shade);
-    this.time.delayedCall(3600, () => window.location.reload());
+    if (this._challengeGuardianOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2100);
+    this._challengeGuardianOverlay = root;
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.86).setInteractive();
+    const panel = this.add.rectangle(sw / 2, sh / 2, Math.min(700, sw - 48), 300, 0x101b30, 1).setStrokeStyle(5, 0x8de8ff, 1);
+    const title = this.add.bitmapText(sw / 2, sh / 2 - 92, "goldFont", "THE GUARDIAN", 36).setOrigin(0.5);
+    const speech = this.add.bitmapText(sw / 2, sh / 2 - 12, "bigFont", "You were never supposed to beat this...\nYou have no idea what you have done", 25).setOrigin(0.5).setCenterAlign().setTint(0xffffff);
+    root.add([shade, panel, title, speech]);
+    this.time.delayedCall(3600, () => {
+      this._challengeGuardianOverlay = null;
+      root.destroy(true);
+      window.location.reload();
+    });
   }
 
   _showPathUnlockToast(iconId) {
