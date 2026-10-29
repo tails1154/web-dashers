@@ -282,6 +282,12 @@ class LevelEditor {
     });
     this.input.keyboard.on('keydown-S', (event) => {
         event?.preventDefault?.();
+        if (event?.ctrlKey || event?.metaKey) {
+            if (!this._editorTextInputFocused && !this._editorPlaytestActive && !this._editorPlaytestPaused) {
+                this._saveEditorLevel();
+            }
+            return;
+        }
         const amount = event.shiftKey ? 1 : 60;
         moveSelectedObjectsWithKey(0, amount);
     });
