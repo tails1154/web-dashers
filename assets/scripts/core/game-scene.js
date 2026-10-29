@@ -9026,6 +9026,13 @@ _buildSettingsPopup() {
   }
   _startGame() {
     this._setPlayerInputEnabled(true);
+    // A new run must never inherit a reward queued by the previous level.
+    this._pendingStarReward = 0;
+    this._pendingStarRewardLevelId = null;
+    this._pendingStarRewardStartCount = 0;
+    this._pendingCoinReward = 0;
+    this._pendingCoinRewardLevelId = null;
+    this._pendingCoinRewardStartCount = 0;
     this._resetRunTimer();
     this._performanceSamples = [];
     this._performanceSampleAt = 0;
@@ -11491,6 +11498,12 @@ _applyMirrorEffect() {
       this._showCheatInvalidRunNotice();
       return;
     }
+    if (window.isEditor || this._editorPlaytestActive) {
+      this._pendingStarReward = 0;
+      this._pendingStarRewardLevelId = null;
+      this._pendingStarRewardStartCount = 0;
+      return;
+    }
     if (!this._practicedMode.practiceMode) {
       if (String(window.currentlevel?.[2] || "") === "level_3001") {
         localStorage.setItem("wd_challenge_completed", "1");
@@ -11539,9 +11552,12 @@ _applyMirrorEffect() {
       }
       const completedLevelId = String(window.currentlevel?.[2] || "");
       const isChallengeLevel = completedLevelId === "level_3001";
+      const isLocalEditorLevel = completedLevelId.startsWith("local_");
       const challengeStarsClaimed = localStorage.getItem("challenge_30stars_claimed") === "1";
       const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7 };
-      const starReward = isChallengeLevel
+      const starReward = isLocalEditorLevel
+        ? 0
+        : isChallengeLevel
         ? (challengeStarsClaimed ? 0 : 30)
         : (window._selectedLevelData?.star_reward ?? builtInStarRewards[completedLevelId] ?? 0);
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
