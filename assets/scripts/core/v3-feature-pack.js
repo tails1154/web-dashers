@@ -71,7 +71,9 @@
     open_audio_browser: scene => scene._openEditorLevelSettingsPopup?.(),
     save_editor_level: scene => scene._saveEditorLevel?.(),
     play_editor_level: scene => scene._startEditorPlaytest?.(),
-    toggle_editor_grid: scene => scene._editorGridGraphics?.setVisible?.(!scene._editorGridGraphics.visible),
+    toggle_editor_grid: scene => {
+      if (scene._editorGridGraphics) scene._editorGridGraphics.setVisible(!scene._editorGridGraphics.visible);
+    },
     focus_editor_camera: scene => { scene._cameraX = 0; scene._cameraY = 0; },
     clear_editor_selection: scene => scene._deselectEditorObject?.(),
     open_update_log: scene => scene._buildUpdateLogPopup?.(),
