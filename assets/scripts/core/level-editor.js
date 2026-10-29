@@ -9367,15 +9367,17 @@ class LevelEditor {
     }
 );
 
-    const bookmarkButton = (x, text, callback) => {
-        const button = this.add.nineslice(x, screenHeight - 116, "GJ_button01", null, 170, 42, 14, 14, 14, 14).setScale(0.78).setInteractive();
-        const label = this.add.bitmapText(x, screenHeight - 116, "bigFont", text, 17).setOrigin(0.5);
+    const bookmarkButton = (x, text, callback, y = screenHeight - 116) => {
+        const button = this.add.nineslice(x, y, "GJ_button01", null, 170, 42, 14, 14, 14, 14).setScale(0.78).setInteractive();
+        const label = this.add.bitmapText(x, y, "bigFont", text, 17).setOrigin(0.5);
         this._editorMenuContainer.add([button, label]);
         this._makeCompositeBouncyButton(button, [button, label], 0.78, callback, () => true);
     };
     bookmarkButton(screenWidth / 2 - 190, "SAVE VIEW", () => this._saveEditorCameraBookmark());
     bookmarkButton(screenWidth / 2, "JUMP TO VIEW", () => this._restoreEditorCameraBookmark());
     bookmarkButton(screenWidth / 2 + 190, "CLEAR VIEW", () => this._clearEditorCameraBookmark());
+    bookmarkButton(screenWidth / 2 - 95, "SAVE SET", () => this._saveEditorSelectionSet(), screenHeight - 166);
+    bookmarkButton(screenWidth / 2 + 95, "LOAD SET", () => this._loadEditorSelectionSet(), screenHeight - 166);
   }
 
   _editorCameraBookmarkKey() {
@@ -9394,6 +9396,53 @@ class LevelEditor {
   }
   _clearEditorCameraBookmark() {
     localStorage.removeItem(this._editorCameraBookmarkKey());
+  }
+  _editorSelectionSetsKey() {
+    return `editor_selection_sets_${String(window.currentlevel?.[2] || "local")}`;
+  }
+  _readEditorSelectionSets() {
+    try {
+      const sets = JSON.parse(localStorage.getItem(this._editorSelectionSetsKey()) || "{}");
+      return sets && typeof sets === "object" ? sets : {};
+    } catch (_) { return {}; }
+  }
+  _saveEditorSelectionSet() {
+    const selected = this._getCurrentSelectedEditorObjectIds();
+    if (!selected.length) {
+      window.showNativePhaserDialog(this, { title: "SELECTION SET", message: "Select one or more objects first." });
+      return;
+    }
+    window.showNativePhaserDialog(this, {
+      title: "SAVE SELECTION SET", message: `${selected.length} objects selected. Enter a name for this set.`, input: true,
+      placeholder: "Set name", confirmLabel: "SAVE", cancelLabel: "CANCEL",
+      onConfirm: name => {
+        const cleanName = String(name || "").trim().slice(0, 32);
+        if (!cleanName) return;
+        const sets = this._readEditorSelectionSets();
+        sets[cleanName] = selected;
+        localStorage.setItem(this._editorSelectionSetsKey(), JSON.stringify(sets));
+      }
+    });
+  }
+  _loadEditorSelectionSet() {
+    const sets = this._readEditorSelectionSets();
+    const names = Object.keys(sets);
+    if (!names.length) {
+      window.showNativePhaserDialog(this, { title: "LOAD SELECTION SET", message: "No selection sets have been saved for this level." });
+      return;
+    }
+    window.showNativePhaserDialog(this, {
+      title: "LOAD SELECTION SET", message: `Available sets:\n${names.join("\n")}\n\nEnter a set name.`, input: true,
+      placeholder: names[0], confirmLabel: "LOAD", cancelLabel: "CANCEL",
+      onConfirm: name => {
+        const ids = sets[String(name || "").trim()];
+        if (!Array.isArray(ids)) {
+          window.showNativePhaserDialog(this, { title: "LOAD SELECTION SET", message: "That selection set does not exist." });
+          return;
+        }
+        this._selectEditorObjectsByIds(ids, 0xffd84d);
+      }
+    });
   }
 
 
@@ -9664,6 +9713,10 @@ LevelEditor.methodNames = [
   "_saveEditorCameraBookmark",
   "_restoreEditorCameraBookmark",
   "_clearEditorCameraBookmark",
+  "_editorSelectionSetsKey",
+  "_readEditorSelectionSets",
+  "_saveEditorSelectionSet",
+  "_loadEditorSelectionSet",
   "_clearEditorPlaytestMarks",
   "_ensureEditorPlaytestTrail",
   "_drawEditorPlaytestTrailPoint",
