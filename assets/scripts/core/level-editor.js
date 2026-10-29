@@ -376,6 +376,8 @@ class LevelEditor {
     this._lockObjectLabel = this.add.bitmapText(0, 425, "bigFont", "LOCK", 15).setOrigin(0.5);
     this._alignObjectsBtn = this.add.nineslice(0, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
     this._alignObjectsLabel = this.add.bitmapText(0, 500, "bigFont", "ALIGN", 14).setOrigin(0.5);
+    this._sameObjectBtn = this.add.nineslice(-75, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
+    this._sameObjectLabel = this.add.bitmapText(-75, 500, "bigFont", "SAME", 15).setOrigin(0.5);
 
     this._editorLayerSelector = this.add.container(-75, 275);
     this._editorLayerFirstBtn = this.add.image(-90, 0, "GJ_GameSheet03", "GJ_arrow_02_001.png").setInteractive().setScale(0.45).setAlpha(0.5);
@@ -393,7 +395,7 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._alignObjectsBtn, this._alignObjectsLabel, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._alignObjectsBtn, this._alignObjectsLabel, this._sameObjectBtn, this._sameObjectLabel, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
@@ -401,6 +403,7 @@ class LevelEditor {
     this._makeBouncyButton(this._inspectObjectBtn, 0.72, () => this._openSelectedEditorInspector(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
     this._makeCompositeBouncyButton(this._lockObjectBtn, [this._lockObjectBtn, this._lockObjectLabel], 1, () => this._toggleSelectedEditorObjectLocks(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
     this._makeCompositeBouncyButton(this._alignObjectsBtn, [this._alignObjectsBtn, this._alignObjectsLabel], 1, () => this._openEditorAlignPopup(), () => this._getCurrentSelectedEditorObjectIds().length > 1);
+    this._makeCompositeBouncyButton(this._sameObjectBtn, [this._sameObjectBtn, this._sameObjectLabel], 1, () => this._selectSameEditorObjects(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
 
     this._makeBouncyButton(this._editObjectBtn, 1, () => {
         this._openSelectedEditorObjectOptions();
@@ -2819,6 +2822,21 @@ class LevelEditor {
     );
   }
 
+  _selectSameEditorObjects() {
+    const selected = this._getCurrentSelectedEditorObjectIds();
+    if (!selected.length) return;
+    const source = this._getEditorSaveObjectForObjectId(selected[0]);
+    if (!source) return;
+    const targetId = Number(source.id);
+    const matches = [];
+    const count = Math.max(this._level?.objectSprites?.length || 0, Array.isArray(window.levelObjects) ? window.levelObjects.length : 0);
+    for (let index = 0; index < count; index++) {
+      const saveObj = this._getEditorSaveObjectForObjectId(index);
+      if (saveObj && Number(saveObj.id) === targetId) matches.push(index);
+    }
+    if (matches.length) this._selectEditorObjectsByIds(matches, 0x00ff00);
+  }
+
   _alignSelectedEditorObjects(mode) {
     const selectedIds = this._getCurrentSelectedEditorObjectIds();
     const entries = selectedIds
@@ -2991,6 +3009,15 @@ class LevelEditor {
             this._alignObjectsBtn.setInteractive();
         } else {
             this._alignObjectsBtn.disableInteractive();
+        }
+    }
+    if (this._sameObjectBtn) {
+        this._sameObjectBtn.setAlpha(hasSelection ? 1 : 0.5);
+        this._sameObjectLabel?.setAlpha(hasSelection ? 1 : 0.5);
+        if (hasSelection) {
+            this._sameObjectBtn.setInteractive();
+        } else {
+            this._sameObjectBtn.disableInteractive();
         }
     }
   }
@@ -9903,6 +9930,7 @@ LevelEditor.methodNames = [
   "_saveEditorSelectionSet",
   "_loadEditorSelectionSet",
   "_openEditorAlignPopup",
+  "_selectSameEditorObjects",
   "_alignSelectedEditorObjects",
   "_clearEditorPlaytestMarks",
   "_ensureEditorPlaytestTrail",
