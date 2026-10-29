@@ -12,9 +12,22 @@ class Collider {
     this.slopeIsFilled = false;
     this.slopeFlipY = false;
     this.slopeSolidVertices = null;
+    this.slopeSurfaceA = null;
+    this.slopeSurfaceB = null;
   }
   getSlopeSurfaceY(worldX) {
     if (this.type !== slopeType) return null;
+    if (this.slopeSurfaceA && this.slopeSurfaceB) {
+      const a = this.slopeSurfaceA;
+      const b = this.slopeSurfaceB;
+      const dx = b.x - a.x;
+      if (Math.abs(dx) > 0.001) {
+        const minX = Math.min(a.x, b.x);
+        const maxX = Math.max(a.x, b.x);
+        if (worldX < minX || worldX > maxX) return null;
+        return a.y + (b.y - a.y) * ((worldX - a.x) / dx);
+      }
+    }
     const halfW = this.w / 2;
     const left = this.x - halfW;
     const right = this.x + halfW;
@@ -335,27 +348,14 @@ const _SLOPE_DATA = {
   1906:{gw:1,gh:1,angle:45,sq:false},1907:{gw:2,gh:1,angle:22.5,sq:false},
 };
  
-function _resolveSlopeOrientation(levelObj, slopeData) {
-  const sx = levelObj.flipX ? -1 : 1;
-  const sy = levelObj.flipY ? -1 : 1;
-  const rotation = Math.round((((levelObj.rot || 0) % 360) + 360) % 360 / 90) * 90;
-  const radians = -rotation * Math.PI / 180;
-  const cos = Math.round(Math.cos(radians));
-  const sin = Math.round(Math.sin(radians));
-  const halfW = slopeData.gw / 2;
-  const halfH = slopeData.gh / 2;
-  const transform = (point) => {
-    const x = point.x * sx;
-    const y = point.y * sy;
-    return { x: x * cos - y * sin, y: x * sin + y * cos };
-  };
-
-  // Base collision triangle, globally flipped on X to match the
-  // slope artwork. Apply the object's local mirrors and screen-space rotation
-  // afterward, in the same order as _applyVisualProps.
-  const edgeA = transform({ x: halfW, y: halfH });
-  const edgeB = transform({ x: -halfW, y: -halfH });
-  const solidVertex = transform({ x: halfW, y: -halfH });
+function _resolveSlopeOrientation(vertices) {
+  if (!Array.isArray(vertices) || vertices.length < 3) return { dir: 1, flipY: false };
+  // The first two vertices are the native slope's diagonal surface and the
+  // third vertex is on its solid side. Use the already transformed vertices;
+  // reconstructing this from an axis-aligned box breaks rotated slopes.
+  const edgeA = vertices[0];
+  const edgeB = vertices[1];
+  const solidVertex = vertices[2];
   const leftEdge = edgeA.x <= edgeB.x ? edgeA : edgeB;
   const rightEdge = edgeA.x <= edgeB.x ? edgeB : edgeA;
   const lineDir = rightEdge.y >= leftEdge.y ? 1 : -1;
@@ -405,13 +405,17 @@ function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
   collider.slopeSolidVertices = vertices;
+  if (!slopeData.sq) {
+    collider.slopeSurfaceA = vertices[0];
+    collider.slopeSurfaceB = vertices[1];
+  }
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
   // has to use atan(1 / 2) (and atan(2 / 1) when quarter-turned), otherwise
   // surface snapping and the velocity inherited at the end of the slope do
   // not agree.
   collider.slopeAngleDeg = Math.atan2(h, w) * 180 / Math.PI;
-  const { dir, flipY } = _resolveSlopeOrientation(levelObj, slopeData);
+  const { dir, flipY } = _resolveSlopeOrientation(vertices);
   collider.slopeDir = dir;
   collider.slopeFlipY = flipY;
   collider.slopeIsFilled = slopeData.sq;

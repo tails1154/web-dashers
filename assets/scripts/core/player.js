@@ -417,6 +417,8 @@ class PlayerObject {
     this._onSlopeAngle = null;
     this._activeSlopeObj = null;
     this._prevSlopeObj = null;
+    this._prevSlopeContactX = null;
+    this._activeSlopeContactX = null;
     this._slopeVelocity = 0;
     this._slopeYVelocity = 0;
     this._lastSlopeYVelocity = 0;
@@ -1635,9 +1637,13 @@ class PlayerObject {
       this._shipDragActive = false;
       this._streak.stop();
       this._streak.reset();
-      this._waveTrail.stop();
-      this._waveTrail.reset();
-      return;
+      if (window.disableWaveTrail) {
+        this._waveTrail.stop();
+        this._waveTrail.reset();
+        return;
+      }
+      // LDM removes the other particle-heavy effects, but the wave trail is
+      // gameplay feedback and remains available unless explicitly disabled.
     }
 
     if (this.p.isDead) {
@@ -1671,8 +1677,13 @@ class PlayerObject {
       this._waveTrail.setPosition(_0x119eb7, _0x519d38);
     }
     this._streak.update(_0x5af874);
-    this._waveTrail.setMiniScale(this.p.isMini);
-    this._waveTrail.update(_0x5af874);
+    if (window.disableWaveTrail) {
+      this._waveTrail.stop();
+      this._waveTrail.reset();
+    } else {
+      this._waveTrail.setMiniScale(this.p.isMini);
+      this._waveTrail.update(_0x5af874);
+    }
     const _0x3d69d2 = this.p.isFlying || this.p.isUfo;
     if (_0x3d69d2 && !this._flyParticleActive) {
       this._flyParticleEmitter.start();
@@ -3389,8 +3400,13 @@ if (this.p.isFlying || this.p.isUfo) {
       const stickDistance = slidingDown ? (wasOnThisSlope ? 4 : 1) : 0;
       const specialFirstContact = !wasOnThisSlope && slidingDown && !this.p.isJumping &&
         (!this.p.isFlying || !this.p.upKeyDown);
+      const isCubeMode = !this.p.isFlying && !this.p.isBall && !this.p.isWave &&
+        !this.p.isUfo && !this.p.isSpider && !this.p.isRobot;
       const continuedContact = wasOnThisSlope && !this.p.isJumping &&
-        Math.abs(playersY - slopeTargetY) <= 1;
+        Math.abs(playersY - slopeTargetY) <= (isCubeMode ? Math.max(5, hitSize * 0.35) : 1);
+      const cubeDownhillStick = isCubeMode && !this.p.isJumping && slidingDown &&
+        correctGravity && playersY <= slopeTargetY + Math.max(6, hitSize * 0.5) &&
+        this.p.yVelocity <= 2;
       const canStickToSlope = specialFirstContact &&
         (correctGravity
           ? (this.p.gravityFlipped
@@ -3400,7 +3416,7 @@ if (this.p.isFlying || this.p.isUfo) {
             ? playersY < slopeTargetY + stickDistance
             : playersY > slopeTargetY - stickDistance));
       const canRideSlope = !wallContact && !flatEdgeContact && slopeBoundsOverlap && (centerWithinSlope || wasOnThisSlope) &&
-        (nativePrioritySkip || touchingNormally || canStickToSlope || continuedContact);
+        (nativePrioritySkip || touchingNormally || canStickToSlope || continuedContact || cubeDownhillStick);
       if (canRideSlope) {
         const slopeGeometryAngle = Math.abs(gameObj.getSlopeAngleRad());
         const slopeRotation = (slidingDown ? this.flipMod() : -this.flipMod()) *
@@ -3480,6 +3496,12 @@ if (this.p.isFlying || this.p.isUfo) {
     const halfW = slopeObj.w / 2;
     const left = slopeObj.x - halfW;
     const right = slopeObj.x + halfW;
+    const contactX = Number(this._prevSlopeContactX);
+    // A slope exit is only valid if the previous frame actually had the
+    // player on this slope and this frame crossed its high endpoint. This
+    // prevents a nearby downhill slope's bbox from launching a player who is
+    // still travelling along a flat platform.
+    if (!Number.isFinite(contactX) || contactX < left || contactX > right) return;
     const exitMargin = 14;
     let exitedHighEnd = slopeObj.slopeDir > 0
       ? pieceWidth >= right - exitMargin
@@ -3497,7 +3519,6 @@ if (this.p.isFlying || this.p.isUfo) {
     const slopeYVelocity = (slopeObj.h / Math.max(1, slopeObj.w)) * playerSpeed;
     const nativeSlopeMultiplier = Math.min(1.12 / angleRad, 1.54);
     let tangentVelocity = slopeYVelocity * nativeSlopeMultiplier * this.flipMod();
-    if (this.p.isFlying || this.p.isBall) tangentVelocity *= 0.75;
     if (slopeObj.slopeFlipY) tangentVelocity = -tangentVelocity;
     // Ships need the full tangent impulse from the slope geometry. The cached
     // slope velocity is a normalized tracking value and is too small to launch
@@ -5571,6 +5592,7 @@ if (this.p.isFlying || this.p.isUfo) {
         ? bestSlopeCandidate.slopeRotation
         : bestSlopeCandidate.slopeAngle;
       this._activeSlopeObj = bestSlopeGameObj;
+      this._activeSlopeContactX = pieceWidth;
       if (this.p.isBall) {
         let rotationMultiplier = 1 / Math.max(0.01, Math.abs(Math.cos(this._onSlopeAngle)));
         if (rotationMultiplier > 2) rotationMultiplier = (rotationMultiplier - 1) * 0.7 + 1;
@@ -5684,6 +5706,7 @@ if (this.p.isFlying || this.p.isUfo) {
       }
     }
     this._prevSlopeObj = this._activeSlopeObj;
+    this._prevSlopeContactX = this._activeSlopeObj ? this._activeSlopeContactX : null;
     this._lastCollisionWorldX = pieceWidth;
     this._lastCollisionWorldY = this.p.y;
     this.p.wasUpKeyDown = this.p.upKeyDown;
@@ -6031,7 +6054,9 @@ if (this.p.isFlying || this.p.isUfo) {
     this._lastLandObject = null;
     this._lastXOffset = 0;
     this._prevSlopeObj = null;
+    this._prevSlopeContactX = null;
     this._activeSlopeObj = null;
+    this._activeSlopeContactX = null;
     this._onSlopeAngle = null;
     this._slopeVelocity = 0;
     this._slopeYVelocity = 0;
