@@ -331,6 +331,7 @@ class LevelEditor {
         localStorage.setItem("wd_editor_snap_to_grid", window.wdEditorSnapToGrid ? "true" : "false");
         this._editorSnapGridCheck?.setTexture("GJ_GameSheet03", window.wdEditorSnapToGrid ? "GJ_checkOn_001.png" : "GJ_checkOff_001.png");
     });
+    this.input.keyboard.on('keydown-F1', () => this._openEditorShortcutsDialog());
     const adjustEditorGrid = delta => {
         this._editorGridSize = Phaser.Math.Clamp(Number(this._editorGridSize || 60) + delta, 15, 240);
         this._editorGridSize = Math.round(this._editorGridSize / 5) * 5;
@@ -10046,6 +10047,14 @@ class LevelEditor {
       }
     });
   }
+  _openEditorShortcutsDialog() {
+    window.showNativePhaserDialog(this, {
+      title: "EDITOR SHORTCUTS",
+      message: "WASD: move selection\nQ / E: rotate\nShift + Q / E: rotate 45°\nG: toggle snap grid\n[ / ]: change grid size\nCtrl + F: search objects\nCtrl + S: save level\nF: focus selection\nM: measure mode",
+      confirmLabel: "CLOSE",
+      cancelLabel: "CLOSE"
+    });
+  }
   _editorSelectionSetsKey() {
     return `editor_selection_sets_${String(window.currentlevel?.[2] || "local")}`;
   }
@@ -10462,6 +10471,7 @@ LevelEditor.methodNames = [
   "_editorGridSizeKey",
   "_loadEditorGridSize",
   "_openEditorGridSizeDialog",
+  "_openEditorShortcutsDialog",
   "_editorSelectionSetsKey",
   "_readEditorSelectionSets",
   "_saveEditorSelectionSet",
