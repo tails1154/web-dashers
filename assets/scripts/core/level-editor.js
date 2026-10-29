@@ -10873,6 +10873,7 @@ LevelEditor.methodNames = [
   "_isEditorMoveTriggerId",
   "_isEditorSpawnTriggerId",
   "_isEditorZoomTriggerId",
+  "_isEditorCameraTriggerId",
   "_isEditorRotateTriggerId",
   "_getEditorZoomTriggerValue",
   "_setEditorZoomTriggerValue",
