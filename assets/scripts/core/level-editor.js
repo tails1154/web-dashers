@@ -2176,12 +2176,19 @@ class LevelEditor {
     if (this._editorTab === "build") {
         this._categoryContainer = this.add.container(screenWidth / 2, screenHeight - 218);
         this._toolbox.add(this._categoryContainer);
+        const categoryTooltip = this.add.bitmapText(0, -28, "bigFont", "", 16)
+            .setOrigin(0.5)
+            .setTint(0xffffff)
+            .setVisible(false);
+        this._categoryContainer.add(categoryTooltip);
         const catSpacing = 85;
         const catStartX = -((OBJECT_CATEGORIES.length - 1) * catSpacing) / 2;
         OBJECT_CATEGORIES.forEach((cat, i) => {
             const isSelected = this._currentBuildCategory === cat.id;
             const btn = this.add.image(catStartX + (i * catSpacing), 0, cat.icon).setInteractive().setScale(0.12).setTint(isSelected ? 0x888888 : 0xffffff).setAlpha(isSelected ? 1 : 0.33);
             this._categoryContainer.add(btn);
+            btn.on("pointerover", () => categoryTooltip.setText(cat.id.toUpperCase()).setVisible(true));
+            btn.on("pointerout", () => categoryTooltip.setVisible(false));
             this._makeBouncyButton(btn, 0.12, () => {
                 this._currentBuildCategory = cat.id;
                 this._editorPage = 0;
