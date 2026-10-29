@@ -11697,11 +11697,21 @@ _applyMirrorEffect() {
   _showCheatInvalidRunNotice() {
     if (this._invalidRunNoticeShown) return;
     this._invalidRunNoticeShown = true;
-    const text = this.add.text(screenWidth / 2, screenHeight * 0.33, "RUN NOT COUNTED\\nHacks or StartPos were used", {
+    const text = this.add.text(screenWidth / 2, screenHeight * 0.33, "RUN NOT COUNTED\nHacks or StartPos were used\nReturning to the main menu in 5 seconds", {
       fontFamily: "Arial", fontSize: "28px", color: "#ff8d8d", align: "center",
       stroke: "#000000", strokeThickness: 6
     }).setOrigin(0.5).setScrollFactor(0).setDepth(1000);
-    this.tweens.add({ targets: text, alpha: 0, delay: 1600, duration: 500, onComplete: () => text.destroy() });
+    this.time.delayedCall(5000, () => {
+      this._stopVersusSession?.();
+      this._audio.stopMusic();
+      this.game.registry.remove("autoStartGame");
+      window.isEditor = false;
+      window._createdLevelReturnToView = null;
+      window._editorReturnToLevelViewId = null;
+      window._onlineReturnToPlayMenu = null;
+      window._selectedLevelData = null;
+      this.scene.restart();
+    });
   }
 
   _showEndScreenRewardModal(title, message) {
