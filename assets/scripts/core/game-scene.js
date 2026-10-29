@@ -455,7 +455,7 @@ function showNativePhaserDialog(scene, options = {}) {
     return button;
   };
   const cleanup = () => {
-    window.removeEventListener("keydown", onKeyDown);
+    window.removeEventListener("keydown", onKeyDown, true);
     scene._nativePhaserDialog = null;
     root.destroy(true);
   };
@@ -466,8 +466,10 @@ function showNativePhaserDialog(scene, options = {}) {
     else options.onCancel?.();
   };
   const onKeyDown = event => {
-    if (!focused) return;
+    // Capture the event so gameplay shortcuts cannot see keys typed in a
+    // native dialog, even when the dialog is only a message/confirmation.
     event.stopPropagation();
+    if (!focused) return;
     if (event.key === "Escape") { event.preventDefault(); finish(false); return; }
     if (event.key === "Enter") { event.preventDefault(); finish(true); return; }
     if (event.key === "Backspace") { value = value.slice(0, -1); updateInput(); return; }
@@ -480,7 +482,7 @@ function showNativePhaserDialog(scene, options = {}) {
     if (inputText) inputText.setText(value || String(options.placeholder || "Enter value")).setTint(value ? 0xffffff : 0x7891b2);
   };
   scene._nativePhaserDialog = { close: () => finish(false) };
-  window.addEventListener("keydown", onKeyDown);
+  window.addEventListener("keydown", onKeyDown, true);
   if (wantsInput) {
     makeButton(sw / 2 - 90, String(options.confirmLabel || "OK"), "GJ_longBtn06_001.png", () => finish(true));
     makeButton(sw / 2 + 90, String(options.cancelLabel || "CANCEL"), "GJ_longBtn07_001.png", () => finish(false));
@@ -677,6 +679,7 @@ class GameScene extends Phaser.Scene {
     this._uncompleteChordArmed = false;
     this._uncompleteChordTimer = null;
     this._uncompleteKeyHandler = event => {
+      if (this._nativePhaserDialog) return;
       if (event.target && /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
       const key = String(event.key || '').toLowerCase();
       if (event.ctrlKey && key === 'k') {
@@ -5122,11 +5125,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._startPosIndex = -1;
 
     this.input.keyboard.on('keydown-Q', () => {
+      if (this._nativePhaserDialog) return;
       if (!window.startPosSwitcher) return;
       this.changeStartPos(-1);
     });
 
     this.input.keyboard.on('keydown-E', () => {
+      if (this._nativePhaserDialog) return;
       if (!window.startPosSwitcher) return;
       this.changeStartPos(1);
     });
@@ -5188,6 +5193,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._pauseBtn.on("pointerdown", () => this._pauseGame());
     this._escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this._escKey.on("down", () => {
+      if (this._nativePhaserDialog) return;
       if (this._levelSelectOverlay) {
         this._closeLevelSelect();
         return;
@@ -5304,17 +5310,20 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     });
     this._restartKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
     this._restartKey.on("down", () => {
+      if (this._nativePhaserDialog) return;
       if (!this._menuActive && !this._slideIn && !this._levelWon && !this._menuActive) {
         this._restartLevel();
       }
     });
     this._streamModeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F8);
     this._streamModeKey.on("down", () => {
+      if (this._nativePhaserDialog) return;
       window.streamMode = !window.streamMode;
       this._saveSettings();
     });
     this._practiceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
     this._practiceKey.on("down", () => {
+      if (this._nativePhaserDialog) return;
       if (!this._menuActive && !this._slideIn) {
         const isPracticeMode = this._practicedMode.togglePracticeMode();
         if (this._checkpointBtnContainer) {
@@ -5328,6 +5337,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     });
     this._saveCheckpointKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this._saveCheckpointKey.on("down", () => {
+      if (this._nativePhaserDialog) return;
       if (!this._menuActive && !this._slideIn && this._practicedMode.practiceMode) {
         const saved = this._practicedMode.saveCheckpoint(this._state, this._playerWorldX, this._cameraX, this);
         if (saved) {
@@ -5336,6 +5346,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     });
     this._deleteCheckpointKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.X);
     this._deleteCheckpointKey.on("down", () => {
+      if (this._nativePhaserDialog) return;
       if (!this._menuActive && !this._slideIn && this._practicedMode.practiceMode) {
         const deleted = this._practicedMode.deleteLastCheckpoint();
       }
@@ -10391,7 +10402,7 @@ _buildSettingsPopup() {
     }
     this._fpsText.setVisible(!streamMode && !!window.showFPS);
     if (this._paused) {
-      if (!this._updateLogPopup && (this._spaceKey.isDown || this._upKey.isDown || this._wKey.isDown || this._lKey.isDown) && !this._spaceWasDown && !this._settingsPopup) {
+      if (!this._nativePhaserDialog && !this._updateLogPopup && (this._spaceKey.isDown || this._upKey.isDown || this._wKey.isDown || this._lKey.isDown) && !this._spaceWasDown && !this._settingsPopup) {
         setTimeout(() => {
           this._resumeGame();
         }, 75);
@@ -10402,7 +10413,8 @@ _buildSettingsPopup() {
     if (this._menuActive) {
       const _anyOverlayOpen = this._iconOverlay || this._creatorOverlay || this._searchOverlay ||
         this._onlineLevelsOverlay || this._settingsLayerOverlay || this._settingsPopup ||
-        this._infoPopup || this._newgroundsPopup || this._statsLayerOverlay || this._updateLogPopup;
+        this._infoPopup || this._newgroundsPopup || this._statsLayerOverlay || this._updateLogPopup ||
+        this._nativePhaserDialog;
       if (!_anyOverlayOpen && (this._spaceKey.isDown || this._upKey.isDown || this._wKey.isDown) && !this._spaceWasDown) {
         if (this._creatorMenuOpen) return;
         this._spaceWasDown = true;
@@ -10519,7 +10531,7 @@ _buildSettingsPopup() {
     }
     this._applyJumpInput = () => {
       const jumpHeld = this._spaceKey.isDown || this._upKey.isDown || this._wKey.isDown || this._lKey.isDown;
-      if (!this._updateLogPopup && jumpHeld && !this._spaceWasDown) {
+      if (!this._nativePhaserDialog && !this._updateLogPopup && jumpHeld && !this._spaceWasDown) {
         this._pushButton();
       } else if (!jumpHeld && this._spaceWasDown) {
         this._releaseButton();
