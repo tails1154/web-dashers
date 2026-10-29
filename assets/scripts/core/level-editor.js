@@ -97,7 +97,7 @@ class LevelEditor {
     this._editorBoxSelectStart = null;
     this._editorBoxSelectGraphics = null;
     this._currentSelectedObjectIds = [];
-    this._lockedEditorObjectIds = new Set();
+    this._lockedEditorObjectIds = this._loadEditorLockedObjectIds();
     this._editorTab = "build";
     window.editorSelectedObject = -1;
     this._editorZoom = 1.0;
@@ -2507,6 +2507,17 @@ class LevelEditor {
     return this._lockedEditorObjectIds instanceof Set && this._lockedEditorObjectIds.has(Number(objectId));
   }
 
+  _editorLockedObjectsKey() {
+    return `editor_locked_objects_${String(window.currentlevel?.[2] || "local")}`;
+  }
+
+  _loadEditorLockedObjectIds() {
+    try {
+      const ids = JSON.parse(localStorage.getItem(this._editorLockedObjectsKey()) || "[]");
+      return new Set(Array.isArray(ids) ? ids.map(Number).filter(Number.isInteger) : []);
+    } catch (_) { return new Set(); }
+  }
+
   _toggleSelectedEditorObjectLocks() {
     const selected = this._getCurrentSelectedEditorObjectIds();
     if (!selected.length) return;
@@ -2515,6 +2526,7 @@ class LevelEditor {
       if (shouldLock) this._lockedEditorObjectIds.add(Number(objectId));
       else this._lockedEditorObjectIds.delete(Number(objectId));
     });
+    localStorage.setItem(this._editorLockedObjectsKey(), JSON.stringify(Array.from(this._lockedEditorObjectIds)));
     this._lockObjectLabel?.setText(shouldLock ? "UNLOCK" : "LOCK");
   }
 
@@ -9833,6 +9845,8 @@ LevelEditor.methodNames = [
   "_restoreEditorSelectionTint",
   "_getCurrentSelectedEditorObjectIds",
   "_isEditorObjectLocked",
+  "_editorLockedObjectsKey",
+  "_loadEditorLockedObjectIds",
   "_toggleSelectedEditorObjectLocks",
   "_selectEditorObjectsByIds",
   "_clearEditorSelection",
