@@ -255,6 +255,11 @@ class LevelEditor {
         if (event.shiftKey) this._saveEditorCameraBookmark();
         else this._restoreEditorCameraBookmark();
     });
+    this.input.keyboard.on('keydown-F', (event) => {
+        if (this._editorTextInputFocused || this._editorPlaytestActive || this._editorPlaytestPaused || !event?.ctrlKey) return;
+        event.preventDefault();
+        this._openEditorObjectSearch();
+    });
 
     this._createEditorGui();
   }
@@ -314,6 +319,11 @@ class LevelEditor {
             this._swipeBg.setTexture("GJ_button01");
         }
     });
+
+    const objectSearchButton = this.add.nineslice(screenWidth - 104, screenHeight - 218, "GJ_button01", null, 142, 38, 12, 12, 12, 12).setScale(0.78).setInteractive();
+    const objectSearchLabel = this.add.bitmapText(screenWidth - 104, screenHeight - 218, "bigFont", "SEARCH", 15).setOrigin(0.5);
+    this._toolbox.add([objectSearchButton, objectSearchLabel]);
+    this._makeCompositeBouncyButton(objectSearchButton, [objectSearchButton, objectSearchLabel], 0.78, () => this._openEditorObjectSearch());
 
     const tabX = (screenWidth / 2) - 475;
     const tabYStart = screenHeight - 150;
@@ -1930,6 +1940,40 @@ class LevelEditor {
     return preview;
   }
 
+
+  _openEditorObjectSearch() {
+    window.showNativePhaserDialog(this, {
+      title: "OBJECT SEARCH",
+      message: "Search by object ID, type, frame, or glow frame.",
+      input: true,
+      placeholder: "Example: slope, portal, 5060",
+      confirmLabel: "SEARCH",
+      cancelLabel: "CANCEL",
+      onConfirm: query => {
+        const term = String(query || "").trim().toLowerCase();
+        if (!term) return;
+        const allObjects = window.allobjects?.() || {};
+        const matches = Object.entries(allObjects).filter(([id, object]) => {
+          const haystack = [id, object?.type, object?.frame, object?.glow_frame].filter(Boolean).join(" ").toLowerCase();
+          return haystack.includes(term);
+        });
+        if (!matches.length) {
+          window.showNativePhaserDialog(this, { title: "OBJECT SEARCH", message: `No objects matched “${term}”.` });
+          return;
+        }
+        const [id, object] = matches[0];
+        window.selectedObjId = Number(id);
+        this._editorTab = "build";
+        this._currentBuildCategory = "all";
+        const numericIds = Object.keys(allObjects).map(value => Number(value)).filter(value => Number.isInteger(value) && value > 0 && value !== 749).sort((a, b) => a - b);
+        const index = numericIds.indexOf(Number(id));
+        this._editorPage = index >= 0 ? Math.floor(index / this._maxPerPage) : 0;
+        this._updateTabVisuals();
+        this._buildObjectGrid();
+        window.showNativePhaserDialog(this, { title: "OBJECT FOUND", message: `Selected #${id} (${object?.type || "object"}). Click it in the highlighted build page to place it.` });
+      }
+    });
+  }
 
   _buildObjectGrid() {
     if (this._gridContainer) this._gridContainer.destroy();
@@ -9748,6 +9792,7 @@ LevelEditor.methodNames = [
   "_getTextureRefForFrameThingy",
   "_createEditorObjectButtonPreview",
   "_buildObjectGrid",
+  "_openEditorObjectSearch",
   "_moveObject",
   "_rotateObject",
   "_flipObject",
