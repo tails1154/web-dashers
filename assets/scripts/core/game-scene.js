@@ -483,12 +483,57 @@ function showNativePhaserDialog(scene, options = {}) {
   if (wantsInput) {
     makeButton(sw / 2 - 90, String(options.confirmLabel || "OK"), "GJ_longBtn06_001.png", () => finish(true));
     makeButton(sw / 2 + 90, String(options.cancelLabel || "CANCEL"), "GJ_longBtn07_001.png", () => finish(false));
+  } else if (options.confirm === true) {
+    makeButton(sw / 2 - 90, String(options.confirmLabel || "YES"), "GJ_longBtn06_001.png", () => finish(true));
+    makeButton(sw / 2 + 90, String(options.cancelLabel || "NO"), "GJ_longBtn07_001.png", () => finish(false));
   } else {
     makeButton(sw / 2, String(options.confirmLabel || (options.confirm ? "YES" : "OK")), "GJ_longBtn06_001.png", () => finish(true));
   }
   return scene._nativePhaserDialog;
 }
 window.showNativePhaserDialog = showNativePhaserDialog;
+
+function installWebDashersCrashReporting() {
+  if (window._wdCrashReportingInstalled) return;
+  window._wdCrashReportingInstalled = true;
+  const reported = new Set();
+  const report = (kind, errorLike) => {
+    if (window.crashReportingEnabled === false || localStorage.getItem("wd_crash_reporting") === "false") return;
+    const message = String(errorLike?.message || errorLike || "Unknown error").slice(0, 1000);
+    const stack = String(errorLike?.stack || "").slice(0, 6000);
+    const signature = `${kind}:${message}:${stack.slice(0, 160)}`;
+    if (reported.has(signature)) return;
+    reported.add(signature);
+    const reportId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const payload = {
+      id: reportId,
+      kind,
+      message,
+      stack,
+      path: window.location.pathname,
+      version: window.WD_VERSION || "dev",
+      scene: window._wdGameScene?.scene?.key || "unknown",
+      timestamp: new Date().toISOString()
+    };
+    const endpoint = `${(window._gdProxyUrl || "").replace(/\/$/, "")}?action=crash`;
+    try {
+      fetch(endpoint, {
+        method: "POST",
+        credentials: "omit",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(() => {});
+    } catch (_) {}
+    window._wdLastCrashReport = payload;
+    if (window._wdGameScene?._showCrashScreen) window._wdGameScene._showCrashScreen(payload);
+  };
+  window.addEventListener("error", event => {
+    if (event.error || event.message) report("error", event.error || event.message);
+  });
+  window.addEventListener("unhandledrejection", event => report("unhandledrejection", event.reason));
+}
+installWebDashersCrashReporting();
 
 class GameScene extends Phaser.Scene {
   constructor() {
@@ -5364,6 +5409,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._rightBtn = this.add.image(screenWidth - 429, 30, "GJ_GameSheet03", "edit_leftBtn_001.png").setScrollFactor(0).setDepth(30).setInteractive().setVisible(false);
     this._rightBtn.setRotation(Math.PI);
     window.scene = this.scene;
+    window._wdGameScene = this;
     window.rightbuttoncallback = () => {
       if (this._levelSelectOverlay && this._levelSelectSwitchLevel) {
         this._levelSelectSwitchLevel(1);
@@ -6560,7 +6606,7 @@ _buildSettingsPopup() {
         "Solid Wave Trail": "Removes the extra details of the wave trail.",
         "Show CPS": "Shows when you click in a level in the top left of your screen.",
         "Show Glow": "Shows glow for basic object sets.",
-        "Use Proxy (for schools)": "Enables a proxy for a better chance to see online levels when blocked.",
+        "Crash Reporting": "Automatically sends a small diagnostic report when Web Dashers crashes.",
         "LDM": "Removes many effects, objects, and other things to improve performance.",
         "Cull Distance": "Changes how many objects are shown. [DOES NOT SAVE!!]"
     };
@@ -6913,13 +6959,16 @@ _buildSettingsPopup() {
     };
 
     const buildAdvancedPage = (container) => {
-        createToggle(container, column1X, startY, "Use Proxy (for schools)",
-            () => !window.useDirectInternet,
-            (v) => { window.useDirectInternet = !v; },
+        createToggle(container, column1X, startY, "Crash Reporting",
+            () => window.crashReportingEnabled !== false,
+            (v) => {
+                window.crashReportingEnabled = !!v;
+                localStorage.setItem("wd_crash_reporting", String(!!v));
+            },
             null,
             22,
             true,
-            "Use Proxy (for schools)"
+            "Crash Reporting"
         );
     };
 
@@ -6996,6 +7045,7 @@ _buildSettingsPopup() {
         showGlow: window.showGlow,
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
+        crashReportingEnabled: window.crashReportingEnabled !== false,
         enablePortalGuide: window.enablePortalGuide,
         enableOrbGuide: window.enableOrbGuide,
         cullDistance: window.cullDistance,
@@ -7028,6 +7078,7 @@ _buildSettingsPopup() {
         showGlow: true,
         showEditorGlow: false,
         useDirectInternet: true,
+        crashReportingEnabled: true,
         enablePortalGuide: true,
         enableOrbGuide: false,
         enableLDM: false,
@@ -7061,6 +7112,8 @@ _buildSettingsPopup() {
     window.settingInfoText = data.settingInfoText || {};
     window.useDirectInternet = !!data.useDirectInternet;
     localStorage.setItem("gd_useDirectInternet", String(!!window.useDirectInternet));
+    window.crashReportingEnabled = data.crashReportingEnabled !== false && localStorage.getItem("wd_crash_reporting") !== "false";
+    localStorage.setItem("wd_crash_reporting", String(window.crashReportingEnabled));
     window.enableLDM = !!data.enableLDM;
   }
   _buildMacroPopup() {
@@ -12380,6 +12433,43 @@ _applyMirrorEffect() {
       root.destroy(true);
       window.location.reload();
     });
+  }
+
+  _showCrashScreen(report) {
+    if (this._crashScreenOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(10000);
+    this._crashScreenOverlay = root;
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x050509, 0.96).setInteractive();
+    const panelW = Math.min(760, sw - 48);
+    const panel = this.add.rectangle(sw / 2, sh / 2, panelW, 390, 0x17182b, 1).setStrokeStyle(5, 0xff637d, 1);
+    const inner = this.add.rectangle(sw / 2, sh / 2, panelW - 16, 374, 0x0d0e1b, 1).setStrokeStyle(2, 0x593044, 1);
+    const title = this.add.bitmapText(sw / 2, sh / 2 - 140, "goldFont", "WEB DASHERS CRASHED", 38).setOrigin(0.5).setTint(0xff7187);
+    const message = this.add.text(sw / 2, sh / 2 - 75, "Something went wrong and the game had to stop.\nYour crash report was sent automatically.", {
+      fontFamily: "Arial", fontSize: "22px", color: "#ffffff", align: "center", lineSpacing: 8
+    }).setOrigin(0.5);
+    const reportText = this.add.bitmapText(sw / 2, sh / 2 + 4, "bigFont", `REPORT ID: ${String(report?.id || "unknown")}`, 18).setOrigin(0.5).setTint(0xb7c1df);
+    const details = this.add.text(sw / 2, sh / 2 + 44, String(report?.message || "Unknown error").slice(0, 150), {
+      fontFamily: "monospace", fontSize: "14px", color: "#ffb4bf", align: "center", wordWrap: { width: panelW - 90 }
+    }).setOrigin(0.5);
+    root.add([shade, panel, inner, title, message, reportText, details]);
+    const close = () => {
+      root.destroy(true);
+      this._crashScreenOverlay = null;
+    };
+    const makeButton = (x, label, callback) => {
+      const button = this.add.image(x, sh / 2 + 132, "GJ_GameSheet03", "GJ_longBtn06_001.png").setScale(0.9).setInteractive();
+      const buttonLabel = this.add.bitmapText(x, sh / 2 + 132, "bigFont", label, 20).setOrigin(0.5);
+      root.add([button, buttonLabel]);
+      this._makeBouncyButton(button, 0.9, callback);
+    };
+    makeButton(sw / 2 - 190, "RELOAD", () => window.location.reload());
+    makeButton(sw / 2, "COPY ID", async () => {
+      try { await navigator.clipboard?.writeText(String(report?.id || "unknown")); } catch (_) {}
+      reportText.setText("REPORT ID COPIED").setTint(0x88ffbb);
+    });
+    makeButton(sw / 2 + 190, "CLOSE", close);
   }
 
   _showPathUnlockToast(iconId) {

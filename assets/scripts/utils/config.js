@@ -14,6 +14,8 @@ window.currentSpider = localStorage.getItem("iconCurrentSpider") || "spider_01";
 window.currentBird   = localStorage.getItem("iconCurrentBird")   || "bird_01";
 const storedUseDirectInternet = localStorage.getItem("gd_useDirectInternet");
 window.useDirectInternet = storedUseDirectInternet === null ? false : storedUseDirectInternet === "true";
+const storedCrashReporting = localStorage.getItem("wd_crash_reporting");
+window.crashReportingEnabled = storedCrashReporting !== "false";
 window._gdProxyUrl = window._gdProxyUrl || "https://tails1154.com:9782/cgi-bin/gd/server.py";
 window._ngSongProxyUrl = window._ngSongProxyUrl || "https://tails1154.com:9782/cgi-bin/ngpx.py";
 window.getGdApiBase = function () {
