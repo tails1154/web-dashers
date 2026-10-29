@@ -1821,7 +1821,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       let ownerDeleteBtn = null;
       let openModeratorMenuNext = false;
       if (window.AccountAPI?.isModerator?.()) {
-        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet04", "GJ_featuredBtn_001.png")
+        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
           .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
         this._makeBouncyButton(moderatorBtn, sideBtnScale, () => {
           openModeratorMenuNext = true;
