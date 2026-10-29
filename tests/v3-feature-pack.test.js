@@ -39,6 +39,12 @@ window.WDV3.run("editor_snap_to_grid", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), true);
 window.WDV3.run("reset_v3_preferences", {});
 assert.equal(window.WDV3.isEnabled("editor_snap_to_grid"), false);
+for (const feature of features.filter(item => item.kind === "toggle")) {
+  window.WDV3.run(feature.id, {});
+  assert.equal(window.WDV3.isEnabled(feature.id), true, `${feature.id} should turn on`);
+  window.WDV3.run(feature.id, {});
+  assert.equal(window.WDV3.isEnabled(feature.id), false, `${feature.id} should turn off`);
+}
 window.WDV3.run("gameplay_coin_route_hints", {});
 assert.equal(window.wdV3Flags.gameplay_coin_route_hints, true);
 window.WDV3.setEnabled("progression_run_history", true);
