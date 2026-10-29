@@ -380,6 +380,8 @@ class LevelEditor {
     this._sameObjectLabel = this.add.bitmapText(-75, 500, "bigFont", "SAME", 15).setOrigin(0.5);
     this._sameGroupBtn = this.add.nineslice(-150, 500, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
     this._sameGroupLabel = this.add.bitmapText(-150, 500, "bigFont", "GROUP", 13).setOrigin(0.5);
+    this._soloObjectsBtn = this.add.nineslice(0, 555, "GJ_button01", null, 92, 34, 10, 10, 10, 10).setInteractive();
+    this._soloObjectsLabel = this.add.bitmapText(0, 555, "bigFont", "SOLO", 15).setOrigin(0.5);
 
     this._editorLayerSelector = this.add.container(-75, 275);
     this._editorLayerFirstBtn = this.add.image(-90, 0, "GJ_GameSheet03", "GJ_arrow_02_001.png").setInteractive().setScale(0.45).setAlpha(0.5);
@@ -397,7 +399,7 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._alignObjectsBtn, this._alignObjectsLabel, this._sameObjectBtn, this._sameObjectLabel, this._sameGroupBtn, this._sameGroupLabel, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._inspectObjectBtn, this._lockObjectBtn, this._lockObjectLabel, this._alignObjectsBtn, this._alignObjectsLabel, this._sameObjectBtn, this._sameObjectLabel, this._sameGroupBtn, this._sameGroupLabel, this._soloObjectsBtn, this._soloObjectsLabel, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
@@ -407,6 +409,7 @@ class LevelEditor {
     this._makeCompositeBouncyButton(this._alignObjectsBtn, [this._alignObjectsBtn, this._alignObjectsLabel], 1, () => this._openEditorAlignPopup(), () => this._getCurrentSelectedEditorObjectIds().length > 1);
     this._makeCompositeBouncyButton(this._sameObjectBtn, [this._sameObjectBtn, this._sameObjectLabel], 1, () => this._selectSameEditorObjects(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
     this._makeCompositeBouncyButton(this._sameGroupBtn, [this._sameGroupBtn, this._sameGroupLabel], 1, () => this._selectSameGroupObjects(), () => this._getCurrentSelectedEditorObjectIds().length > 0);
+    this._makeCompositeBouncyButton(this._soloObjectsBtn, [this._soloObjectsBtn, this._soloObjectsLabel], 1, () => this._toggleEditorIsolation(), () => this._getCurrentSelectedEditorObjectIds().length > 0 || this._editorIsolatedObjectIds instanceof Set);
 
     this._makeBouncyButton(this._editObjectBtn, 1, () => {
         this._openSelectedEditorObjectOptions();
@@ -1178,6 +1181,7 @@ class LevelEditor {
     this._closeEditorColorPickerPopup();
     this._closeEditorStartOptionsPopup();
     this._closeEditorObjectOptionsPopup();
+    this._clearEditorIsolation();
     this._clearEditorSelection();
     this._clearEditorPlaytestMarks();
     this._refreshEditorCollisionCaches();
@@ -2857,6 +2861,25 @@ class LevelEditor {
     if (matches.length) this._selectEditorObjectsByIds(matches, 0x00ff00);
   }
 
+  _clearEditorIsolation() {
+    if (!(this._editorIsolatedObjectIds instanceof Set)) return;
+    this._editorIsolatedObjectIds = null;
+    this._soloObjectsLabel?.setText("SOLO");
+    this._applyEditorLayerFilter();
+  }
+
+  _toggleEditorIsolation() {
+    if (this._editorIsolatedObjectIds instanceof Set) {
+      this._clearEditorIsolation();
+      return;
+    }
+    const selected = this._getCurrentSelectedEditorObjectIds();
+    if (!selected.length) return;
+    this._editorIsolatedObjectIds = new Set(selected.map(Number));
+    this._soloObjectsLabel?.setText("UNSOLO");
+    this._applyEditorLayerFilter();
+  }
+
   _alignSelectedEditorObjects(mode) {
     const selectedIds = this._getCurrentSelectedEditorObjectIds();
     const entries = selectedIds
@@ -3047,6 +3070,16 @@ class LevelEditor {
             this._sameGroupBtn.setInteractive();
         } else {
             this._sameGroupBtn.disableInteractive();
+        }
+    }
+    if (this._soloObjectsBtn) {
+        const canSolo = hasSelection || this._editorIsolatedObjectIds instanceof Set;
+        this._soloObjectsBtn.setAlpha(canSolo ? 1 : 0.5);
+        this._soloObjectsLabel?.setAlpha(canSolo ? 1 : 0.5);
+        if (canSolo) {
+            this._soloObjectsBtn.setInteractive();
+        } else {
+            this._soloObjectsBtn.disableInteractive();
         }
     }
   }
@@ -5999,9 +6032,16 @@ class LevelEditor {
       const sprites = this._level.objectSprites[objectId];
       if (!sprites || !sprites.length) continue;
       const matches = this._editorObjectMatchesActiveLayerByObjectId(objectId);
+      const isolated = this._editorIsolatedObjectIds instanceof Set;
+      const isIsolated = isolated && this._editorIsolatedObjectIds.has(objectId);
       const targetAlphaMultiplier = matches ? 1 : 0.25;
       for (const spr of sprites) {
         if (!spr) continue;
+        if (isolated && !isIsolated) {
+          if (spr?.setVisible) spr.setVisible(false);
+          else spr.visible = false;
+          continue;
+        }
         if (spr._editorLayerFilterBaseAlpha === undefined) {
           spr._editorLayerFilterBaseAlpha = spr.alpha ?? 1;
         }
@@ -9961,6 +10001,8 @@ LevelEditor.methodNames = [
   "_openEditorAlignPopup",
   "_selectSameEditorObjects",
   "_selectSameGroupObjects",
+  "_clearEditorIsolation",
+  "_toggleEditorIsolation",
   "_alignSelectedEditorObjects",
   "_clearEditorPlaytestMarks",
   "_ensureEditorPlaytestTrail",
