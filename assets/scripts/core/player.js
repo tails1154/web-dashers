@@ -3499,7 +3499,10 @@ if (this.p.isFlying || this.p.isUfo) {
     let tangentVelocity = slopeYVelocity * nativeSlopeMultiplier * this.flipMod();
     if (this.p.isFlying || this.p.isBall) tangentVelocity *= 0.75;
     if (slopeObj.slopeFlipY) tangentVelocity = -tangentVelocity;
-    if (Number.isFinite(this._slopeVelocity) && this._slopeVelocity !== 0) {
+    // Ships need the full tangent impulse from the slope geometry. The cached
+    // slope velocity is a normalized tracking value and is too small to launch
+    // a ship when it replaces this calculated impulse.
+    if (!this.p.isFlying && Number.isFinite(this._slopeVelocity) && this._slopeVelocity !== 0) {
       tangentVelocity = this._slopeVelocity;
     }
     this.p.yVelocity = tangentVelocity;

@@ -346,6 +346,8 @@ class LevelEditor {
     this._editGroupBtnVisual = this._editGroupBtn;
     this._editGroupBtnHit = this._editGroupBtn;
     this._deselectBtn = this.add.image(0, 150, "GJ_GameSheet03", "GJ_deSelBtn2_001.png").setInteractive().setScale(1);
+    this._sendToTopBtn = this.add.image(0, 225, "GJ_GameSheet03", "GJ_arrow_02_001.png")
+        .setInteractive().setScale(0.75);
 
     this._editorLayerSelector = this.add.container(-75, 275);
     this._editorLayerFirstBtn = this.add.image(-90, 0, "GJ_GameSheet03", "GJ_arrow_02_001.png").setInteractive().setScale(0.45).setAlpha(0.5);
@@ -363,7 +365,7 @@ class LevelEditor {
         this._editorLayerLastBtn
     ]);
 
-    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._editorLayerSelector]);
+    this._sideButtons.add([this._copyPasteBtn, this._editGroupBtn, this._editObjectBtn, this._deselectBtn, this._sendToTopBtn, this._editorLayerSelector]);
 
     this._makeBouncyButton(this._copyPasteBtn, 1, () => {
         this._duplicateSelectedObject();
@@ -386,6 +388,10 @@ class LevelEditor {
     this._makeBouncyButton(this._deselectBtn, 1, () => {
         this._clearEditorSelection();
     });
+
+    this._makeBouncyButton(this._sendToTopBtn, 0.75, () => {
+        this._sendSelectedEditorObjectsToTop();
+    }, () => this._getSelectedEditorSaveObjects().length > 0);
 
     this._editorLayerOptions = this._getEditorLayerOptions ? this._getEditorLayerOptions() : [null, 0];
     this._editorActiveLayerIndex = 0;
@@ -2675,6 +2681,17 @@ class LevelEditor {
     this._applyEditorLayerFilter?.();
     this._refreshEditorCollisionCaches();
     this._buildObjectGrid();
+  }
+
+
+  _sendSelectedEditorObjectsToTop() {
+    const selectedObjects = this._getSelectedEditorSaveObjects();
+    if (!selectedObjects.length) return;
+
+    for (const saveObj of selectedObjects) {
+      this._setEditorObjectZLayer(saveObj, 11);
+      this._setEditorObjectZOrder(saveObj, 999);
+    }
   }
 
 
@@ -9464,6 +9481,7 @@ LevelEditor.methodNames = [
   "_updateEditorBoxSelect",
   "_finishEditorBoxSelect",
   "_duplicateSelectedObject",
+  "_sendSelectedEditorObjectsToTop",
   "_deleteSelectedObject",
   "_updateEditorActionButtons",
   "_updateEditorGrid",
