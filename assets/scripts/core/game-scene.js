@@ -5355,6 +5355,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._restartLevel();
       }
     });
+    this._streamModeKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.F8);
+    this._streamModeKey.on("down", () => {
+      window.streamMode = !window.streamMode;
+      this._saveSettings();
+    });
     this._practiceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
     this._practiceKey.on("down", () => {
       if (!this._menuActive && !this._slideIn) {
