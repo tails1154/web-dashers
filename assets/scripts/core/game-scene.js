@@ -5375,8 +5375,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     }).then(commit => {
       const remoteCommit = String(commit?.sha || "").trim();
       if (!remoteCommit || remoteCommit.startsWith(localCommit)) return;
-      const seenCommit = localStorage.getItem("wd_update_seen_commit");
-      if (seenCommit === remoteCommit) return;
+      // "Later" is intentionally session-scoped. A dismissed update should
+      // not permanently hide future releases for this user.
+      if (sessionStorage.getItem("wd_update_deferred_commit") === remoteCommit) return;
       this._pendingUpdateCommit = remoteCommit;
       if (this._menuActive || this._state?.isDead || this._levelWon) {
         this._showUpdatePrompt(remoteCommit);
@@ -5405,7 +5406,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     root.add([shade, panel, title, body]);
 
     const finishLater = () => {
-      localStorage.setItem("wd_update_seen_commit", remoteCommit);
+      sessionStorage.setItem("wd_update_deferred_commit", remoteCommit);
       root.destroy(true);
       this._updatePrompt = null;
     };
