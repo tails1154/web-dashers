@@ -99,7 +99,6 @@ class LevelEditor {
     this._editorMeasureMode = false;
     this._editorMeasureStart = null;
     this._editorMeasureGraphics = this.add.graphics().setScrollFactor(0).setDepth(2001);
-    this._editorPlacementGuide = this.add.graphics().setScrollFactor(0).setDepth(1002);
     this._currentSelectedObjectIds = [];
     this._lockedEditorObjectIds = this._loadEditorLockedObjectIds();
     this._editorTab = "build";
@@ -560,7 +559,6 @@ class LevelEditor {
         const cellX = Math.floor(worldX / grid);
         const cellY = Math.floor(worldY / grid);
         this._editorCoordinateReadout.setText(`X ${Math.round(worldX)}  Y ${Math.round(worldY)}  •  CELL ${cellX},${cellY}`);
-        this._updateEditorPlacementGuide(pointer);
     });
 
     this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
@@ -3120,29 +3118,6 @@ class LevelEditor {
     this._editorMeasureGraphics.fillCircle(start.x, start.y, 5);
     this._editorMeasureGraphics.fillCircle(pointer.x, pointer.y, 5);
     this._editorCoordinateReadout?.setText(`MEASURE  ${Math.round(distance)}px  •  ${(distance / grid).toFixed(2)} GRID  •  Δ ${Math.round(dx)},${Math.round(dy)}`);
-  }
-
-  _updateEditorPlacementGuide(pointer) {
-    if (!this._editorPlacementGuide) return;
-    if (this._editorMeasureMode || this._editorTab !== "build" || !Number.isFinite(Number(window.selectedObjId))) {
-      this._editorPlacementGuide.clear();
-      return;
-    }
-    const zoom = Math.max(0.1, Number(this._editorZoom || 1));
-    const grid = Math.max(1, Number(this._editorGridSize || 60));
-    const worldX = (pointer.x + Number(this._cameraX || 0)) / zoom;
-    const worldY = (pointer.y + Number(this._cameraY || 0)) / zoom;
-    const snapEnabled = window.wdEditorSnapToGrid !== false;
-    const snapX = snapEnabled ? Math.floor(worldX / grid) * grid : worldX;
-    const snapY = snapEnabled ? Math.floor((worldY + 20) / grid) * grid : worldY;
-    const screenX = snapX * zoom - Number(this._cameraX || 0);
-    const screenY = snapY * zoom - Number(this._cameraY || 0);
-    const cellWidth = snapEnabled ? grid * zoom : Math.max(20, grid * zoom * 0.25);
-    this._editorPlacementGuide.clear();
-    this._editorPlacementGuide.lineStyle(2, 0x86f5b2, 0.85);
-    this._editorPlacementGuide.strokeRect(screenX, screenY, cellWidth, cellWidth);
-    this._editorPlacementGuide.lineBetween(screenX - 8, screenY + cellWidth / 2, screenX + cellWidth + 8, screenY + cellWidth / 2);
-    this._editorPlacementGuide.lineBetween(screenX + cellWidth / 2, screenY - 8, screenX + cellWidth / 2, screenY + cellWidth + 8);
   }
 
   _toggleEditorMeasureMode() {
@@ -10557,7 +10532,6 @@ LevelEditor.methodNames = [
   "_sendSelectedEditorObjectsToTop",
   "_focusEditorSelection",
   "_updateEditorMeasure",
-  "_updateEditorPlacementGuide",
   "_toggleEditorMeasureMode",
   "_duplicateSelectedObjectsMirrored",
   "_deleteSelectedObject",
