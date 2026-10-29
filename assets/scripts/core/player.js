@@ -3239,14 +3239,13 @@ if (this.p.isFlying || this.p.isUfo) {
     const contactRadius = this._getSlopeContactRadius(gameObj, hitSize);
     const minY = gameObj.y - gameObj.h / 2;
     const maxY = gameObj.y + gameObj.h / 2;
-    // The native routine offsets the player from the collision line according
-    // to the side that is solid for the current gravity. Using slopeFlipY
-    // directly breaks inverted slopes after gravity changes and is most
-    // visible with the mini hitbox.
-    const targetY = surfaceY + (useFloorLanding ? contactRadius : -contactRadius);
-    return useFloorLanding
-      ? Math.max(minY, Math.min(targetY, maxY + contactRadius))
-      : Math.max(minY - contactRadius, Math.min(targetY, maxY));
+    // Native slopeYPos uses the slope's flat-edge orientation, not the
+    // current gravity, to choose the player's center offset. This is why an
+    // inverted slope must use the opposite offset even when gravity changes.
+    if (!gameObj.slopeFlipY) {
+      return Math.max(minY, Math.min(surfaceY + contactRadius, maxY + contactRadius));
+    }
+    return Math.max(minY - contactRadius, Math.min(surfaceY - contactRadius, maxY));
   }
   _getModifiedSlopeYVelocity() {
     const slopeYVelocity = Number(this._slopeYVelocity) || 0;
@@ -3543,7 +3542,7 @@ if (this.p.isFlying || this.p.isUfo) {
     const cachedSlopeVelocity = Number(this._slopeVelocity);
     let tangentVelocity = Number.isFinite(cachedSlopeVelocity) && cachedSlopeVelocity !== 0
       ? cachedSlopeVelocity
-      : slopeYVelocity * Math.max(1.1, 0.8 / angleRad) * 1.4 * this.flipMod();
+      : slopeYVelocity * Math.max(1.1, 40 / angleRad) * 0.8 * this.flipMod();
     if (this.p.isFlying) tangentVelocity *= 0.75;
     if (this.p.isBall && surfaceA && surfaceB && Math.abs(surfaceB.x - surfaceA.x) > 0.001) {
       // Ball exits use the native cached magnitude, but the transformed ramp
@@ -5646,10 +5645,9 @@ if (this.p.isFlying || this.p.isUfo) {
       const slopeRatio = surfaceRise / Math.max(1, surfaceRun);
       this._slopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
       const slopeAngle = Math.max(0.05, Math.abs(bestSlopeCandidate.slopeAngle));
-      // Native GD binary: max(1.1, 0.8 / angle) * slopeYVelocity * 1.4.
-      // The old 40/angle approximation was about 28x too large at 45°.
-      const slopeVelocityMagnitude = Math.max(1.1, 0.8 / slopeAngle) *
-        this._slopeYVelocity * 1.4;
+      // Native GD: max(1.1, 40 / angle) * slopeYVelocity * 0.8.
+      const slopeVelocityMagnitude = Math.max(1.1, 40 / slopeAngle) *
+        this._slopeYVelocity * 0.8;
       this._slopeVelocity = slopeVelocityMagnitude * this.flipMod();
       if (bestSlopeCandidate.slopeSlidingDown) this._slopeVelocity *= -1;
       if (this.p.isFlying) this._slopeVelocity *= 0.75;
