@@ -607,8 +607,7 @@ class LevelEditor {
         this._timelineContainer,
         this._zoomText,
         this._editorCoordinateReadout,
-        this._editorMeasureGraphics,
-        this._editorPlacementGuide
+        this._editorMeasureGraphics
     ];
 
     for (const obj of guiObjects) {
