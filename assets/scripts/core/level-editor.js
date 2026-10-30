@@ -114,6 +114,10 @@ class LevelEditor {
     this._editorAutoBuildEnabled = false;
     this._editorAutoBuildStep = 0;
     this._editorAutoBuildNextX = 0;
+    this._editorAutoBuildMode = "off";
+    this._editorAutoBuildBeatTimer = 0;
+    this._editorAutoBuildBeatCount = 0;
+    this._editorAutoBuildBeatMs = 500;
     this._editorCollabClient = null;
     this._editorCollabBroadcastTimer = null;
     this._editorCollabApplying = false;
@@ -551,6 +555,14 @@ class LevelEditor {
     this._makeBouncyButton(this._editorPlaytestStopBtn, playtestButtonScale, () => this._stopEditorPlaytest(), () => this._editorPlaytestActive);
     this._makeCompositeBouncyButton(this._editorAutoBuildBtn, [this._editorAutoBuildBtn, this._editorAutoBuildLabel], 1, () => {
         this._editorAutoBuildEnabled = !this._editorAutoBuildEnabled;
+        if (this._editorAutoBuildEnabled) {
+            this._editorAutoBuildMode = "countIn";
+            this._editorAutoBuildBeatTimer = 0;
+            this._editorAutoBuildBeatCount = 0;
+            this._editorAutoBuildBeatMs = this._estimateEditorAutoBuildBeatMs();
+        } else {
+            this._editorAutoBuildMode = "off";
+        }
         this._refreshEditorPlaytestControls();
     }, () => this._editorPlaytestActive);
     this._refreshEditorPlaytestControls();
@@ -594,6 +606,7 @@ class LevelEditor {
     this._editorPlaytestStopBtn.setVisible(active);
     this._editorAutoBuildBtn?.setVisible(active);
     this._editorAutoBuildLabel?.setVisible(active);
+    this._refreshEditorAutoBuildLabel?.();
     if (this._editorAutoBuildBtn) this._editorAutoBuildBtn.setTint(this._editorAutoBuildEnabled ? 0x78e8a5 : 0xffffff);
     if (this._editorAutoBuildLabel) this._editorAutoBuildLabel.setTint(this._editorAutoBuildEnabled ? 0x071b12 : 0xffffff);
 
@@ -1389,6 +1402,10 @@ class LevelEditor {
     this._editorPlaytestActive = true;
     this._editorAutoBuildStep = 0;
     this._editorAutoBuildNextX = Number(this._playerWorldX || 0) + 240;
+    this._editorAutoBuildMode = this._editorAutoBuildEnabled ? "countIn" : "off";
+    this._editorAutoBuildBeatTimer = 0;
+    this._editorAutoBuildBeatCount = 0;
+    this._editorAutoBuildBeatMs = this._estimateEditorAutoBuildBeatMs();
     this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
     this._spaceWasDown = !!this.input.activePointer?.isDown;
@@ -1520,11 +1537,11 @@ class LevelEditor {
   }
 
 
-  _editorPlaytestPress() {
+  _editorPlaytestPress(buildSegment = true) {
     if (this._playerInputEnabled === false) return;
     if (this._state.isDead) return;
 
-    this._autoBuildFromPlaytestClick();
+    if (buildSegment) this._autoBuildFromPlaytestClick();
 
     this._state.upKeyDown = true;
     this._state.upKeyPressed = true;
@@ -1568,6 +1585,52 @@ class LevelEditor {
                 skipBallInputGravity: secondaryBallInputGravity,
                 skipSpiderInputGravity: secondarySpiderInputGravity
             });
+        }
+    }
+  }
+
+
+  _estimateEditorAutoBuildBeatMs() {
+    const candidates = [
+        this._level?.bpm,
+        this._level?.settings?.bpm,
+        window.currentlevel?.bpm,
+        window.currentlevel?.BPM,
+        window.currentlevel?.["bpm"]
+    ];
+    const bpm = candidates.map(value => Number(value)).find(value => Number.isFinite(value) && value >= 40 && value <= 240) || 120;
+    return 60000 / bpm;
+  }
+
+
+  _refreshEditorAutoBuildLabel() {
+    if (!this._editorAutoBuildLabel) return;
+    const bpm = Math.round(60000 / Math.max(250, Number(this._editorAutoBuildBeatMs) || 500));
+    if (!this._editorAutoBuildEnabled) {
+        this._editorAutoBuildLabel.setText("AUTO BUILD");
+    } else if (this._editorAutoBuildMode === "countIn") {
+        this._editorAutoBuildLabel.setText(`COUNT ${Math.min(4, this._editorAutoBuildBeatCount)}/4`);
+    } else {
+        this._editorAutoBuildLabel.setText(`AUTO PLAY ${bpm}`);
+    }
+  }
+
+
+  _updateEditorAutoBuildBeat(deltaTime) {
+    if (!this._editorAutoBuildEnabled || !this._editorPlaytestActive || this._editorPlaytestPaused) return;
+    const beatMs = Math.max(250, Math.min(1500, Number(this._editorAutoBuildBeatMs) || 500));
+    this._editorAutoBuildBeatTimer += Math.max(0, Number(deltaTime) || 0);
+    while (this._editorAutoBuildBeatTimer >= beatMs) {
+        this._editorAutoBuildBeatTimer -= beatMs;
+        if (this._editorAutoBuildMode === "countIn") {
+            this._editorPlaytestPress(true);
+            this._editorAutoBuildBeatCount += 1;
+            if (this._editorAutoBuildBeatCount >= 4) this._editorAutoBuildMode = "autoplay";
+            this._refreshEditorAutoBuildLabel();
+        } else if (this._editorAutoBuildMode === "autoplay") {
+            // Replay the calibrated beat grid without creating more objects.
+            this._editorPlaytestPress(false);
+            this._refreshEditorAutoBuildLabel();
         }
     }
   }
@@ -1659,12 +1722,15 @@ class LevelEditor {
 
 
   _updateEditorPlaytestInput() {
+    if (this._editorAutoBuildMode !== "off") return;
     const pointer = this.input.activePointer;
     const hitObjects = this.input.hitTestPointer(pointer);
     const overPlaytestControls = hitObjects.some(obj =>
         obj === this._editorPlaytestPauseBtn ||
         obj === this._editorPlaytestStopBtn ||
-        obj === this._editorPlaytestPlayBtn
+        obj === this._editorPlaytestPlayBtn ||
+        obj === this._editorAutoBuildBtn ||
+        obj === this._editorAutoBuildLabel
     );
     const pointerHeld = pointer.isDown && !overPlaytestControls;
     const jumpHeld = this._spaceKey.isDown || this._upKey.isDown || this._wKey.isDown || this._lKey.isDown || pointerHeld;
@@ -1683,6 +1749,7 @@ class LevelEditor {
     if (!this._editorPlaytestActive || this._editorPlaytestPaused) return;
 
     this._updateEditorPlaytestInput();
+    this._updateEditorAutoBuildBeat(deltaTime);
     this._audio.update(deltaTime / 1000);
     this._state.mirrored = false;
     this._state2.mirrored = false;
@@ -10840,6 +10907,9 @@ LevelEditor.methodNames = [
   "_toggleEditorPlaytestPause",
   "_stopEditorPlaytest",
   "_editorPlaytestPress",
+  "_estimateEditorAutoBuildBeatMs",
+  "_refreshEditorAutoBuildLabel",
+  "_updateEditorAutoBuildBeat",
   "_autoBuildFromPlaytestClick",
   "_editorPlaytestRelease",
   "_updateEditorPlaytestInput",
