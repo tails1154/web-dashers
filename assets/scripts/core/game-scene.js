@@ -5323,20 +5323,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       window.streamMode = !window.streamMode;
       this._saveSettings();
     });
-    this._practiceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-    this._practiceKey.on("down", () => {
-      if (this._nativePhaserDialog) return;
-      if (!this._menuActive && !this._slideIn) {
-        const isPracticeMode = this._practicedMode.togglePracticeMode();
-        if (this._checkpointBtnContainer) {
-          this._checkpointBtnContainer.setVisible(isPracticeMode);
-        }
-        if (this._practiceModeBarContainer) {
-          this._practiceModeBarContainer.setVisible(isPracticeMode);
-        }
-        this._audio.startMusic(this._getCurrentMusicSyncOffset());
-      }
-    });
     this._saveCheckpointKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this._saveCheckpointKey.on("down", () => {
       if (this._nativePhaserDialog) return;
