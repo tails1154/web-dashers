@@ -11613,8 +11613,18 @@ _applyMirrorEffect() {
       let completedSet;
       try { completedSet = JSON.parse(localStorage.getItem(completedKey) || "[]"); } catch(e) { completedSet = []; }
       const levelId = window.currentlevel[2] || "level_1";
-      if (window._activeGauntlet?.id) {
-        const gauntletKey = `gd_gauntlet_${window._activeGauntlet.id}`;
+      let activeGauntlet = window._activeGauntlet;
+      if (!activeGauntlet?.id) {
+        try {
+          const savedGauntlet = JSON.parse(localStorage.getItem("wd_active_gauntlet") || "null");
+          const currentOnlineId = String(window._selectedLevelData?.id || levelId).replace(/^online_/, "");
+          if (savedGauntlet?.id && String(savedGauntlet.levelId) === currentOnlineId) {
+            activeGauntlet = savedGauntlet;
+          }
+        } catch (_) {}
+      }
+      if (activeGauntlet?.id) {
+        const gauntletKey = `gd_gauntlet_${activeGauntlet.id}`;
         let gauntletCompleted = [];
         try { gauntletCompleted = JSON.parse(localStorage.getItem(gauntletKey) || "[]"); } catch (_) {}
         if (!Array.isArray(gauntletCompleted)) gauntletCompleted = [];
@@ -11622,6 +11632,7 @@ _applyMirrorEffect() {
         if (!gauntletCompleted.includes(completedId)) gauntletCompleted.push(completedId);
         localStorage.setItem(gauntletKey, JSON.stringify(gauntletCompleted));
         window._activeGauntlet = null;
+        localStorage.removeItem("wd_active_gauntlet");
       }
       const wasAlreadyCompleted = completedSet.includes(levelId);
       if (!completedSet.includes(levelId)) {
@@ -13063,7 +13074,12 @@ _applyMirrorEffect() {
       root.add([panel, label]);
       this._makeCompositeBouncyButton(panel, [panel, label], 1, () => {
         if (!isUnlocked) return;
-        window._activeGauntlet = { id: String(gauntlet.id), levelIndex: index };
+        window._activeGauntlet = {
+          id: String(gauntlet.id),
+          levelIndex: index,
+          levelId: String(level.id).replace(/^online_/, "")
+        };
+        localStorage.setItem("wd_active_gauntlet", JSON.stringify(window._activeGauntlet));
         root.destroy(true);
         this._playSelectedOnlineLevel(level);
       }, () => isUnlocked);
