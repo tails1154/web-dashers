@@ -60,15 +60,15 @@ class LevelEditor {
     const cursors = this.input.keyboard.createCursorKeys();
     const fast = !!this._shiftKey?.isDown;
 
-    if (cursors.left.isDown || this._aKey?.isDown) {
+    if (cursors.left.isDown) {
         this._cameraX -= camSpeed * (fast ? 2 : 1);
-    } else if (cursors.right.isDown || this._dKey?.isDown) {
+    } else if (cursors.right.isDown) {
         this._cameraX += camSpeed * (fast ? 2 : 1);
     }
 
-    if (cursors.up.isDown || this._wKey?.isDown) {
+    if (cursors.up.isDown) {
         this._cameraY -= camSpeed * (fast ? 2 : 1);
-    } else if (cursors.down.isDown || this._sKey?.isDown) {
+    } else if (cursors.down.isDown) {
         this._cameraY += camSpeed * (fast ? 2 : 1);
     }
 
