@@ -7070,6 +7070,13 @@ class LevelEditor {
         return;
     }
 
+    // Start Position objects are stored as deco/solid objects in the object
+    // catalog, not as triggers, but they still have editable start settings.
+    if (this._isEditorStartPositionId(saveObj.id)) {
+        this._openEditorStartPositionOptionsPopup(saveObj);
+        return;
+    }
+
     if (objectDef.type !== triggerType) return;
 
     if (this._isEditorColorTriggerId(saveObj.id)) {
@@ -7084,8 +7091,6 @@ class LevelEditor {
         this._openEditorCameraTriggerOptionsPopup(saveObj);
     } else if (this._isEditorRotateTriggerId(saveObj.id)) {
         this._openEditorRotateTriggerOptionsPopup(saveObj);
-    } else if (this._isEditorStartPositionId(saveObj.id)) {
-        this._openEditorStartPositionOptionsPopup(saveObj);
     } else if (this._isEditorTextObjectId(saveObj.id)) {
         this._openEditorTextObjectOptionsPopup(saveObj);
     } else {
