@@ -1611,7 +1611,7 @@ class LevelEditor {
     } else if (this._editorAutoBuildMode === "countIn") {
         this._editorAutoBuildLabel.setText(`COUNT ${Math.min(4, this._editorAutoBuildBeatCount)}/4`);
     } else {
-        this._editorAutoBuildLabel.setText(`PLAY ${bpm} BPM`);
+        this._editorAutoBuildLabel.setText(`AUTO PLAY ${bpm}`);
     }
   }
 
@@ -1620,10 +1620,8 @@ class LevelEditor {
     if (!this._editorAutoBuildEnabled || !this._editorPlaytestActive || this._editorPlaytestPaused) return;
     const beatMs = Math.max(250, Math.min(1500, Number(this._editorAutoBuildBeatMs) || 500));
     this._editorAutoBuildBeatTimer += Math.max(0, Number(deltaTime) || 0);
-    let processedBeats = 0;
-    while (this._editorAutoBuildBeatTimer >= beatMs && processedBeats < 4) {
+    while (this._editorAutoBuildBeatTimer >= beatMs) {
         this._editorAutoBuildBeatTimer -= beatMs;
-        processedBeats += 1;
         if (this._editorAutoBuildMode === "countIn") {
             this._editorPlaytestPress(true);
             this._editorAutoBuildBeatCount += 1;
@@ -1635,9 +1633,6 @@ class LevelEditor {
             this._refreshEditorAutoBuildLabel();
         }
     }
-    if (this._editorAutoBuildBeatTimer >= beatMs) {
-        this._editorAutoBuildBeatTimer %= beatMs;
-    }
   }
 
 
@@ -1647,11 +1642,9 @@ class LevelEditor {
 
     const step = this._editorAutoBuildStep++;
     const playerY = Number(this._state?.y || 30);
-    const beatSeconds = Math.max(0.25, Math.min(1.5, (Number(this._editorAutoBuildBeatMs) || 500) / 1000));
-    const beatDistance = Math.max(180, Math.min(480, Number(playerSpeed || 1) * Number(d || 1) * beatSeconds));
     const baseX = Math.max(
         Number(this._editorAutoBuildNextX || 0),
-        Number(this._playerWorldX || 0) + beatDistance
+        Number(this._playerWorldX || 0) + 180
     );
     const heightStep = step % 4 === 3 ? -60 : step % 4 === 2 ? 60 : 0;
     const platformY = playerY + 60 + heightStep;
@@ -1712,7 +1705,7 @@ class LevelEditor {
         this._level._spawnObject(saveData);
     }
 
-    this._editorAutoBuildNextX = baseX + beatDistance;
+    this._editorAutoBuildNextX = baseX + 180;
     this._refreshEditorCollisionCaches?.();
     this._broadcastEditorState?.();
   }
