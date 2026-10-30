@@ -5121,6 +5121,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._rightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT);
     this._aKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     this._dKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+    this._sKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this._shiftKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
 
     this._startPosIndex = -1;
 

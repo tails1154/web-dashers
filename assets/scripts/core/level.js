@@ -4040,7 +4040,19 @@ window.LevelObject = class LevelObject {
         scene._cameraEffectOffsetY = effect.fromOffsetY + ((Number(trig.value) || 0) - effect.fromOffsetY) * smooth;
       }
       if (progress >= 1) {
-        if (trig.kind === "camera_pulse") this._applyCameraZoom(effect.fromZoom);
+        // Apply the exact endpoint when the tween finishes.  Leaving the
+        // eased, floating-point sample in place made tilt and pan controls
+        // accumulate tiny errors and made the next trigger start from a
+        // different camera state than the one the player could see.
+        if (trig.kind === "camera_pulse") {
+          this._applyCameraZoom(effect.fromZoom);
+        } else if (trig.kind.startsWith("camera_zoom_")) {
+          this._applyCameraZoom(Number(trig.value) || 1);
+        } else if (trig.kind.startsWith("camera_tilt_")) {
+          this._applyCameraRotation(Number(trig.value) || 0);
+        } else if (trig.kind.startsWith("camera_pan_")) {
+          scene._cameraEffectOffsetY = Number(trig.value) || 0;
+        }
         this._activeCameraEffects.splice(i, 1);
       } else {
         i++;
@@ -4054,6 +4066,10 @@ window.LevelObject = class LevelObject {
     this._touchCameraEffectActivated.clear();
     this._scene._cameraEffectOffsetY = 0;
     this._applyCameraRotation(0);
+    // Camera-effect zoom is separate from the level zoom-trigger list. Reset
+    // it here as well so a restart cannot inherit a zoom from a camera pulse
+    // or camera zoom effect.
+    if (!this._scene?._editorPlaytestActive) this._applyCameraZoom(1);
   }
 
   checkSpawnTriggers(playerX) {

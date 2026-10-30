@@ -52,20 +52,27 @@ class LevelEditor {
         return;
     }
 
-    const camSpeed = 15;
+    // Camera movement used to advance a fixed number of pixels per frame,
+    // which made the editor camera depend on refresh rate and made keyboard
+    // panning appear broken on slower devices.
+    const frameDelta = Math.min(Math.max(Number(delta) || 16.67, 1), 50);
+    const camSpeed = 0.9 * frameDelta;
     const cursors = this.input.keyboard.createCursorKeys();
+    const fast = !!this._shiftKey?.isDown;
 
-    if (cursors.left.isDown) {
-        this._cameraX -= camSpeed;
-    } else if (cursors.right.isDown) {
-        this._cameraX += camSpeed;
+    if (cursors.left.isDown || this._aKey?.isDown) {
+        this._cameraX -= camSpeed * (fast ? 2 : 1);
+    } else if (cursors.right.isDown || this._dKey?.isDown) {
+        this._cameraX += camSpeed * (fast ? 2 : 1);
     }
 
-    if (cursors.up.isDown) {
-        this._cameraY -= camSpeed;
-    } else if (cursors.down.isDown) {
-        this._cameraY += camSpeed;
+    if (cursors.up.isDown || this._wKey?.isDown) {
+        this._cameraY -= camSpeed * (fast ? 2 : 1);
+    } else if (cursors.down.isDown || this._sKey?.isDown) {
+        this._cameraY += camSpeed * (fast ? 2 : 1);
     }
+
+    this._cameraXRef._v = this._cameraX;
 
     this._level.container.x = -this._cameraX;
     this._level.container.y = -this._cameraY;
@@ -76,6 +83,8 @@ class LevelEditor {
 
     this._bg.tilePositionX = this._cameraX * 0.1;
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
+    this._level.updateVisibility?.(this._cameraX);
+    this._level.updateGroundTiles?.(this._cameraY);
   }
 
 
