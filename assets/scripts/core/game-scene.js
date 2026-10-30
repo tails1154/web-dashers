@@ -1773,7 +1773,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       let ownerDeleteBtn = null;
       let openModeratorMenuNext = false;
       if (window.AccountAPI?.isModerator?.()) {
-        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet03", "GJ_featuredBtn_001.png")
+        moderatorBtn = this.add.image(sideBtnX, sideBtnY0 + sideBtnGap * 5, "GJ_GameSheet04", "GJ_featuredBtn_001.png")
           .setScrollFactor(0).setDepth(504).setScale(sideBtnScale).setInteractive();
         this._makeBouncyButton(moderatorBtn, sideBtnScale, () => {
           openModeratorMenuNext = true;
@@ -6160,9 +6160,17 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._replayGhostPlaybackClock = 0;
     this._replayGhostWasDead = false;
     if (this._replayGhostGraphics) this._replayGhostGraphics.clear().setVisible(false);
-    this._replayGhostDeltaLabel?.setVisible(false);
+    if (this._replayGhostDeltaLabel?.scene === this && this._replayGhostDeltaLabel.active !== false) {
+      this._replayGhostDeltaLabel.setVisible(false);
+    } else {
+      this._replayGhostDeltaLabel = null;
+    }
   }
   _updateReplayGhost(deltaTime = 0) {
+    if (this._replayGhostDeltaLabel &&
+        (this._replayGhostDeltaLabel.scene !== this || this._replayGhostDeltaLabel.active === false)) {
+      this._replayGhostDeltaLabel = null;
+    }
     if (!window.replayGhost || window.isEditor || this._menuActive) {
       if (this._replayGhostGraphics) this._replayGhostGraphics.setVisible(false);
       this._replayGhostDeltaLabel?.setVisible(false);
@@ -6225,7 +6233,13 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     }
     this._replayGhostGraphics.fillStyle(0x9de8ff, opacity).fillCircle(x, y, 13).lineStyle(2, 0x9de8ff, Math.min(1, opacity + 0.35)).strokeCircle(x, y, 16).setVisible(true);
     if (!this._replayGhostDeltaLabel) {
-      this._replayGhostDeltaLabel = this.add.bitmapText(screenWidth - 12, 140, "bigFont", "", 16)
+      this._replayGhostDeltaLabel = this.add.text(screenWidth - 12, 140, "", {
+        fontFamily: "Arial Black",
+        fontSize: "16px",
+        color: "#ffffff",
+        stroke: "#15204b",
+        strokeThickness: 3
+      })
         .setOrigin(1, 0)
         .setScrollFactor(0)
         .setDepth(90);
