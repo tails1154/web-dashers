@@ -84,7 +84,9 @@ class LevelEditor {
     this._bg.tilePositionX = this._cameraX * 0.1;
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
     this._level.updateVisibility?.(this._cameraX);
-    this._level.updateGroundTiles?.(this._cameraY);
+    if (Array.isArray(this._level._groundTiles)) {
+        this._level.updateGroundTiles?.(this._cameraY);
+    }
   }
 
 
