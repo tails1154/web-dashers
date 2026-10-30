@@ -10917,6 +10917,7 @@ LevelEditor.methodNames = [
   "_broadcastEditorState",
   "_applyEditorCollabState",
   "_openEditorZoomTriggerOptionsPopup",
+  "_openEditorCameraTriggerOptionsPopup",
   "_isEditorCustomImageBlockId",
   "_openEditorCustomImageBlockOptionsPopup",
   "_openEditorRotateTriggerOptionsPopup",
