@@ -1511,6 +1511,9 @@ class LevelEditor {
     this._editorPlaytestActive = false;
     this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
+    this._editorAutoBuildMode = "off";
+    this._editorAutoBuildBeatTimer = 0;
+    this._editorAutoBuildBeatCount = 0;
     this._spaceWasDown = false;
     this._deltaBuffer = 0;
 
