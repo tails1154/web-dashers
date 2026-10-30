@@ -113,7 +113,6 @@ class LevelEditor {
     this._editorPlaytestLastTrailPoint = null;
     this._editorAutoBuildEnabled = false;
     this._editorAutoBuildStep = 0;
-    this._editorAutoBuildNextX = 0;
     this._editorCollabClient = null;
     this._editorCollabBroadcastTimer = null;
     this._editorCollabApplying = false;
@@ -1388,7 +1387,6 @@ class LevelEditor {
 
     this._editorPlaytestActive = true;
     this._editorAutoBuildStep = 0;
-    this._editorAutoBuildNextX = Number(this._playerWorldX || 0) + 240;
     this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
     this._spaceWasDown = !!this.input.activePointer?.isDown;
@@ -1577,72 +1575,56 @@ class LevelEditor {
     if (!this._editorAutoBuildEnabled || !this._editorPlaytestActive || this._editorPlaytestPaused) return;
     if (!Array.isArray(window.levelObjects) || !this._level?._spawnObject) return;
 
+    const objectId = 36;
+    const objectDef = getObjectFromId(objectId);
+    if (!objectDef) return;
+
     const step = this._editorAutoBuildStep++;
-    const playerY = Number(this._state?.y || 30);
-    const baseX = Math.max(
-        Number(this._editorAutoBuildNextX || 0),
-        Number(this._playerWorldX || 0) + 180
-    );
-    const heightStep = step % 4 === 3 ? -60 : step % 4 === 2 ? 60 : 0;
-    const platformY = playerY + 60 + heightStep;
-    const objectsToBuild = [
-        { id: 1, worldX: baseX, worldY: platformY },
-        { id: 1, worldX: baseX + 60, worldY: platformY },
-        { id: 1, worldX: baseX + 120, worldY: platformY }
-    ];
-    // Build readable platform segments instead of adding an orb on every
-    // click. One spike every third segment adds gameplay without spam.
-    if (step % 3 === 2) {
-        objectsToBuild.push({ id: 8, worldX: baseX + 60, worldY: platformY - 60 });
-    }
+    const worldX = Number(this._playerWorldX || 0) + 300;
+    const heightOffset = ((step % 3) - 1) * 42;
+    const worldY = Number(this._state?.y || 30) + heightOffset;
+    const x = worldX / 2;
+    const y = worldY / 2;
+    const saveData = {
+        id: objectId,
+        x,
+        y,
+        flipX: false,
+        flipY: false,
+        rot: 0,
+        scale: 1,
+        zLayer: objectDef.default_z_layer || 3,
+        zOrder: objectDef.default_z_order || 12,
+        editorLayer: 0,
+        editorLayer2: 0,
+        groups: "",
+        color1: 0,
+        color2: 0,
+        gameMode: 0,
+        miniMode: 0,
+        speed: 0,
+        mirrored: 0,
+        flipGravity: false,
+        _autoBuilt: true,
+        _raw: {
+            "1": String(objectId),
+            "2": String(x),
+            "3": String(y),
+            "4": "0",
+            "5": "0",
+            "6": "0",
+            "20": "0",
+            "21": "0",
+            "22": "0",
+            "24": String(objectDef.default_z_layer || 3),
+            "25": String(objectDef.default_z_order || 12),
+            "32": "1",
+            "57": ""
+        }
+    };
 
-    for (const placement of objectsToBuild) {
-        const objectDef = getObjectFromId(placement.id);
-        if (!objectDef) continue;
-        const x = placement.worldX / 2;
-        const y = placement.worldY / 2;
-        const saveData = {
-            id: placement.id,
-            x,
-            y,
-            flipX: false,
-            flipY: false,
-            rot: 0,
-            scale: 1,
-            zLayer: objectDef.default_z_layer || 3,
-            zOrder: objectDef.default_z_order || 12,
-            editorLayer: 0,
-            editorLayer2: 0,
-            groups: "",
-            color1: 0,
-            color2: 0,
-            gameMode: 0,
-            miniMode: 0,
-            speed: 0,
-            mirrored: 0,
-            flipGravity: false,
-            _autoBuilt: true,
-            _raw: {
-                "1": String(placement.id),
-                "2": String(x),
-                "3": String(y),
-                "4": "0",
-                "5": "0",
-                "6": "0",
-                "20": "0",
-                "21": "0",
-                "22": "0",
-                "24": String(objectDef.default_z_layer || 3),
-                "25": String(objectDef.default_z_order || 12),
-                "32": "1",
-                "57": ""
-            }
-        };
-        window.levelObjects.push(saveData);
-        this._level._spawnObject(saveData);
-    }
-
-    this._editorAutoBuildNextX = baseX + 180;
+    window.levelObjects.push(saveData);
+    this._level._spawnObject(saveData);
     this._refreshEditorCollisionCaches?.();
     this._broadcastEditorState?.();
   }
