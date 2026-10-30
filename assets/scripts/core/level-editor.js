@@ -111,8 +111,6 @@ class LevelEditor {
     this._editorPlaytestSavedView = null;
     this._editorPlaytestPauseView = null;
     this._editorPlaytestLastTrailPoint = null;
-    this._editorAutoBuildEnabled = false;
-    this._editorAutoBuildStep = 0;
     this._editorCollabClient = null;
     this._editorCollabBroadcastTimer = null;
     this._editorCollabApplying = false;
@@ -534,24 +532,16 @@ class LevelEditor {
     this._editorPlaytestPlayBtn = this.add.image(0, 0, "GJ_GameSheet03", "GJ_playEditorBtn_001.png").setInteractive().setScale(playtestButtonScale);
     this._editorPlaytestPauseBtn = this.add.image(0, 0, "GJ_GameSheet03", "GJ_pauseEditorBtn_001.png").setInteractive().setScale(playtestButtonScale).setVisible(false);
     this._editorPlaytestStopBtn = this.add.image(90, 0, "GJ_GameSheet03", "GJ_stopEditorBtn_001.png").setInteractive().setScale(playtestButtonScale).setVisible(false);
-    this._editorAutoBuildBtn = this.add.nineslice(205, 0, "GJ_button01", null, 118, 42, 10, 10, 10, 10).setInteractive().setVisible(false);
-    this._editorAutoBuildLabel = this.add.bitmapText(205, 0, "bigFont", "AUTO BUILD", 15).setOrigin(0.5).setVisible(false);
 
     this._editorPlaytestControls.add([
         this._editorPlaytestPlayBtn,
         this._editorPlaytestPauseBtn,
-        this._editorPlaytestStopBtn,
-        this._editorAutoBuildBtn,
-        this._editorAutoBuildLabel
+        this._editorPlaytestStopBtn
     ]);
 
     this._makeBouncyButton(this._editorPlaytestPlayBtn, playtestButtonScale, () => this._startEditorPlaytest(), () => !this._editorPlaytestActive);
     this._makeBouncyButton(this._editorPlaytestPauseBtn, playtestButtonScale, () => this._toggleEditorPlaytestPause(), () => this._editorPlaytestActive);
     this._makeBouncyButton(this._editorPlaytestStopBtn, playtestButtonScale, () => this._stopEditorPlaytest(), () => this._editorPlaytestActive);
-    this._makeCompositeBouncyButton(this._editorAutoBuildBtn, [this._editorAutoBuildBtn, this._editorAutoBuildLabel], 1, () => {
-        this._editorAutoBuildEnabled = !this._editorAutoBuildEnabled;
-        this._refreshEditorPlaytestControls();
-    }, () => this._editorPlaytestActive);
     this._refreshEditorPlaytestControls();
 
     this._zoomText = this.add.bitmapText(screenWidth / 2, 80, "bigFont", "Zoom: 1.00x", 40).setOrigin(0.5).setScrollFactor(0).setDepth(2000).setAlpha(0);
@@ -585,16 +575,11 @@ class LevelEditor {
 
   _refreshEditorPlaytestControls() {
     if (!this._editorPlaytestPlayBtn || !this._editorPlaytestPauseBtn || !this._editorPlaytestStopBtn) return;
-    if (this._editorAutoBuildEnabled === undefined) this._editorAutoBuildEnabled = false;
 
     const active = !!this._editorPlaytestActive;
     this._editorPlaytestPlayBtn.setVisible(!active);
     this._editorPlaytestPauseBtn.setVisible(active);
     this._editorPlaytestStopBtn.setVisible(active);
-    this._editorAutoBuildBtn?.setVisible(active);
-    this._editorAutoBuildLabel?.setVisible(active);
-    if (this._editorAutoBuildBtn) this._editorAutoBuildBtn.setTint(this._editorAutoBuildEnabled ? 0x78e8a5 : 0xffffff);
-    if (this._editorAutoBuildLabel) this._editorAutoBuildLabel.setTint(this._editorAutoBuildEnabled ? 0x071b12 : 0xffffff);
 
     if (active) {
         this._editorPlaytestPauseBtn
@@ -1386,7 +1371,6 @@ class LevelEditor {
     this._editorPlaytestPauseView = null;
 
     this._editorPlaytestActive = true;
-    this._editorAutoBuildStep = 0;
     this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
     this._spaceWasDown = !!this.input.activePointer?.isDown;
@@ -1522,8 +1506,6 @@ class LevelEditor {
     if (this._playerInputEnabled === false) return;
     if (this._state.isDead) return;
 
-    this._autoBuildFromPlaytestClick();
-
     this._state.upKeyDown = true;
     this._state.upKeyPressed = true;
     this._state.queuedHold = true;
@@ -1568,65 +1550,6 @@ class LevelEditor {
             });
         }
     }
-  }
-
-
-  _autoBuildFromPlaytestClick() {
-    if (!this._editorAutoBuildEnabled || !this._editorPlaytestActive || this._editorPlaytestPaused) return;
-    if (!Array.isArray(window.levelObjects) || !this._level?._spawnObject) return;
-
-    const objectId = 36;
-    const objectDef = getObjectFromId(objectId);
-    if (!objectDef) return;
-
-    const step = this._editorAutoBuildStep++;
-    const worldX = Number(this._playerWorldX || 0) + 300;
-    const heightOffset = ((step % 3) - 1) * 42;
-    const worldY = Number(this._state?.y || 30) + heightOffset;
-    const x = worldX / 2;
-    const y = worldY / 2;
-    const saveData = {
-        id: objectId,
-        x,
-        y,
-        flipX: false,
-        flipY: false,
-        rot: 0,
-        scale: 1,
-        zLayer: objectDef.default_z_layer || 3,
-        zOrder: objectDef.default_z_order || 12,
-        editorLayer: 0,
-        editorLayer2: 0,
-        groups: "",
-        color1: 0,
-        color2: 0,
-        gameMode: 0,
-        miniMode: 0,
-        speed: 0,
-        mirrored: 0,
-        flipGravity: false,
-        _autoBuilt: true,
-        _raw: {
-            "1": String(objectId),
-            "2": String(x),
-            "3": String(y),
-            "4": "0",
-            "5": "0",
-            "6": "0",
-            "20": "0",
-            "21": "0",
-            "22": "0",
-            "24": String(objectDef.default_z_layer || 3),
-            "25": String(objectDef.default_z_order || 12),
-            "32": "1",
-            "57": ""
-        }
-    };
-
-    window.levelObjects.push(saveData);
-    this._level._spawnObject(saveData);
-    this._refreshEditorCollisionCaches?.();
-    this._broadcastEditorState?.();
   }
 
 
@@ -10822,7 +10745,6 @@ LevelEditor.methodNames = [
   "_toggleEditorPlaytestPause",
   "_stopEditorPlaytest",
   "_editorPlaytestPress",
-  "_autoBuildFromPlaytestClick",
   "_editorPlaytestRelease",
   "_updateEditorPlaytestInput",
   "_updateEditorPlaytest",
