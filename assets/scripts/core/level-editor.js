@@ -118,6 +118,11 @@ class LevelEditor {
     this._editorAutoBuildBeatTimer = 0;
     this._editorAutoBuildBeatCount = 0;
     this._editorAutoBuildBeatMs = 500;
+    this._editorAutoBuildEstimateClock = 0;
+    this._editorAutoBuildEstimateAverage = 0.1;
+    this._editorAutoBuildEstimateLastEnergy = 0.1;
+    this._editorAutoBuildEstimateLastPeak = -Infinity;
+    this._editorAutoBuildEstimateIntervals = [];
     this._editorCollabClient = null;
     this._editorCollabBroadcastTimer = null;
     this._editorCollabApplying = false;
@@ -560,6 +565,7 @@ class LevelEditor {
             this._editorAutoBuildBeatTimer = 0;
             this._editorAutoBuildBeatCount = 0;
             this._editorAutoBuildBeatMs = this._estimateEditorAutoBuildBeatMs();
+            this._resetEditorAutoBuildBeatEstimate();
         } else {
             this._editorAutoBuildMode = "off";
         }
@@ -1406,6 +1412,7 @@ class LevelEditor {
     this._editorAutoBuildBeatTimer = 0;
     this._editorAutoBuildBeatCount = 0;
     this._editorAutoBuildBeatMs = this._estimateEditorAutoBuildBeatMs();
+    this._resetEditorAutoBuildBeatEstimate();
     this._setPlayerInputEnabled?.(true);
     this._editorPlaytestPaused = false;
     this._spaceWasDown = !!this.input.activePointer?.isDown;
@@ -1514,6 +1521,7 @@ class LevelEditor {
     this._editorAutoBuildMode = "off";
     this._editorAutoBuildBeatTimer = 0;
     this._editorAutoBuildBeatCount = 0;
+    this._resetEditorAutoBuildBeatEstimate();
     this._spaceWasDown = false;
     this._deltaBuffer = 0;
 
@@ -1603,6 +1611,47 @@ class LevelEditor {
     ];
     const bpm = candidates.map(value => Number(value)).find(value => Number.isFinite(value) && value >= 40 && value <= 240) || 120;
     return 60000 / bpm;
+  }
+
+
+  _resetEditorAutoBuildBeatEstimate() {
+    this._editorAutoBuildEstimateClock = 0;
+    this._editorAutoBuildEstimateAverage = 0.1;
+    this._editorAutoBuildEstimateLastEnergy = 0.1;
+    this._editorAutoBuildEstimateLastPeak = -Infinity;
+    this._editorAutoBuildEstimateIntervals = [];
+  }
+
+
+  _updateEditorAutoBuildBeatEstimate(deltaTime) {
+    if (!this._editorAutoBuildEnabled || !this._editorPlaytestActive || this._editorPlaytestPaused) return;
+    if (this._editorAutoBuildMode !== "countIn") return;
+
+    const elapsed = Math.max(0, Number(deltaTime) || 0);
+    this._editorAutoBuildEstimateClock += elapsed;
+    const energy = Math.max(0, Number(this._audio?.getMeteringValue?.()) || 0);
+    const average = this._editorAutoBuildEstimateAverage =
+        (this._editorAutoBuildEstimateAverage * 0.94) + (energy * 0.06);
+    const rising = energy > this._editorAutoBuildEstimateLastEnergy + 0.015;
+    const aboveNoise = energy > Math.max(0.18, average * 1.18);
+    const enoughSeparation = this._editorAutoBuildEstimateClock - this._editorAutoBuildEstimateLastPeak >= 180;
+    if (rising && aboveNoise && enoughSeparation) {
+        const lastPeak = this._editorAutoBuildEstimateLastPeak;
+        if (Number.isFinite(lastPeak)) {
+            const interval = this._editorAutoBuildEstimateClock - lastPeak;
+            if (interval >= 250 && interval <= 1500) {
+                this._editorAutoBuildEstimateIntervals.push(interval);
+                if (this._editorAutoBuildEstimateIntervals.length > 6) {
+                    this._editorAutoBuildEstimateIntervals.shift();
+                }
+                const sorted = [...this._editorAutoBuildEstimateIntervals].sort((a, b) => a - b);
+                const middle = sorted[Math.floor(sorted.length / 2)];
+                if (Number.isFinite(middle)) this._editorAutoBuildBeatMs = middle;
+            }
+        }
+        this._editorAutoBuildEstimateLastPeak = this._editorAutoBuildEstimateClock;
+    }
+    this._editorAutoBuildEstimateLastEnergy = energy;
   }
 
 
@@ -1759,8 +1808,9 @@ class LevelEditor {
     if (!this._editorPlaytestActive || this._editorPlaytestPaused) return;
 
     this._updateEditorPlaytestInput();
-    this._updateEditorAutoBuildBeat(deltaTime);
     this._audio.update(deltaTime / 1000);
+    this._updateEditorAutoBuildBeatEstimate(deltaTime);
+    this._updateEditorAutoBuildBeat(deltaTime);
     this._state.mirrored = false;
     this._state2.mirrored = false;
     this._bg.setFlipX(false);
@@ -10918,6 +10968,8 @@ LevelEditor.methodNames = [
   "_stopEditorPlaytest",
   "_editorPlaytestPress",
   "_estimateEditorAutoBuildBeatMs",
+  "_resetEditorAutoBuildBeatEstimate",
+  "_updateEditorAutoBuildBeatEstimate",
   "_refreshEditorAutoBuildLabel",
   "_updateEditorAutoBuildBeat",
   "_autoBuildFromPlaytestClick",
