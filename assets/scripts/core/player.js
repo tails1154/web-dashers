@@ -3340,16 +3340,22 @@ if (this.p.isFlying || this.p.isUfo) {
       // cannot tunnel through the rotated/flipped triangle.
       const samples = 5;
       let touchesSolid = false;
+      const waveTouchesSlope = (centerX, centerY) => {
+        const points = [
+          [0, 0], [hitSize, 0], [-hitSize, 0],
+          [0, hitSize], [0, -hitSize],
+          [hitSize, hitSize], [hitSize, -hitSize],
+          [-hitSize, hitSize], [-hitSize, -hitSize]
+        ];
+        return points.some(([offsetX, offsetY]) => gameObj.isSlopeSolidAtExact
+          ? gameObj.isSlopeSolidAtExact(centerX + offsetX, centerY + offsetY)
+          : gameObj.isSlopeSolidAt(centerX + offsetX, centerY + offsetY, false));
+      };
       for (let sample = 0; sample < samples && !touchesSolid; sample++) {
         const progress = sample / (samples - 1);
         const sampleX = previousWorldX + (pieceWidth - previousWorldX) * progress;
         const sampleY = playersLastY + (playersY - playersLastY) * progress;
-        for (const offsetX of [-hitSize, 0, hitSize]) {
-          if (gameObj.isSlopeSolidAt(sampleX + offsetX, sampleY, false)) {
-            touchesSolid = true;
-            break;
-          }
-        }
+        touchesSolid = waveTouchesSlope(sampleX, sampleY);
       }
       return { landed: false, died: touchesSolid };
     }

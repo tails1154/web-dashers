@@ -11,6 +11,7 @@ class Collider {
     this.slopeDir = 1;
     this.slopeIsFilled = false;
     this.slopeFlipY = false;
+    this.slopeSolidVertices = null;
   }
   getSlopeSurfaceY(worldX) {
     if (this.type !== slopeType) return null;
@@ -52,6 +53,25 @@ class Collider {
     const surfaceY = this.getSlopeSurfaceY(worldX);
     if (surfaceY === null) return false;
     return this.isSolidBelowSurface(gravityFlipped) ? worldY < surfaceY : worldY > surfaceY;
+  }
+  isSlopeSolidAtExact(worldX, worldY) {
+    if (this.type !== slopeType || !Array.isArray(this.slopeSolidVertices)) return false;
+    const vertices = this.slopeSolidVertices;
+    let inside = false;
+    for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+      const a = vertices[i];
+      const b = vertices[j];
+      const cross = (worldX - a.x) * (b.y - a.y) - (worldY - a.y) * (b.x - a.x);
+      const onEdge = Math.abs(cross) <= 0.75 &&
+        worldX >= Math.min(a.x, b.x) - 0.75 && worldX <= Math.max(a.x, b.x) + 0.75 &&
+        worldY >= Math.min(a.y, b.y) - 0.75 && worldY <= Math.max(a.y, b.y) + 0.75;
+      if (onEdge) return true;
+      if ((a.y > worldY) !== (b.y > worldY)) {
+        const edgeX = (b.x - a.x) * (worldY - a.y) / (b.y - a.y) + a.x;
+        if (worldX < edgeX) inside = !inside;
+      }
+    }
+    return inside;
   }
   getSlopeBackWallSide() {
     // Native slopeWallLeft() is derived from the slope orientation only;
@@ -359,10 +379,33 @@ function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const steep = rot90 === 1 || rot90 === 3;
   const rawScale = Number(levelObj.scale);
   const scale = Math.max(0.01, Math.abs(Number.isFinite(rawScale) ? rawScale : 1));
-  const w = (steep ? slopeData.gh : slopeData.gw) * a * scale;
-  const h = (steep ? slopeData.gw : slopeData.gh) * a * scale;
+  const localW = slopeData.gw * a * scale;
+  const localH = slopeData.gh * a * scale;
+  const rotationDegrees = Number(levelObj.rot) || 0;
+  const normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
+  const angle = -normalizedRotation * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const sx = levelObj.flipX ? -1 : 1;
+  const sy = levelObj.flipY ? -1 : 1;
+  const transform = ({ x, y }) => ({
+    x: x * sx * cos - y * sy * sin + worldX,
+    y: x * sx * sin + y * sy * cos + worldY
+  });
+  const halfW = localW / 2;
+  const halfH = localH / 2;
+  const localVertices = slopeData.sq
+    ? [{ x: -halfW, y: -halfH }, { x: halfW, y: -halfH },
+      { x: halfW, y: halfH }, { x: -halfW, y: halfH }]
+    : [{ x: halfW, y: halfH }, { x: -halfW, y: -halfH }, { x: halfW, y: -halfH }];
+  const vertices = localVertices.map(transform);
+  const xs = vertices.map(point => point.x);
+  const ys = vertices.map(point => point.y);
+  const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
+  const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
   const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
+  collider.slopeSolidVertices = vertices;
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
   // has to use atan(1 / 2) (and atan(2 / 1) when quarter-turned), otherwise
