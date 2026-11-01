@@ -2803,7 +2803,7 @@ window.LevelObject = class LevelObject {
     }
   }
 
-  if (objectDef && objectDef.portalParticle && frameName && !window.enableLDM && !window.isEditor && !scene?._editorPlaytestActive) {
+  if (objectDef && objectDef.portalParticle && frameName && !window.enableLDM && !window.noParticles && !window.isEditor && !scene?._editorPlaytestActive) {
     const particleWorldX = worldX;
     const particleWorldY = b(worldY);
     const radiusFactor = 2;
@@ -3199,7 +3199,7 @@ window.LevelObject = class LevelObject {
     this._endPortalShine.setTint(window.mainColor);
     this._endPortalShine.setScale(1, 960 / _0x3e25a9);
     this.additiveContainer.add(this._endPortalShine);
-    if (window.enableLDM) {
+    if (window.enableLDM || window.noParticles) {
       this._endPortalGameY = 240;
       return;
     }
@@ -3428,7 +3428,7 @@ window.LevelObject = class LevelObject {
   }
   updateVisibility(_0xa5f1e1) {
     this.updateTriggerEditorVisuals();
-    if (window.enableLDM) {
+    if (window.enableLDM || window.noParticles) {
       try {
         if (this._endPortalEmitter && typeof this._endPortalEmitter.stop === 'function') {
           this._endPortalEmitter.stop();
@@ -3864,7 +3864,7 @@ window.LevelObject = class LevelObject {
   }
 
   _startPulseTrigger(trig) {
-    if (window.enableLDM) return;
+    if (window.enableLDM || window.noParticles) return;
     if (!trig || !this._isTriggerSaveObjectLive(trig.uid)) return;
     const totalDur = trig.fadeIn + trig.hold + trig.fadeOut;
     this._activePulses.push({ trig, elapsed: 0, totalDuration: totalDur > 0 ? totalDur : 0.01 });
@@ -4379,7 +4379,7 @@ window.LevelObject = class LevelObject {
   }
 
   checkPulseTriggers(playerX) {
-    if (window.enableLDM) return;
+    if (window.enableLDM || window.noParticles) return;
     while (this._pulseTriggerIdx < this._pulseTriggers.length) {
       const trig = this._pulseTriggers[this._pulseTriggerIdx];
       if (trig.x > playerX) break;
@@ -4388,7 +4388,7 @@ window.LevelObject = class LevelObject {
     }
   }
   stepPulseTriggers(dt, colorManager) {
-    if (window.enableLDM) return;
+    if (window.enableLDM || window.noParticles) return;
     let i = 0;
     while (i < this._activePulses.length) {
       const pulse = this._activePulses[i];

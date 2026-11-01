@@ -1628,7 +1628,7 @@ class PlayerObject {
       // gameplay feedback and remains available unless explicitly disabled.
     }
 
-    if (window.enableLDM) {
+    if (window.enableLDM || window.noParticles) {
       if (this._particleEmitter) this._particleEmitter.stop();
       this._particleActive = false;
       if (this._flyParticleEmitter) this._flyParticleEmitter.stop();
@@ -2596,7 +2596,7 @@ if (this.p.isFlying || this.p.isUfo) {
     }
     this.stopRotation();
     if (_0x4a38a5 && !this.p.isFlying && !this.p.isWave && !this.p.isSpider && !this._scene?._editorPlaytestActive) {
-      if (!window.enableLDM) {
+      if (!window.enableLDM && !window.noParticles) {
         this._landIdx = !this._landIdx;
         const _0x31584b = this._landIdx ? this._landEmitter1 : this._landEmitter2;
         const _0x2248d5 = this._scene._playerWorldX;
@@ -2640,6 +2640,8 @@ if (this.p.isFlying || this.p.isUfo) {
       if (this._dashAnimationSprite) this._dashAnimationSprite.setVisible(false);
       return;
     }
+
+    if (window.noDeathEffect || window.noParticles) return;
 
     const _0x3f4b84 = this._scene;
     const _0x3f0446 = _0x3f4b84._getMirrorXOffset(_0x3f4b84._playerWorldX - _0x3f4b84._cameraX);
@@ -4218,7 +4220,7 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.canJump = false;
         this.p.isJumping = true;
         try {
-          if (!window.enableLDM) {
+          if (!window.enableLDM && !window.noParticles) {
             this._flyParticle2Emitter.explode(6, this._scene._playerWorldX, b(this.p.y) + (this.p.gravityFlipped ? -18 : 18));
           }
         } catch(e) {}

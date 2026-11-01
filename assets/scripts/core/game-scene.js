@@ -7277,6 +7277,8 @@ _buildSettingsPopup() {
         "Show Glow": "Shows glow for basic object sets.",
         "Crash Reporting": "Automatically sends a small diagnostic report when Web Dashers crashes.",
         "LDM": "Removes many effects, objects, and other things to improve performance.",
+        "No Particles": "Stops gameplay, portal, trigger, and celebration particle effects.",
+        "No Death Effect": "Removes the player death burst and flash while keeping the death state and respawn behavior.",
         "Cull Distance": "Changes how many objects are shown. [DOES NOT SAVE!!]"
     };
 
@@ -7759,6 +7761,18 @@ _buildSettingsPopup() {
             true,
             "Segment Splits"
         );
+        createToggle(container, column2X, startY + (spacingY * 3), "No Death Effect",
+            () => !!window.noDeathEffect,
+            (v) => {
+                window.noDeathEffect = !!v;
+                if (v) this._player?._cleanupExplosion?.();
+                if (v) this._player2?._cleanupExplosion?.();
+            },
+            undefined,
+            22,
+            true,
+            "No Death Effect"
+        );
         createNumberInput(container, column2X, startY + spacingY, "Ghost Opacity",
             () => typeof window.replayGhostOpacity === "number" ? window.replayGhostOpacity : 0.34,
             (v) => window.replayGhostOpacity = Math.max(0.05, Math.min(1, Number(v) || 0.34)),
@@ -7776,6 +7790,23 @@ _buildSettingsPopup() {
             26,
             true,
             "LDM"
+        );
+        createToggle(container, column2X, startY, "No Particles",
+            () => !!window.noParticles,
+            (v) => {
+                window.noParticles = !!v;
+                if (v) {
+                    this._glitterEmitter?.stop?.();
+                    this._menuGlitter?.stop?.();
+                    this._player?._updateParticles?.(this._cameraX, this._cameraY, 0);
+                    this._player2?._updateParticles?.(this._cameraX, this._cameraY, 0);
+                }
+                this._level?.updateVisibility?.(this._cameraX);
+            },
+            undefined,
+            24,
+            true,
+            "No Particles"
         );
         createNumberInput(container, column1X, startY + (spacingY * 1), "Cull Distance",
           () => (typeof window.cullDistance !== 'undefined' ? window.cullDistance : 3),
@@ -7856,6 +7887,8 @@ _buildSettingsPopup() {
         enablePortalGuide: window.enablePortalGuide,
         enableOrbGuide: window.enableOrbGuide,
         cullDistance: window.cullDistance,
+        noParticles: !!window.noParticles,
+        noDeathEffect: !!window.noDeathEffect,
         settingInfoText: window.settingInfoText || {},
         enableLDM: window.enableLDM,
     };
@@ -7899,6 +7932,8 @@ _buildSettingsPopup() {
         crashReportingEnabled: true,
         enablePortalGuide: true,
         enableOrbGuide: false,
+        noParticles: false,
+        noDeathEffect: false,
         enableLDM: false,
         cullDistance: 3
     };
@@ -7937,6 +7972,8 @@ _buildSettingsPopup() {
     window.showObjectIds = data.showObjectIds;
     window.enablePortalGuide = data.enablePortalGuide;
     window.enableOrbGuide = data.enableOrbGuide;
+    window.noParticles = !!data.noParticles;
+    window.noDeathEffect = !!data.noDeathEffect;
     window.cullDistance = typeof data.cullDistance !== 'undefined' ? data.cullDistance : 3;
     window.settingInfoText = data.settingInfoText || {};
     window.useDirectInternet = !!data.useDirectInternet;
@@ -11998,7 +12035,7 @@ _applyMirrorEffect() {
       }
     });
     const _0x2884ff = [window.mainColor, 16777215];
-    for (let _0x5f16c8 = 0; _0x5f16c8 < 2; _0x5f16c8++) {
+    if (!window.noParticles) for (let _0x5f16c8 = 0; _0x5f16c8 < 2; _0x5f16c8++) {
       this.add.particles(_0x56628c, 250, "GJ_WebSheet", {
         frame: "square.png",
         speed: {
@@ -12038,7 +12075,7 @@ _applyMirrorEffect() {
     for (let _0x579e05 = 0; _0x579e05 < 5; _0x579e05++) {
       this.time.delayedCall(_0x579e05 * 50, () => circleEffect(this, _0x2eadf2, _0x380b24, 10, screenWidth, 500, false, true, window.mainColor));
     }
-    for (let _0x429722 = 0; _0x429722 < 10; _0x429722++) {
+    if (!window.noParticles) for (let _0x429722 = 0; _0x429722 < 10; _0x429722++) {
       const _0xbf7dd0 = _0x429722 * 150 + (Math.random() * 160 - 80);
       this.time.delayedCall(Math.max(0, _0xbf7dd0), () => particleEffect(this, window.mainColor, window.secondaryColor));
     }
