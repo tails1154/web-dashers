@@ -7100,6 +7100,10 @@ class LevelEditor {
         this._openEditorZoomTriggerOptionsPopup(saveObj);
     } else if (this._isEditorCameraTriggerId(saveObj.id)) {
         this._openEditorCameraTriggerOptionsPopup(saveObj);
+    } else if (this._isEditorAlphaTriggerId(saveObj.id)) {
+        this._openEditorAlphaTriggerOptionsPopup(saveObj);
+    } else if (this._isEditorPulseTriggerId(saveObj.id)) {
+        this._openEditorPulseTriggerOptionsPopup(saveObj);
     } else if (this._isEditorRotateTriggerId(saveObj.id)) {
         this._openEditorRotateTriggerOptionsPopup(saveObj);
     } else if (this._isEditorTextObjectId(saveObj.id)) {
@@ -7127,6 +7131,110 @@ class LevelEditor {
 
   _isEditorCameraTriggerId(id) {
     return parseInt(id ?? 0, 10) >= 5080 && parseInt(id ?? 0, 10) <= 5091;
+  }
+
+  _isEditorAlphaTriggerId(id) {
+    return parseInt(id ?? 0, 10) === 1007;
+  }
+
+  _isEditorPulseTriggerId(id) {
+    return parseInt(id ?? 0, 10) === 1006;
+  }
+
+  _openEditorAlphaTriggerOptionsPopup(saveObj) {
+    const raw = saveObj?._raw || (saveObj._raw = {});
+    const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    const setValue = (key, value, minimum, maximum) => {
+      const parsed = Phaser.Math.Clamp(Number.parseFloat(value) || 0, minimum, maximum);
+      raw[key] = String(Number(parsed.toFixed(3)));
+      raw[String(key)] = raw[key];
+      for (const trigger of this._level?._alphaTriggers || []) {
+        if (trigger?.uid !== linkedId) continue;
+        if (key === 51) trigger.targetGroup = Math.trunc(parsed);
+        if (key === 35) trigger.targetOpacity = parsed;
+        if (key === 10) trigger.duration = parsed;
+      }
+    };
+    window.showNativePhaserDialog(this, {
+      title: "ALPHA TRIGGER",
+      message: "Enter the target group ID (0 affects no group).",
+      input: true,
+      defaultValue: String(raw[51] ?? raw["51"] ?? 0),
+      placeholder: "Group ID",
+      confirmLabel: "NEXT",
+      cancelLabel: "CANCEL",
+      onConfirm: group => {
+        setValue(51, group, 0, 9999);
+        window.showNativePhaserDialog(this, {
+          title: "ALPHA TRIGGER",
+          message: "Enter target opacity from 0 to 1.",
+          input: true,
+          defaultValue: String(raw[35] ?? raw["35"] ?? 1),
+          placeholder: "Opacity",
+          confirmLabel: "NEXT",
+          cancelLabel: "CANCEL",
+          onConfirm: opacity => {
+            setValue(35, opacity, 0, 1);
+            window.showNativePhaserDialog(this, {
+              title: "ALPHA TRIGGER",
+              message: "Enter fade duration in seconds.",
+              input: true,
+              defaultValue: String(raw[10] ?? raw["10"] ?? 0),
+              placeholder: "Duration",
+              confirmLabel: "SAVE",
+              cancelLabel: "CANCEL",
+              onConfirm: duration => setValue(10, duration, 0, 60)
+            });
+          }
+        });
+      }
+    });
+  }
+
+  _openEditorPulseTriggerOptionsPopup(saveObj) {
+    const raw = saveObj?._raw || (saveObj._raw = {});
+    const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    const setValue = (key, value, minimum, maximum) => {
+      const parsed = Phaser.Math.Clamp(Number.parseFloat(value) || 0, minimum, maximum);
+      raw[key] = String(Number(parsed.toFixed(3)));
+      raw[String(key)] = raw[key];
+      for (const trigger of this._level?._pulseTriggers || []) {
+        if (trigger?.uid !== linkedId) continue;
+        if (key === 51) {
+          const targetType = parseInt(raw[52] ?? raw["52"] ?? 0, 10) === 1;
+          if (targetType) trigger.targetGroup = Math.trunc(parsed);
+          else trigger.targetChannel = Math.trunc(parsed);
+        }
+        if (key === 45) trigger.fadeIn = parsed;
+        if (key === 46) trigger.hold = parsed;
+        if (key === 47) trigger.fadeOut = parsed;
+      }
+    };
+    window.showNativePhaserDialog(this, {
+      title: "PULSE TRIGGER",
+      message: "Enter the target channel or group ID.",
+      input: true,
+      defaultValue: String(raw[51] ?? raw["51"] ?? 1),
+      placeholder: "Target ID",
+      confirmLabel: "NEXT",
+      cancelLabel: "CANCEL",
+      onConfirm: target => {
+        setValue(51, target, 0, 9999);
+        window.showNativePhaserDialog(this, {
+          title: "PULSE TRIGGER",
+          message: "Enter fade in, hold, and fade out seconds as comma-separated values.",
+          input: true,
+          defaultValue: [45, 46, 47].map(key => raw[key] ?? raw[String(key)] ?? 0).join(","),
+          placeholder: "Fade in, hold, fade out",
+          confirmLabel: "SAVE",
+          cancelLabel: "CANCEL",
+          onConfirm: values => {
+            const parts = String(values).split(",");
+            [45, 46, 47].forEach((key, index) => setValue(key, parts[index] ?? 0, 0, 60));
+          }
+        });
+      }
+    });
   }
 
 
@@ -10890,6 +10998,8 @@ LevelEditor.methodNames = [
   "_isEditorSpawnTriggerId",
   "_isEditorZoomTriggerId",
   "_isEditorCameraTriggerId",
+  "_isEditorAlphaTriggerId",
+  "_isEditorPulseTriggerId",
   "_isEditorRotateTriggerId",
   "_getEditorZoomTriggerValue",
   "_setEditorZoomTriggerValue",
@@ -10918,6 +11028,8 @@ LevelEditor.methodNames = [
   "_applyEditorCollabState",
   "_openEditorZoomTriggerOptionsPopup",
   "_openEditorCameraTriggerOptionsPopup",
+  "_openEditorAlphaTriggerOptionsPopup",
+  "_openEditorPulseTriggerOptionsPopup",
   "_isEditorCustomImageBlockId",
   "_openEditorCustomImageBlockOptionsPopup",
   "_openEditorRotateTriggerOptionsPopup",
