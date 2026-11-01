@@ -7774,26 +7774,23 @@ class LevelEditor {
   }
 
   _openEditorZoomTriggerOptionsPopup(saveObj) {
+    const raw = saveObj?._raw || (saveObj._raw = {});
+    const duration = parseFloat(raw[10] ?? raw["10"] ?? 0) || 0;
     window.showNativePhaserDialog(this, {
-      title: "ZOOM TRIGGER", message: "Enter zoom amount (1 = normal).", input: true,
-      defaultValue: String(this._getEditorZoomTriggerValue(saveObj)), placeholder: "Zoom amount",
-      confirmLabel: "NEXT", cancelLabel: "CANCEL",
-      onConfirm: zoom => {
+      title: "ZOOM TRIGGER", message: "Enter zoom and duration as comma-separated values.\nExample: 1.25,0.5",
+      input: true, defaultValue: `${this._getEditorZoomTriggerValue(saveObj)},${duration}`,
+      placeholder: "Zoom, duration", confirmLabel: "SAVE", cancelLabel: "CANCEL",
+      onConfirm: input => {
+        const parts = String(input).split(",");
+        const zoom = Phaser.Math.Clamp(parseFloat(parts[0]) || 1, 0.1, 4);
+        const value = Math.max(0, parseFloat(parts[1]) || 0);
         this._setEditorZoomTriggerValue(saveObj, zoom);
-        window.showNativePhaserDialog(this, {
-          title: "ZOOM TRIGGER", message: "Enter duration in seconds (0 = instant).", input: true,
-          defaultValue: String(parseFloat(saveObj?._raw?.[10] ?? saveObj?._raw?.["10"] ?? 0) || 0),
-          placeholder: "Duration", confirmLabel: "SAVE", cancelLabel: "CANCEL",
-          onConfirm: duration => {
-            const value = Math.max(0, parseFloat(duration) || 0);
-            saveObj._raw[10] = String(Number(value.toFixed(2)));
-            saveObj._raw["10"] = saveObj._raw[10];
-            const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-            for (const trigger of this._level?._zoomTriggers || []) {
-              if (trigger?.uid === linkedId) trigger.duration = value;
-            }
-          }
-        });
+        raw[10] = String(Number(value.toFixed(2)));
+        raw["10"] = raw[10];
+        const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+        for (const trigger of this._level?._zoomTriggers || []) {
+          if (trigger?.uid === linkedId) trigger.duration = value;
+        }
       }
     });
   }
