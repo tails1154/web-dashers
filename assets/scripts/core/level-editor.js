@@ -2362,12 +2362,15 @@ class LevelEditor {
             }
         }
         if (activeCatDef?.types?.includes("trigger")) {
-            for (const triggerId of [1006, 1007, 5072, 5073, 5074, 5080, 5081, 5082, 5083, 5084, 5085, 5086, 5087, 5088, 5089, 5090, 5091]) {
+            const triggerIds = [1006, 1007, 5072, 5073, 5074, 5080, 5081, 5082, 5083, 5084, 5085, 5086, 5087, 5088, 5089, 5090, 5091];
+            for (const triggerId of triggerIds) {
                 const trigger = getObjectFromId(triggerId);
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
-                    itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
+                    itemsForGrid.unshift({ type: "object", id: triggerId, frame: trigger.frame });
                 }
             }
+            const triggerOrder = new Map(triggerIds.map((id, index) => [id, index]));
+            itemsForGrid.sort((a, b) => (triggerOrder.get(a.id) ?? 9999) - (triggerOrder.get(b.id) ?? 9999));
         }
         if (activeCatDef?.id === "blocks") {
             const imageBlock = getObjectFromId(5075);
@@ -7144,49 +7147,29 @@ class LevelEditor {
   _openEditorAlphaTriggerOptionsPopup(saveObj) {
     const raw = saveObj?._raw || (saveObj._raw = {});
     const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-    const setValue = (key, value, minimum, maximum) => {
-      const parsed = Phaser.Math.Clamp(Number.parseFloat(value) || 0, minimum, maximum);
-      raw[key] = String(Number(parsed.toFixed(3)));
-      raw[String(key)] = raw[key];
-      for (const trigger of this._level?._alphaTriggers || []) {
-        if (trigger?.uid !== linkedId) continue;
-        if (key === 51) trigger.targetGroup = Math.trunc(parsed);
-        if (key === 35) trigger.targetOpacity = parsed;
-        if (key === 10) trigger.duration = parsed;
-      }
-    };
+    const values = [raw[51] ?? raw["51"] ?? 0, raw[35] ?? raw["35"] ?? 1, raw[10] ?? raw["10"] ?? 0].join(",");
     window.showNativePhaserDialog(this, {
       title: "ALPHA TRIGGER",
-      message: "Enter the target group ID (0 affects no group).",
+      message: "Enter group, opacity, and duration as comma-separated values.\nExample: 3,0.5,0.25",
       input: true,
-      defaultValue: String(raw[51] ?? raw["51"] ?? 0),
-      placeholder: "Group ID",
-      confirmLabel: "NEXT",
+      defaultValue: values,
+      placeholder: "Group, opacity, duration",
+      confirmLabel: "SAVE",
       cancelLabel: "CANCEL",
-      onConfirm: group => {
-        setValue(51, group, 0, 9999);
-        window.showNativePhaserDialog(this, {
-          title: "ALPHA TRIGGER",
-          message: "Enter target opacity from 0 to 1.",
-          input: true,
-          defaultValue: String(raw[35] ?? raw["35"] ?? 1),
-          placeholder: "Opacity",
-          confirmLabel: "NEXT",
-          cancelLabel: "CANCEL",
-          onConfirm: opacity => {
-            setValue(35, opacity, 0, 1);
-            window.showNativePhaserDialog(this, {
-              title: "ALPHA TRIGGER",
-              message: "Enter fade duration in seconds.",
-              input: true,
-              defaultValue: String(raw[10] ?? raw["10"] ?? 0),
-              placeholder: "Duration",
-              confirmLabel: "SAVE",
-              cancelLabel: "CANCEL",
-              onConfirm: duration => setValue(10, duration, 0, 60)
-            });
-          }
-        });
+      onConfirm: input => {
+        const parts = String(input).split(",");
+        const group = Phaser.Math.Clamp(Number.parseInt(parts[0], 10) || 0, 0, 9999);
+        const opacity = Phaser.Math.Clamp(Number.parseFloat(parts[1]) || 0, 0, 1);
+        const duration = Phaser.Math.Clamp(Number.parseFloat(parts[2]) || 0, 0, 60);
+        raw[51] = raw["51"] = String(group);
+        raw[35] = raw["35"] = String(Number(opacity.toFixed(3)));
+        raw[10] = raw["10"] = String(Number(duration.toFixed(3)));
+        for (const trigger of this._level?._alphaTriggers || []) {
+          if (trigger?.uid !== linkedId) continue;
+          trigger.targetGroup = group;
+          trigger.targetOpacity = opacity;
+          trigger.duration = duration;
+        }
       }
     });
   }
@@ -7194,45 +7177,30 @@ class LevelEditor {
   _openEditorPulseTriggerOptionsPopup(saveObj) {
     const raw = saveObj?._raw || (saveObj._raw = {});
     const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-    const setValue = (key, value, minimum, maximum) => {
-      const parsed = Phaser.Math.Clamp(Number.parseFloat(value) || 0, minimum, maximum);
-      raw[key] = String(Number(parsed.toFixed(3)));
-      raw[String(key)] = raw[key];
-      for (const trigger of this._level?._pulseTriggers || []) {
-        if (trigger?.uid !== linkedId) continue;
-        if (key === 51) {
-          const targetType = parseInt(raw[52] ?? raw["52"] ?? 0, 10) === 1;
-          if (targetType) trigger.targetGroup = Math.trunc(parsed);
-          else trigger.targetChannel = Math.trunc(parsed);
-        }
-        if (key === 45) trigger.fadeIn = parsed;
-        if (key === 46) trigger.hold = parsed;
-        if (key === 47) trigger.fadeOut = parsed;
-      }
-    };
+    const values = [51, 45, 46, 47].map(key => raw[key] ?? raw[String(key)] ?? 0).join(",");
     window.showNativePhaserDialog(this, {
       title: "PULSE TRIGGER",
-      message: "Enter the target channel or group ID.",
+      message: "Enter target, fade-in, hold, and fade-out as comma-separated values.\nExample: 1,0.1,0.2,0.1",
       input: true,
-      defaultValue: String(raw[51] ?? raw["51"] ?? 1),
-      placeholder: "Target ID",
-      confirmLabel: "NEXT",
+      defaultValue: values,
+      placeholder: "Target, fade in, hold, fade out",
+      confirmLabel: "SAVE",
       cancelLabel: "CANCEL",
-      onConfirm: target => {
-        setValue(51, target, 0, 9999);
-        window.showNativePhaserDialog(this, {
-          title: "PULSE TRIGGER",
-          message: "Enter fade in, hold, and fade out seconds as comma-separated values.",
-          input: true,
-          defaultValue: [45, 46, 47].map(key => raw[key] ?? raw[String(key)] ?? 0).join(","),
-          placeholder: "Fade in, hold, fade out",
-          confirmLabel: "SAVE",
-          cancelLabel: "CANCEL",
-          onConfirm: values => {
-            const parts = String(values).split(",");
-            [45, 46, 47].forEach((key, index) => setValue(key, parts[index] ?? 0, 0, 60));
-          }
-        });
+      onConfirm: input => {
+        const parts = String(input).split(",");
+        const target = Phaser.Math.Clamp(Number.parseInt(parts[0], 10) || 0, 0, 9999);
+        const fadeValues = [1, 2, 3].map(index => Phaser.Math.Clamp(Number.parseFloat(parts[index]) || 0, 0, 60));
+        raw[51] = raw["51"] = String(target);
+        [45, 46, 47].forEach((key, index) => raw[key] = raw[String(key)] = String(Number(fadeValues[index].toFixed(3))));
+        for (const trigger of this._level?._pulseTriggers || []) {
+          if (trigger?.uid !== linkedId) continue;
+          const targetType = parseInt(raw[52] ?? raw["52"] ?? 0, 10) === 1;
+          if (targetType) trigger.targetGroup = target;
+          else trigger.targetChannel = target;
+          trigger.fadeIn = fadeValues[0];
+          trigger.hold = fadeValues[1];
+          trigger.fadeOut = fadeValues[2];
+        }
       }
     });
   }
