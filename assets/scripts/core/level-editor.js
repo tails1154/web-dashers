@@ -10360,76 +10360,91 @@ class LevelEditor {
   async _openEditorCoinGeneratorPopup() {
     window.showNativePhaserDialog(this, {
       title: "AI COIN GENERATOR",
-      message: "Describe the coin design. Pollinations will generate it and place it at the center of your current editor view.",
+      message: "Pollinations will read a compact text map of this level and place up to three reachable star coins. Describe the physics or gameplay you want.",
       input: true,
-      defaultValue: "a glowing collectible game coin, Geometry Dash inspired, transparent background",
-      placeholder: "Describe your coin",
+      defaultValue: "Place three challenging but reachable coins for the current game mode. Respect gravity, slopes, hazards, and the level boundaries.",
+      placeholder: "Describe the coin gameplay",
       confirmLabel: "GENERATE",
       cancelLabel: "CANCEL",
-      onConfirm: async promptText => {
-        const description = String(promptText || "").trim().slice(0, 180);
-        if (!description) {
-          window.showNativePhaserDialog(this, { title: "COIN GENERATOR", message: "Enter a coin description first." });
-          return;
-        }
-
-        window.showNativePhaserDialog(this, { title: "COIN GENERATOR", message: "Generating coin artwork..." });
+      onConfirm: async gameplayRequest => {
+        const request = String(gameplayRequest || "").trim().slice(0, 300);
+        window.showNativePhaserDialog(this, { title: "COIN GENERATOR", message: "Reading level layout and planning coin routes..." });
         try {
-          const prompt = `single collectible game coin, ${description}, centered, readable silhouette, no text, isolated on a transparent background`;
-          const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=256&height=256&nologo=true&seed=${Date.now()}`;
-          const response = await fetch(imageUrl, { mode: "cors" });
-          if (!response.ok) throw new Error(`Pollinations returned HTTP ${response.status}`);
-          const blob = await response.blob();
-          const dataUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(String(reader.result || ""));
-            reader.onerror = () => reject(reader.error || new Error("Could not read generated artwork"));
-            reader.readAsDataURL(blob);
-          });
-          const comma = dataUrl.indexOf(",");
-          if (comma < 0) throw new Error("Generated artwork had an invalid image format");
-
-          const worldX = (this._cameraX + screenWidth / 2) / this._editorZoom;
-          const worldY = (this._cameraY + screenHeight / 2) / this._editorZoom;
-          const saveData = {
-            id: 5075,
-            x: worldX / 2 + 15,
-            y: -worldY / 2 + 225,
-            flipX: false,
-            flipY: false,
-            rot: 0,
-            scale: 1,
-            zLayer: 1,
-            zOrder: 0,
-            editorLayer: this._getCurrentEditorPlacementLayer?.() || 0,
-            editorLayer2: 0,
-            groups: "",
-            color1: 0,
-            color2: 0,
-            _raw: {
-              "1": "5075",
-              "2": String(worldX / 2 + 15),
-              "3": String(-worldY / 2 + 225),
-              "4": "0",
-              "5": "0",
-              "6": "0",
-              "20": String(this._getCurrentEditorPlacementLayer?.() || 0),
-              "24": "1",
-              "25": "0",
-              "32": "1",
-              "57": "",
-              "61": "0",
-              "700": dataUrl.slice(comma + 1),
-              "701": blob.type || "image/png",
-              "702": "60",
-              "703": "60",
-              "704": "0"
-            }
+          const objects = (window.levelObjects || []).filter(Boolean).map(object => {
+            const def = getObjectFromId(object.id) || {};
+            return {
+              id: Number(object.id) || 0,
+              type: String(def.type || "unknown"),
+              x: Number(Number(object.x || 0).toFixed(1)),
+              y: Number(Number(object.y || 0).toFixed(1)),
+              rot: Number(object.rot || 0),
+              scale: Number(object.scale || 1),
+              flipX: !!object.flipX,
+              flipY: !!object.flipY
+            };
+          }).slice(0, 700);
+          const settings = String(window.settingslist || "").slice(0, 800);
+          const currentCoins = objects.filter(object => object.id === 1329).length;
+          const physics = {
+            gameMode: this._level?._startPositions?.[0]?.gameMode ?? "level default",
+            gravityFlipped: !!this._level?._startPositions?.[0]?.gravityFlipped,
+            mini: !!this._level?._startPositions?.[0]?.miniMode,
+            editorZoom: Number(this._editorZoom || 1)
           };
-          window.levelObjects.push(saveData);
-          this._level._spawnObject(saveData);
-          const placedIndex = Math.max(0, (this._level._nextObjectId || 1) - 1);
-          this._selectEditorObjectsByIds([placedIndex], 0x00ff00);
+          const prompt = [
+            "You are a Geometry Dash-style level design assistant.",
+            "Use this compact text layout and physics summary to choose safe, reachable collectible star-coin positions.",
+            "Coordinates are editor coordinates: x increases right, y increases upward. Existing objects include solids, hazards, slopes, portals, and triggers.",
+            "Return ONLY strict JSON in this shape: {\"coins\":[{\"x\": number, \"y\": number, \"rot\": number}]}. No markdown, no explanation.",
+            "Return no more than the available slots; the game allows at most three user coins total.",
+            `Current user coins: ${currentCoins}. Available slots: ${Math.max(0, 3 - currentCoins)}.`,
+            `Requested gameplay: ${request || "Place reachable but challenging coins."}`,
+            `Physics: ${JSON.stringify(physics)}`,
+            `Level settings: ${settings}`,
+            `Objects: ${JSON.stringify(objects)}`
+          ].join("\n");
+          const endpoint = `https://text.pollinations.ai/${encodeURIComponent(prompt)}?model=openai&seed=${Date.now()}`;
+          const response = await fetch(endpoint, { mode: "cors" });
+          if (!response.ok) throw new Error(`Pollinations returned HTTP ${response.status}`);
+          const answer = await response.text();
+          const jsonText = answer.match(/\{[\s\S]*\}/)?.[0];
+          if (!jsonText) throw new Error("The model did not return coin coordinates as JSON");
+          const result = JSON.parse(jsonText);
+          const available = Math.max(0, 3 - currentCoins);
+          const coins = Array.isArray(result.coins) ? result.coins.slice(0, available) : [];
+          if (!coins.length) throw new Error("The model returned no usable coin positions");
+
+          const selectedIds = [];
+          for (const coin of coins) {
+            const x = Number(coin?.x);
+            const y = Number(coin?.y);
+            if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+            const saveData = {
+              id: 1329,
+              x,
+              y,
+              flipX: false,
+              flipY: false,
+              rot: Number.isFinite(Number(coin.rot)) ? Number(coin.rot) : 0,
+              scale: 1,
+              zLayer: 1,
+              zOrder: 0,
+              editorLayer: this._getCurrentEditorPlacementLayer?.() || 0,
+              editorLayer2: 0,
+              groups: "",
+              color1: 0,
+              color2: 0,
+              _raw: {
+                "1": "1329", "2": String(x), "3": String(y), "4": "0", "5": "0", "6": String(Number(coin.rot) || 0),
+                "20": String(this._getCurrentEditorPlacementLayer?.() || 0), "24": "1", "25": "0", "32": "1", "57": "", "61": "0"
+              }
+            };
+            window.levelObjects.push(saveData);
+            this._level._spawnObject(saveData);
+            selectedIds.push(Math.max(0, (this._level._nextObjectId || 1) - 1));
+          }
+          if (!selectedIds.length) throw new Error("The model returned invalid coin positions");
+          this._selectEditorObjectsByIds(selectedIds, 0x00ff00);
           this._refreshEditorLayerSelectorVisual?.();
           this._applyEditorLayerFilter?.();
           this._buildObjectGrid?.();
