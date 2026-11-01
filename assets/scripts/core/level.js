@@ -403,7 +403,11 @@ function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const ys = vertices.map(point => point.y);
   const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
   const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
-  const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
+  // Some GD slope-shaped objects are hazards rather than walkable slopes.
+  // Keep their polygon-sized bounds, but route them through the normal hazard
+  // collision path so touching the visual kills the player.
+  const colliderType = objectDef?.type === hazardType ? hazardType : slopeType;
+  const collider = new Collider(colliderType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
   collider.slopeSolidVertices = vertices;
   // GD's long slope is commonly called 22.5 degrees, but its collision line
