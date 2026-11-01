@@ -10949,9 +10949,6 @@ _buildSettingsPopup() {
     if (this._isDual) this._state2.lastY = initialY2;
     if (!this._menuActive && !this._slideIn && !this._levelWon) {
       this._practicedMode.updateAutoCheckpoint(this._state, this._playerWorldX, this._cameraX, this);
-      if (this._state.isDead) {
-        this._practicedMode.removeCheckpointIfPlacedRecently();
-      }
     }
     this._state.ignorePortals = false;
     this._state2.ignorePortals = false;
