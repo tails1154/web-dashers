@@ -405,7 +405,6 @@ function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
   const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
-  collider.deadly = objectDef?.deadly === true;
   collider.slopeSolidVertices = vertices;
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore

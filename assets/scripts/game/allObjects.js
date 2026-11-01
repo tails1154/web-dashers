@@ -5329,7 +5329,6 @@ window.allobjects = function() {
     "gridW": 1,
     "spritesheet": "GJ_GameSheet-uhd",
     "type": "deco",
-    "deadly": true,
     "z": 1,
     "default_detail_color_channel": -1,
     "default_z_layer": 5,

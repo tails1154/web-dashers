@@ -5420,10 +5420,6 @@ if (this.p.isFlying || this.p.isUfo) {
           return;
         } else if (_colType === slopeType) {
           if (this.p.isPhase && this.p.phaseGhosted) continue;
-          if (gameObj.deadly) {
-            this.killPlayer();
-            return;
-          }
           const slopeResult = this._handleSlopeCollision(
             gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition
           );
