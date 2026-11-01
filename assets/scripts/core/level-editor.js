@@ -7144,65 +7144,146 @@ class LevelEditor {
     return parseInt(id ?? 0, 10) === 1006;
   }
 
+  _openEditorTriggerFieldsPopup(title, saveObj, fields) {
+    if (!saveObj) return;
+    this._closeEditorObjectOptionsPopup();
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const panelW = Math.min(900, sw - 50);
+    const panelH = fields.length > 3 ? 500 : 390;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.5).setOrigin(0).setInteractive());
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 42, "bigFont", title, 38).setOrigin(0.5));
+    inner.add(this.add.bitmapText(0, -panelH / 2 + 78, "goldFont", "Edit values, then press OK to apply", 18).setOrigin(0.5));
+
+    const focusedInputs = [];
+    const stop = event => { event?.preventDefault?.(); event?.stopPropagation?.(); };
+    const blurAll = commit => focusedInputs.forEach(input => input.blur(commit));
+    const entries = fields.map(field => {
+      const bg = this.add.rectangle(field.x, field.y, field.width || 190, 56, 0x000000, 0.45).setInteractive();
+      const label = this.add.bitmapText(field.x, field.y - 43, "goldFont", field.label, 22).setOrigin(0.5);
+      const text = this.add.bitmapText(field.x, field.y, "bigFont", "", 27).setOrigin(0.5);
+      inner.add([bg, label, text]);
+      let focused = false;
+      let value = String(field.get());
+      let before = value;
+      const normalize = raw => {
+        const parsed = Number.parseFloat(raw);
+        const number = Number.isFinite(parsed) ? parsed : field.min;
+        return Phaser.Math.Clamp(number, field.min, field.max);
+      };
+      const render = () => text.setText(`${focused ? value : String(field.get())}${focused ? "|" : ""}`);
+      const commit = () => { field.set(normalize(value)); value = String(field.get()); render(); };
+      const blur = save => {
+        if (!focused) return;
+        if (save) commit(); else value = before;
+        focused = false;
+        if (!focusedInputs.some(input => input !== entry && input.focused())) this._editorTextInputFocused = false;
+        render();
+      };
+      const entry = {
+        focused: () => focused,
+        blur,
+        cancel: () => blur(false),
+        isInside: pointer => Math.abs(pointer.x - (sw / 2 + field.x)) <= (field.width || 190) / 2 && Math.abs(pointer.y - (sh / 2 + field.y)) <= 32,
+        handleKey: event => {
+          if (event.key === "Enter") blur(true);
+          else if (event.key === "Backspace") value = value.slice(0, -1);
+          else if (/^[0-9.-]$/.test(event.key) && value.length < 10) value += event.key;
+          else if (event.key.length !== 1) return false;
+          render();
+          return true;
+        }
+      };
+      bg.on("pointerdown", pointer => {
+        blurAll(true);
+        value = String(field.get());
+        before = value;
+        focused = true;
+        this._editorTextInputFocused = true;
+        render();
+        stop(pointer?.event);
+      });
+      focusedInputs.push(entry);
+      render();
+      return entry;
+    });
+    this._editorGroupInputPointerDownHandler = pointer => {
+      const focused = focusedInputs.find(input => input.focused());
+      if (focused && !focused.isInside(pointer)) focused.blur(true);
+    };
+    this.input.on("pointerdown", this._editorGroupInputPointerDownHandler);
+    this._editorObjectOptionsKeyHandler = event => {
+      const focused = focusedInputs.find(input => input.focused());
+      if (event.key === "Escape") {
+        if (focused) focused.cancel(); else this._closeEditorObjectOptionsPopup();
+        stop(event);
+      } else if (focused && focused.handleKey(event)) stop(event);
+    };
+    window.addEventListener("keydown", this._editorObjectOptionsKeyHandler);
+    this._makeEditorOkButton(inner, -100, panelH / 2 - 46, "CANCEL", () => this._closeEditorObjectOptionsPopup());
+    this._makeEditorOkButton(inner, 100, panelH / 2 - 46, "OK", () => {
+      blurAll(true);
+      this._closeEditorObjectOptionsPopup();
+    });
+  }
+
   _openEditorAlphaTriggerOptionsPopup(saveObj) {
     const raw = saveObj?._raw || (saveObj._raw = {});
     const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-    const values = [raw[51] ?? raw["51"] ?? 0, raw[35] ?? raw["35"] ?? 1, raw[10] ?? raw["10"] ?? 0].join(",");
-    window.showNativePhaserDialog(this, {
-      title: "ALPHA TRIGGER",
-      message: "Enter group, opacity, and duration as comma-separated values.\nExample: 3,0.5,0.25",
-      input: true,
-      defaultValue: values,
-      placeholder: "Group, opacity, duration",
-      confirmLabel: "SAVE",
-      cancelLabel: "CANCEL",
-      onConfirm: input => {
-        const parts = String(input).split(",");
-        const group = Phaser.Math.Clamp(Number.parseInt(parts[0], 10) || 0, 0, 9999);
-        const opacity = Phaser.Math.Clamp(Number.parseFloat(parts[1]) || 0, 0, 1);
-        const duration = Phaser.Math.Clamp(Number.parseFloat(parts[2]) || 0, 0, 60);
-        raw[51] = raw["51"] = String(group);
-        raw[35] = raw["35"] = String(Number(opacity.toFixed(3)));
-        raw[10] = raw["10"] = String(Number(duration.toFixed(3)));
-        for (const trigger of this._level?._alphaTriggers || []) {
-          if (trigger?.uid !== linkedId) continue;
-          trigger.targetGroup = group;
-          trigger.targetOpacity = opacity;
-          trigger.duration = duration;
-        }
-      }
-    });
+    const trigger = (this._level?._alphaTriggers || []).find(item => item?.uid === linkedId);
+    const update = (key, value) => {
+      raw[key] = raw[String(key)] = String(Number(value.toFixed(3)));
+      if (!trigger) return;
+      if (key === 51) trigger.targetGroup = Math.trunc(value);
+      if (key === 35) trigger.targetOpacity = value;
+      if (key === 10) trigger.duration = value;
+    };
+    this._openEditorTriggerFieldsPopup("Alpha Trigger", saveObj, [
+      { x: -220, y: -20, label: "Target Group", min: 0, max: 9999, get: () => Number(raw[51] ?? raw["51"] ?? 0), set: value => { update(51, Math.trunc(value)); } },
+      { x: 0, y: -20, label: "Opacity", min: 0, max: 1, get: () => Number(raw[35] ?? raw["35"] ?? 1), set: value => { update(35, value); } },
+      { x: 220, y: -20, label: "Duration", min: 0, max: 60, get: () => Number(raw[10] ?? raw["10"] ?? 0), set: value => { update(10, value); } }
+    ]);
+    if (trigger) {
+      trigger.targetGroup = Number(raw[51] ?? 0);
+      trigger.targetOpacity = Number(raw[35] ?? 1);
+      trigger.duration = Number(raw[10] ?? 0);
+    }
   }
 
   _openEditorPulseTriggerOptionsPopup(saveObj) {
     const raw = saveObj?._raw || (saveObj._raw = {});
     const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-    const values = [51, 45, 46, 47].map(key => raw[key] ?? raw[String(key)] ?? 0).join(",");
-    window.showNativePhaserDialog(this, {
-      title: "PULSE TRIGGER",
-      message: "Enter target, fade-in, hold, and fade-out as comma-separated values.\nExample: 1,0.1,0.2,0.1",
-      input: true,
-      defaultValue: values,
-      placeholder: "Target, fade in, hold, fade out",
-      confirmLabel: "SAVE",
-      cancelLabel: "CANCEL",
-      onConfirm: input => {
-        const parts = String(input).split(",");
-        const target = Phaser.Math.Clamp(Number.parseInt(parts[0], 10) || 0, 0, 9999);
-        const fadeValues = [1, 2, 3].map(index => Phaser.Math.Clamp(Number.parseFloat(parts[index]) || 0, 0, 60));
-        raw[51] = raw["51"] = String(target);
-        [45, 46, 47].forEach((key, index) => raw[key] = raw[String(key)] = String(Number(fadeValues[index].toFixed(3))));
-        for (const trigger of this._level?._pulseTriggers || []) {
-          if (trigger?.uid !== linkedId) continue;
-          const targetType = parseInt(raw[52] ?? raw["52"] ?? 0, 10) === 1;
-          if (targetType) trigger.targetGroup = target;
-          else trigger.targetChannel = target;
-          trigger.fadeIn = fadeValues[0];
-          trigger.hold = fadeValues[1];
-          trigger.fadeOut = fadeValues[2];
-        }
+    const trigger = (this._level?._pulseTriggers || []).find(item => item?.uid === linkedId);
+    const update = (key, value) => {
+      raw[key] = raw[String(key)] = String(Number(value.toFixed(3)));
+      if (!trigger) return;
+      if (key === 51) {
+        if (parseInt(raw[52] ?? 0, 10) === 1) trigger.targetGroup = Math.trunc(value);
+        else trigger.targetChannel = Math.trunc(value);
       }
-    });
+      if (key === 45) trigger.fadeIn = value;
+      if (key === 46) trigger.hold = value;
+      if (key === 47) trigger.fadeOut = value;
+    };
+    this._openEditorTriggerFieldsPopup("Pulse Trigger", saveObj, [
+      { x: -330, y: -35, label: "Target", min: 0, max: 9999, get: () => Number(raw[51] ?? raw["51"] ?? 0), set: value => update(51, Math.trunc(value)) },
+      { x: -110, y: -35, label: "Fade In", min: 0, max: 60, get: () => Number(raw[45] ?? raw["45"] ?? 0), set: value => update(45, value) },
+      { x: 110, y: -35, label: "Hold", min: 0, max: 60, get: () => Number(raw[46] ?? raw["46"] ?? 0), set: value => update(46, value) },
+      { x: 330, y: -35, label: "Fade Out", min: 0, max: 60, get: () => Number(raw[47] ?? raw["47"] ?? 0), set: value => update(47, value) }
+    ]);
+    if (trigger) {
+      const target = Number(raw[51] ?? 0);
+      if (parseInt(raw[52] ?? 0, 10) === 1) trigger.targetGroup = target; else trigger.targetChannel = target;
+      trigger.fadeIn = Number(raw[45] ?? 0);
+      trigger.hold = Number(raw[46] ?? 0);
+      trigger.fadeOut = Number(raw[47] ?? 0);
+    }
   }
 
 
@@ -7775,24 +7856,19 @@ class LevelEditor {
 
   _openEditorZoomTriggerOptionsPopup(saveObj) {
     const raw = saveObj?._raw || (saveObj._raw = {});
-    const duration = parseFloat(raw[10] ?? raw["10"] ?? 0) || 0;
-    window.showNativePhaserDialog(this, {
-      title: "ZOOM TRIGGER", message: "Enter zoom and duration as comma-separated values.\nExample: 1.25,0.5",
-      input: true, defaultValue: `${this._getEditorZoomTriggerValue(saveObj)},${duration}`,
-      placeholder: "Zoom, duration", confirmLabel: "SAVE", cancelLabel: "CANCEL",
-      onConfirm: input => {
-        const parts = String(input).split(",");
-        const zoom = Phaser.Math.Clamp(parseFloat(parts[0]) || 1, 0.1, 4);
-        const value = Math.max(0, parseFloat(parts[1]) || 0);
-        this._setEditorZoomTriggerValue(saveObj, zoom);
-        raw[10] = String(Number(value.toFixed(2)));
-        raw["10"] = raw[10];
-        const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
-        for (const trigger of this._level?._zoomTriggers || []) {
-          if (trigger?.uid === linkedId) trigger.duration = value;
-        }
-      }
-    });
+    const linkedId = Number.isInteger(saveObj?._eeObjectId) ? saveObj._eeObjectId : window.editorSelectedObject;
+    const trigger = (this._level?._zoomTriggers || []).find(item => item?.uid === linkedId);
+    const updateDuration = value => {
+      raw[10] = raw["10"] = String(Number(value.toFixed(3)));
+      if (trigger) trigger.duration = value;
+    };
+    this._openEditorTriggerFieldsPopup("Zoom Trigger", saveObj, [
+      { x: -120, y: -20, label: "Zoom", min: 0.1, max: 4,
+        get: () => this._getEditorZoomTriggerValue(saveObj),
+        set: value => this._setEditorZoomTriggerValue(saveObj, value) },
+      { x: 120, y: -20, label: "Duration", min: 0, max: 60,
+        get: () => Number(raw[10] ?? raw["10"] ?? 0), set: updateDuration }
+    ]);
   }
 
 
@@ -10991,6 +11067,7 @@ LevelEditor.methodNames = [
   "_openEditorCollabDialog",
   "_broadcastEditorState",
   "_applyEditorCollabState",
+  "_openEditorTriggerFieldsPopup",
   "_openEditorZoomTriggerOptionsPopup",
   "_openEditorCameraTriggerOptionsPopup",
   "_openEditorAlphaTriggerOptionsPopup",

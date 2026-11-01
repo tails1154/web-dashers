@@ -25,7 +25,7 @@ There is no configured build pipeline or automated test suite. Run the local ser
 
 ## Coding Style & Naming Conventions
 
-Use JavaScript with four-space indentation, semicolons, and camelCase names. Preserve underscore-prefixed private methods such as `_openSettingsPopup`. Build UI with native Phaser objects and match the existing Geometry Dash-style interface. Never use `prompt()`, `alert()`, or `confirm()`; use Phaser dialogs and controls.
+Use JavaScript with four-space indentation, semicolons, and camelCase names. Preserve underscore-prefixed private methods such as `_openSettingsPopup`. Build UI with native Phaser objects and match the existing Geometry Dash-style interface. Never use `prompt()`, `alert()`, or `confirm()`; use Phaser dialogs and controls. Custom trigger editors must use labeled, multi-field native Phaser panels with editable controls, explicit OK/CANCEL actions, Escape handling, and live runtime synchronization; do not use chained dialogs or comma-separated single-field forms. Coming Soon triggers may remain informational.
 
 ## Testing Guidelines
 
