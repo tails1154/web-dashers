@@ -1097,6 +1097,46 @@ class LevelEditor {
     this._level?.updateCustomImageBlockTransform?.(resolvedSaveObj);
   }
 
+  _setEditorObjectScale(saveObj, value) {
+    if (!saveObj) return;
+    const nextScale = Phaser.Math.Clamp(Number.parseFloat(value) || 1, 0.01, 20);
+    const previousScale = Phaser.Math.Clamp(Number.parseFloat(saveObj.scale) || 1, 0.01, 20);
+    const ratio = nextScale / previousScale;
+    saveObj.scale = nextScale;
+    saveObj._raw = saveObj._raw || {};
+    saveObj._raw[32] = saveObj._raw["32"] = String(Number(nextScale.toFixed(3)));
+
+    const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : null;
+    const worldX = Number(saveObj.x || 0) * 2;
+    const worldY = Number(saveObj.y || 0) * 2;
+    if (linkedId !== null) {
+      for (const sprite of this._level?.objectSprites?.[linkedId] || []) {
+        if (!sprite) continue;
+        sprite.x = worldX + (sprite.x - worldX) * ratio;
+        sprite.y = worldY + (sprite.y - worldY) * ratio;
+        if (sprite.setScale) sprite.setScale((sprite.scaleX || 1) * ratio, (sprite.scaleY || 1) * ratio);
+        sprite._eeWorldX = worldX + (Number(sprite._eeWorldX ?? worldX) - worldX) * ratio;
+        sprite._eeBaseY = b(worldY + (Number(sprite._eeBaseY ?? worldY) - worldY) * ratio);
+      }
+      for (const collider of this._getEditorCollidersForObjectId(linkedId)) {
+        collider.x = worldX;
+        collider.y = worldY;
+        collider.w *= ratio;
+        collider.h *= ratio;
+        if (Array.isArray(collider.slopeSolidVertices)) {
+          collider.slopeSolidVertices = collider.slopeSolidVertices.map(point => ({
+            x: worldX + (point.x - worldX) * ratio,
+            y: worldY + (point.y - worldY) * ratio
+          }));
+        }
+        collider._baseX = collider.x;
+        collider._baseY = collider.y;
+      }
+    }
+    this._refreshEditorCollisionCaches();
+    this._applyEditorLayerFilter?.();
+  }
+
 
   _hideEditorPlaytestGlowLayers() {
     const hideForPlayer = (player) => {
@@ -6653,7 +6693,7 @@ class LevelEditor {
       for (const entry of numericInputs) entry.blur(commit);
     };
 
-    const makeNumericInput = ({ x, y, label, arrowFrame, initialValue, min = 0, max = 9999, allowNegative = false, onCommit }) => {
+    const makeNumericInput = ({ x, y, label, arrowFrame, initialValue, min = 0, max = 9999, allowNegative = false, allowDecimal = false, onCommit }) => {
       inner.add(this.add.bitmapText(x, y - 52, "goldFont", label, 28).setOrigin(0.5));
 
       const bg = this.add.graphics();
@@ -6668,7 +6708,7 @@ class LevelEditor {
       let beforeFocus = valueText;
 
       const normalize = (raw) => {
-        const parsed = parseInt(raw, 10);
+        const parsed = allowDecimal ? parseFloat(raw) : parseInt(raw, 10);
         let next = Number.isFinite(parsed) ? parsed : 0;
         if (!allowNegative) next = Math.max(min, next);
         else next = Math.max(min, next);
@@ -6730,7 +6770,7 @@ class LevelEditor {
 
       const stepValue = (delta) => {
         blur(true);
-        setValue(normalize(valueText) + delta, true);
+        setValue(normalize(valueText) + (allowDecimal ? delta / 10 : delta), true);
       };
 
       hit.on("pointerdown", focus);
@@ -6753,7 +6793,10 @@ class LevelEditor {
           } else if (allowNegative && event.key === "-" && valueText.length === 0) {
             valueText = "-";
             render();
-          } else if (/^[0-9]$/.test(event.key) && valueText.length < 5) {
+          } else if (allowDecimal && event.key === "." && !valueText.includes(".") && valueText.length < 6) {
+            valueText += valueText.length ? "." : "0.";
+            render();
+          } else if (/^[0-9]$/.test(event.key) && valueText.length < (allowDecimal ? 7 : 5)) {
             valueText += event.key;
             render();
           }
@@ -6769,9 +6812,9 @@ class LevelEditor {
     };
 
     const topInputY = -(panelH / 2) + 85;
-    const topGap = 230;
+    const topPositions = [-270, -90, 90, 270];
     makeNumericInput({
-      x: -topGap,
+      x: topPositions[0],
       y: topInputY,
       label: "Editor L",
       arrowFrame: "GJ_arrow_02_001.png",
@@ -6781,7 +6824,7 @@ class LevelEditor {
       onCommit: (value) => this._setEditorObjectEditorLayer(saveObj, value)
     });
     makeNumericInput({
-      x: 0,
+      x: topPositions[1],
       y: topInputY,
       label: "Editor L2",
       arrowFrame: "GJ_arrow_03_001.png",
@@ -6791,7 +6834,7 @@ class LevelEditor {
       onCommit: (value) => this._setEditorObjectEditorLayer2(saveObj, value)
     });
     makeNumericInput({
-      x: topGap,
+      x: topPositions[2],
       y: topInputY,
       label: "Z Order",
       arrowFrame: "GJ_arrow_02_001.png",
@@ -6800,6 +6843,17 @@ class LevelEditor {
       max: 999,
       allowNegative: true,
       onCommit: (value) => this._setEditorObjectZOrder(saveObj, value)
+    });
+    makeNumericInput({
+      x: topPositions[3],
+      y: topInputY,
+      label: "Scale",
+      arrowFrame: "GJ_arrow_02_001.png",
+      initialValue: Number(saveObj.scale ?? saveObj._raw?.[32] ?? saveObj._raw?.["32"] ?? 1),
+      min: 0.01,
+      max: 20,
+      allowDecimal: true,
+      onCommit: (value) => this._setEditorObjectScale(saveObj, value)
     });
 
     const controlY = topInputY + 110;
@@ -11032,6 +11086,7 @@ LevelEditor.methodNames = [
   "_setEditorActiveLayerIndex",
   "_applyEditorLayerFilter",
   "_setEditorObjectZOrder",
+  "_setEditorObjectScale",
   "_openSelectedEditorGroupPopup",
   "_openSelectedEditorObjectOptions",
   "_openSelectedEditorInspector",

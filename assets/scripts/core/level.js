@@ -403,12 +403,9 @@ function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const ys = vertices.map(point => point.y);
   const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
   const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
-  // Some GD slope-shaped objects are hazards rather than walkable slopes.
-  // Keep their polygon-sized bounds, but route them through the normal hazard
-  // collision path so touching the visual kills the player.
-  const colliderType = objectDef?.type === hazardType ? hazardType : slopeType;
-  const collider = new Collider(colliderType, worldX, worldY, w, h, 0);
+  const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
+  collider.deadly = objectDef?.deadly === true;
   collider.slopeSolidVertices = vertices;
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
@@ -2871,6 +2868,7 @@ window.LevelObject = class LevelObject {
   }
 
   if (objectDef) {
+    const objectScale = Phaser.Math.Clamp(parseFloat(levelObj.scale ?? 1) || 1, 0.01, 20);
     const registerCollider = col => {
       col._baseX = col.x;
       col._baseY = col.y;
@@ -2908,8 +2906,8 @@ window.LevelObject = class LevelObject {
       hasCollisionEntry = true;
       this._addCollisionToSection(slopeCollider);
     } else if (objectDef.type === solidType && objectDef.gridW > 0 && objectDef.gridH > 0) {
-      const w = objectDef.gridW * a;
-      const h = objectDef.gridH * a;
+      const w = objectDef.gridW * a * objectScale;
+      const h = objectDef.gridH * a * objectScale;
       const collider = new Collider(solidType, worldX, worldY, w, h, levelObj.rot || 0);
       collider.objid = levelObj.id;
       registerCollider(collider);
@@ -2926,15 +2924,15 @@ window.LevelObject = class LevelObject {
         objectDef.hitboxScaleX !== undefined &&
         objectDef.hitboxScaleY !== undefined
       ) {
-        hitW = objectDef.spriteW * objectDef.hitboxScaleX * 2;
-        hitH = objectDef.spriteH * objectDef.hitboxScaleY * 2;
+        hitW = objectDef.spriteW * objectDef.hitboxScaleX * 2 * objectScale;
+        hitH = objectDef.spriteH * objectDef.hitboxScaleY * 2 * objectScale;
       } else if (objectDef.gridW > 0 && objectDef.gridH > 0) {
-        hitW = objectDef.gridW * 12;
-        hitH = objectDef.gridH * 24;
+        hitW = objectDef.gridW * 12 * objectScale;
+        hitH = objectDef.gridH * 24 * objectScale;
       }
 
       const hasHitboxRadius = objectDef.hitbox_radius !== undefined && objectDef.hitbox_radius !== null;
-      const worldHitboxRadius = hasHitboxRadius ? objectDef.hitbox_radius * 2 : 0;
+      const worldHitboxRadius = hasHitboxRadius ? objectDef.hitbox_radius * 2 * objectScale : 0;
 
       if (hasHitboxRadius && hitW === 0) {
         hitW = worldHitboxRadius * 2;
