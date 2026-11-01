@@ -11626,7 +11626,7 @@ _applyMirrorEffect() {
     const startingBalance = Math.max(0, this._getManaOrbBalance() - count);
     const counter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Orbs: ${startingBalance}`, 24)
       .setOrigin(1, 0.5).setScrollFactor(0).setDepth(221).setTint(0x9ee8ff);
-    this._audio.playEffect("highscoreGet02");
+    this._audio.playEffect("manaOrb");
     let arrived = 0;
     for (let index = 0; index < visualCount; index++) {
       const orb = this.add.image(startX, startY, "GJ_GameSheet03", "currencyOrbIcon_001.png")

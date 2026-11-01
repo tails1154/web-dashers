@@ -391,6 +391,7 @@ class BootScene extends Phaser.Scene {
       this.load.audio("playSound_01", "assets/sfx/playSound_01.ogg");
       this.load.audio("quitSound_01", "assets/sfx/quitSound_01.ogg");
       this.load.audio("highscoreGet02", "assets/sfx/highscoreGet02.ogg");
+      this.load.audio("manaOrb", "assets/sfx/manaOrb.ogg");
 
       this.load.on("progress", (value) => {
         if (sliderFill) sliderFill.width = value * 380;
