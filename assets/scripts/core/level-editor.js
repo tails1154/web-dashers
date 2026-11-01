@@ -10357,6 +10357,93 @@ class LevelEditor {
     });
   }
 
+  async _openEditorCoinGeneratorPopup() {
+    window.showNativePhaserDialog(this, {
+      title: "AI COIN GENERATOR",
+      message: "Describe the coin design. Pollinations will generate it and place it at the center of your current editor view.",
+      input: true,
+      defaultValue: "a glowing collectible game coin, Geometry Dash inspired, transparent background",
+      placeholder: "Describe your coin",
+      confirmLabel: "GENERATE",
+      cancelLabel: "CANCEL",
+      onConfirm: async promptText => {
+        const description = String(promptText || "").trim().slice(0, 180);
+        if (!description) {
+          window.showNativePhaserDialog(this, { title: "COIN GENERATOR", message: "Enter a coin description first." });
+          return;
+        }
+
+        window.showNativePhaserDialog(this, { title: "COIN GENERATOR", message: "Generating coin artwork..." });
+        try {
+          const prompt = `single collectible game coin, ${description}, centered, readable silhouette, no text, isolated on a transparent background`;
+          const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=256&height=256&nologo=true&seed=${Date.now()}`;
+          const response = await fetch(imageUrl, { mode: "cors" });
+          if (!response.ok) throw new Error(`Pollinations returned HTTP ${response.status}`);
+          const blob = await response.blob();
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result || ""));
+            reader.onerror = () => reject(reader.error || new Error("Could not read generated artwork"));
+            reader.readAsDataURL(blob);
+          });
+          const comma = dataUrl.indexOf(",");
+          if (comma < 0) throw new Error("Generated artwork had an invalid image format");
+
+          const worldX = (this._cameraX + screenWidth / 2) / this._editorZoom;
+          const worldY = (this._cameraY + screenHeight / 2) / this._editorZoom;
+          const saveData = {
+            id: 5075,
+            x: worldX / 2 + 15,
+            y: -worldY / 2 + 225,
+            flipX: false,
+            flipY: false,
+            rot: 0,
+            scale: 1,
+            zLayer: 1,
+            zOrder: 0,
+            editorLayer: this._getCurrentEditorPlacementLayer?.() || 0,
+            editorLayer2: 0,
+            groups: "",
+            color1: 0,
+            color2: 0,
+            _raw: {
+              "1": "5075",
+              "2": String(worldX / 2 + 15),
+              "3": String(-worldY / 2 + 225),
+              "4": "0",
+              "5": "0",
+              "6": "0",
+              "20": String(this._getCurrentEditorPlacementLayer?.() || 0),
+              "24": "1",
+              "25": "0",
+              "32": "1",
+              "57": "",
+              "61": "0",
+              "700": dataUrl.slice(comma + 1),
+              "701": blob.type || "image/png",
+              "702": "60",
+              "703": "60",
+              "704": "0"
+            }
+          };
+          window.levelObjects.push(saveData);
+          this._level._spawnObject(saveData);
+          const placedIndex = Math.max(0, (this._level._nextObjectId || 1) - 1);
+          this._selectEditorObjectsByIds([placedIndex], 0x00ff00);
+          this._refreshEditorLayerSelectorVisual?.();
+          this._applyEditorLayerFilter?.();
+          this._buildObjectGrid?.();
+          this._broadcastEditorState?.();
+          window.showNativePhaserDialog(this, { title: "COIN GENERATED", message: "The generated coin was placed in the current editor view." });
+        } catch (error) {
+          window.showNativePhaserDialog(this, {
+            title: "COIN GENERATOR FAILED",
+            message: error?.message || "Could not generate coin artwork. Check your connection and try again."
+          });
+        }
+      }
+    });
+  }
 
   _initEditorPauseMenu() {
     this._editorMenuContainer = this.add.container(0, 0).setDepth(2000).setVisible(false);
@@ -10412,6 +10499,7 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
+        { text: "Coin Generator", cb: () => this._openEditorCoinGeneratorPopup() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -11153,6 +11241,7 @@ LevelEditor.methodNames = [
   "_initEditorPauseMenu",
   "_showLoadingBuffer",
   "_showEditorPauseMenu",
+  "_openEditorCoinGeneratorPopup",
   "_serializeLevel",
   "_serializeObject",
   "_showEditorSaveNotice",
