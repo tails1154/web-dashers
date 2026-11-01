@@ -2362,7 +2362,7 @@ class LevelEditor {
             }
         }
         if (activeCatDef?.types?.includes("trigger")) {
-            for (const triggerId of [5072, 5073, 5074, 5080, 5081, 5082, 5083, 5084, 5085, 5086, 5087, 5088, 5089, 5090, 5091]) {
+            for (const triggerId of [1006, 1007, 5072, 5073, 5074, 5080, 5081, 5082, 5083, 5084, 5085, 5086, 5087, 5088, 5089, 5090, 5091]) {
                 const trigger = getObjectFromId(triggerId);
                 if (trigger && !itemsForGrid.some(item => item.id === triggerId)) {
                     itemsForGrid.push({ type: "object", id: triggerId, frame: trigger.frame });
