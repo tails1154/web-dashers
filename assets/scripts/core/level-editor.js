@@ -6460,7 +6460,15 @@ class LevelEditor {
 
 
   _editorObjectMatchesActiveLayerByObjectId(objectId) {
-    return this._editorObjectMatchesActiveLayer(this._getEditorSaveObjectForObjectId(objectId));
+    const saveObj = this._getEditorSaveObjectForObjectId(objectId);
+    if (saveObj) return this._editorObjectMatchesActiveLayer(saveObj);
+    const activeLayer = this._editorActiveLayer;
+    if (activeLayer === null || activeLayer === undefined) return true;
+    const sprites = this._level?.objectSprites?.[objectId] || [];
+    return sprites.some(sprite => sprite && (
+      Number(sprite._eeEditorLayer ?? 0) === activeLayer ||
+      Number(sprite._eeEditorLayer2 ?? 0) === activeLayer
+    ));
   }
 
 
