@@ -2363,13 +2363,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             
             const viewBtn = this.add.nineslice(tableX + tableW - 80, slotY, "GJ_button01", null, 120, 60, 24, 24, 24, 24 ).setScale(0.75).setInteractive();
             const viewTxt = this.add.bitmapText(viewBtn.x - 2, viewBtn.y - 1, "bigFont", "View", 32).setOrigin(0.5).setScale(0.8);
+            const exportBtn = this.add.nineslice(tableX + tableW - 212, slotY, "GJ_button01", null, 110, 60, 24, 24, 24, 24 ).setScale(0.75).setInteractive();
+            const exportTxt = this.add.bitmapText(exportBtn.x - 2, exportBtn.y - 1, "bigFont", "GMD", 30).setOrigin(0.5).setScale(0.8);
             
             this._makeCompositeBouncyButton(viewBtn, [viewBtn, viewTxt], 0.75, () => {
                 this._closeEditorMenu(false);
                 this._openLevelView(level);
             });
+            this._makeCompositeBouncyButton(exportBtn, [exportBtn, exportTxt], 0.75, () => {
+                this._exportGMD(level);
+            });
 
-            listContainer.add([bgStripe, separator, nameTxt, revText, lenIcon, lenTxt, songIcon, songTxt, statusIcon, statusTxt, viewBtn, viewTxt]);
+            listContainer.add([bgStripe, separator, nameTxt, revText, lenIcon, lenTxt, songIcon, songTxt, statusIcon, statusTxt, exportBtn, exportTxt, viewBtn, viewTxt]);
         });
         if (createdLevels.length === 0) {
             container.add(this.add.bitmapText(centerX, tableY + (tableH/2), "bigFont", "No Levels", 30).setOrigin(0.5).setAlpha(0.5));
@@ -2415,6 +2420,36 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
         const newBtnX = sw - 60;
         const newBtnY = sh - 55;
+
+        const cleanupUnnamedLevels = () => {
+            let levels = [];
+            try { levels = JSON.parse(localStorage.getItem("created_levels") || "[]"); } catch (_) { levels = []; }
+            const matches = levels.filter(level => /^Unnamed\s+\d+/i.test(String(level?.levelName || "").trim()));
+            if (!matches.length) {
+                showNativePhaserDialog(this, { title: "CLEANUP LEVELS", message: "No levels starting with ‘Unnamed <number>’ were found." });
+                return;
+            }
+            showNativePhaserDialog(this, {
+                title: "CLEANUP LEVELS",
+                message: `Delete ${matches.length} local level${matches.length === 1 ? "" : "s"} starting with ‘Unnamed <number>’?\n\nThis only removes local copies from My Levels. Server levels are not changed.`,
+                confirm: true,
+                confirmLabel: "DELETE",
+                cancelLabel: "CANCEL",
+                onConfirm: () => {
+                    const matchIds = new Set(matches.map(level => level.createdId));
+                    const remaining = levels.filter(level => !matchIds.has(level.createdId));
+                    localStorage.setItem("created_levels", JSON.stringify(remaining));
+                    this._closeEditorMenu();
+                    this._openEditorMenu();
+                }
+            });
+        };
+
+        const cleanupBtn = this.add.nineslice(sw - 190, newBtnY, "GJ_button01", null, 190, 48, 16, 16, 16, 16).setScale(0.75).setInteractive();
+        const cleanupTxt = this.add.bitmapText(cleanupBtn.x, cleanupBtn.y - 1, "bigFont", "CLEANUP", 22).setOrigin(0.5).setScale(0.8);
+        this._makeCompositeBouncyButton(cleanupBtn, [cleanupBtn, cleanupTxt], 0.75, cleanupUnnamedLevels);
+        container.add([cleanupBtn, cleanupTxt]);
+
         const newBtn = this.add.image(newBtnX, newBtnY, "GJ_GameSheet03", "GJ_newBtn_001.png")
             .setScale(0.9)
             .setInteractive();

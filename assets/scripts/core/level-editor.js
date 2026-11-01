@@ -10514,7 +10514,6 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
-        { text: "Coin Generator", cb: () => this._openEditorCoinGeneratorPopup() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -11256,7 +11255,6 @@ LevelEditor.methodNames = [
   "_initEditorPauseMenu",
   "_showLoadingBuffer",
   "_showEditorPauseMenu",
-  "_openEditorCoinGeneratorPopup",
   "_serializeLevel",
   "_serializeObject",
   "_showEditorSaveNotice",
