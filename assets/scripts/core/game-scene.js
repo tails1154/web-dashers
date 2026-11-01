@@ -777,7 +777,7 @@ class GameScene extends Phaser.Scene {
       {frame:  "",                       url: "",                                                     angle: 0,                row: 2, col: 0 },
       {frame:  "",                       url: "",                                                     angle: 0,                row: 2, col: 1 },
       {frame:  "",                       url: "",                                                     angle: 0,                row: 2, col: 2 },
-      { frame: "gj_discordIcon_001.png", url: "https://discord.gg/TfEzAVWPSJ",                        angle: 0,               row: 2, col: 3 },
+      { frame: "gj_discordIcon_001.png", url: "https://tails1154.com:9961/invite/webdash",           angle: 0,               row: 2, col: 3 },
 
 
       //{ frame: "gj_instaIcon_001.png",   url: "https://www.instagram.com/",                           angle: -90, flipX: true, row: 1, col: 3 },
@@ -821,7 +821,7 @@ class GameScene extends Phaser.Scene {
     },
     {
       key: "downloadApple_001",
-      url: "https://discord.gg/TfEzAVWPSJ"
+      url: "https://tails1154.com:9961/invite/webdash"
     }];
     for (let _0xfeaf5c = 0; _0xfeaf5c < _0x4fc67f.length; _0xfeaf5c++) {
       const _0x1ce2a6 = _0x4fc67f[_0xfeaf5c];
@@ -12154,7 +12154,7 @@ _applyMirrorEffect() {
     this._endLayerInternal.add(this.add.image(containerX - _0x45540f, 352.5, "GJ_WebSheet", "getIt_001.png").setScale(1 / 1.5));
     const _0x34b1bd = [{
       key: "downloadApple_001",
-      url: "https://discord.gg/TfEzAVWPSJ"
+      url: "https://tails1154.com:9961/invite/webdash"
     }, {
       key: "downloadSteam_001",
       url: "https://github.com/tails1154/web-dashers"

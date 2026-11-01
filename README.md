@@ -22,7 +22,7 @@
   </a>
   &nbsp;
   <a 
-  href="https://discord.gg/h6xYNUBFnq" 
+  href="https://tails1154.com:9961/invite/webdash"
   target="_blank">
     <img 
     width="279" 
