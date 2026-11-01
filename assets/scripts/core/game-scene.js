@@ -4137,6 +4137,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setOrigin(1, 0.5).setScrollFactor(0).setDepth(105).setTint(0xfff2a1);
       const _iconDiamondCounter = this.add.bitmapText(sw - 28, 138, "goldFont", "Diamonds: " + (parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0), 24)
         .setOrigin(1, 0.5).setScrollFactor(0).setDepth(105).setTint(0xd98cff);
+      const _iconOrbCounter = this.add.bitmapText(sw - 28, 168, "goldFont", "Orbs: " + this._getManaOrbBalance(), 24)
+        .setOrigin(1, 0.5).setScrollFactor(0).setDepth(105).setTint(0x9ee8ff);
       this._refreshIconCoinHud = () => {
         if (_iconCoinCounter && _iconCoinCounter.active) {
           _iconCoinCounter.setText("Coins: " + (window.WDCoinEconomy?.getBalance?.() || 0));
@@ -4146,6 +4148,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
         if (_iconDiamondCounter && _iconDiamondCounter.active) {
           _iconDiamondCounter.setText("Diamonds: " + (parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0));
+        }
+        if (_iconOrbCounter && _iconOrbCounter.active) {
+          _iconOrbCounter.setText("Orbs: " + this._getManaOrbBalance());
         }
       };
       let titleFocused = false;
@@ -10696,10 +10701,12 @@ _buildSettingsPopup() {
           this._showDeathSummary();
         }
         if (this._lastPercent > this._bestPercent && !this._practicedMode.practiceMode && !this._runDisqualified) {
+          const previousBestPercent = this._bestPercent;
           this._bestPercent = this._lastPercent;
           localStorage.setItem("bestPercent_" + (window.currentlevel[2] || "level_1"), this._bestPercent);
           this._hadNewBest = true;
           this._showNewBest();
+          this._awardManaOrbsForProgress(this._lastPercent, previousBestPercent, false);
         }
         if (this._practicedMode.practiceMode && !this._runDisqualified) {
           const pracKey = "practiceBestPercent_" + (window.currentlevel[2] || "level_1");
@@ -11569,6 +11576,90 @@ _applyMirrorEffect() {
     this._refreshFlyBoundsAfterDual();
     this._dualPortalCenterY = null;
   }
+  _getManaOrbBalance() {
+    const stored = parseInt(localStorage.getItem("wd_mana_orbs") || "0", 10);
+    return Number.isFinite(stored) && stored > 0 ? stored : 0;
+  }
+  _setManaOrbBalance(value) {
+    localStorage.setItem("wd_mana_orbs", String(Math.max(0, Math.floor(Number(value) || 0))));
+    this._refreshIconCoinHud?.();
+  }
+  _getManaOrbTotalForLevel() {
+    const level = window._selectedLevelData || {};
+    const stars = Math.max(0, Math.floor(Number(level.stars || 0)));
+    if (!stars || Number(level.difficulty) === 11) return 0;
+    const totals = [0, 50, 50, 75, 125, 175, 225, 275, 350, 425, 500];
+    return totals[Math.min(10, stars)] || 0;
+  }
+  _awardManaOrbsForProgress(percent, previousBestPercent = 0, completed = false) {
+    if (window.isEditor || this._editorPlaytestActive || this._practicedMode.practiceMode || this._runDisqualified) return 0;
+    const levelId = String(window.currentlevel?.[2] || "");
+    if (!levelId) return 0;
+    const total = this._getManaOrbTotalForLevel();
+    if (!total) return 0;
+    let progress = {};
+    try { progress = JSON.parse(localStorage.getItem("wd_mana_orb_progress") || "{}"); } catch (_) {}
+    if (!progress || typeof progress !== "object" || Array.isArray(progress)) progress = {};
+    const oldAwarded = Math.max(0, Number(progress[levelId]?.awarded) || 0);
+    const target = completed
+      ? total
+      : Math.min(Math.floor(total * 0.8 * Math.max(0, Math.min(100, Number(percent) || 0)) / 100), Math.floor(total * 0.8));
+    const reward = Math.max(0, target - oldAwarded);
+    if (reward <= 0 && !completed) return 0;
+    progress[levelId] = {
+      percent: completed ? 100 : Math.max(Number(progress[levelId]?.percent) || 0, Math.floor(Number(percent) || 0), Number(previousBestPercent) || 0),
+      awarded: Math.max(oldAwarded, target)
+    };
+    localStorage.setItem("wd_mana_orb_progress", JSON.stringify(progress));
+    if (reward > 0) {
+      this._setManaOrbBalance(this._getManaOrbBalance() + reward);
+      this._playManaOrbAward(reward);
+    }
+    return reward;
+  }
+  _playManaOrbAward(count) {
+    const visualCount = Math.min(10, Math.max(1, Math.ceil(Number(count) / 10)));
+    const startX = screenWidth / 2;
+    const startY = 300;
+    const targetX = screenWidth - 78;
+    const targetY = 168;
+    const startingBalance = Math.max(0, this._getManaOrbBalance() - count);
+    const counter = this.add.bitmapText(screenWidth - 28, targetY, "goldFont", `Orbs: ${startingBalance}`, 24)
+      .setOrigin(1, 0.5).setScrollFactor(0).setDepth(221).setTint(0x9ee8ff);
+    this._audio.playEffect("highscoreGet02");
+    let arrived = 0;
+    for (let index = 0; index < visualCount; index++) {
+      const orb = this.add.image(startX, startY, "GJ_GameSheet03", "currencyOrbIcon_001.png")
+        .setScale(0.56).setScrollFactor(0).setDepth(220);
+      this.tweens.add({
+        targets: orb,
+        x: startX + (index - (visualCount - 1) / 2) * 28 + (Math.random() * 16 - 8),
+        y: startY - 55 - Math.random() * 45,
+        angle: 360 + Math.random() * 180,
+        duration: 420 + index * 35,
+        ease: "Bounce.Out",
+        onComplete: () => this.tweens.add({
+          targets: orb,
+          x: targetX,
+          y: targetY,
+          scale: 0.25,
+          duration: 650,
+          delay: index * 50,
+          ease: "Cubic.In",
+          onComplete: () => {
+            orb.destroy();
+            arrived += 1;
+            counter.setText(`Orbs: ${startingBalance + Math.floor(count * arrived / visualCount)}`);
+            if (arrived >= visualCount) {
+              counter.setText(`Orbs: ${startingBalance + count}`);
+              this._refreshIconCoinHud?.();
+              this.time.delayedCall(350, () => counter.destroy());
+            }
+          }
+        })
+      });
+    }
+  }
   _showNewBest() {
     let _0x9f2437 = screenWidth / 2;
     let _0x12bde3 = this.add.image(0, 0, "GJ_WebSheet", "GJ_newBest_001.png").setOrigin(0.5, 1);
@@ -11638,6 +11729,7 @@ _applyMirrorEffect() {
         this._pendingCoinRewardLevelId = String(window.currentlevel?.[2] || "");
         this._pendingCoinRewardStartCount = Math.max(0, (window.WDCoinEconomy?.getBalance?.() || 0) - earnedCoins);
       }
+      this._awardManaOrbsForProgress(100, this._bestPercent, true);
       if (window._dailyLevelActive) {
         const dailyId = String(window._dailyLevelId || window._selectedLevelData?.id || window.currentlevel?.[2] || "").replace(/^online_/, "");
         window.AccountAPI?.claimDailyReward?.(dailyId, true, false).then(result => {
