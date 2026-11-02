@@ -10514,7 +10514,6 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
-        { text: "Capture Thumbnail", cb: () => this._captureEditorThumbnail() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -10890,58 +10889,6 @@ _serializeObject(object) {
     });
   }
 
-  _captureEditorThumbnail() {
-    const { levels, idx, level } = this._getCurrentEditorLevelRecord();
-    if (idx === -1 || !level || !this.game?.canvas) return;
-    const hiddenObjects = [this._editorMenuContainer, this._editorGui, this._toolbox, this._timelineContainer, this._editorGridGraphics]
-      .filter(Boolean)
-      .map(object => ({ object, visible: object.visible }));
-    const savedCamera = { x: this._cameraX, y: this._cameraY };
-    const levelWidth = Math.max(screenWidth, Number(this._getEditorLevelWidth?.() || screenWidth));
-    const maxCameraX = Math.max(0, levelWidth - screenWidth);
-    const randomCameraX = Math.random() * maxCameraX;
-    const applyCamera = () => {
-      this._cameraX = randomCameraX;
-      this._cameraY = savedCamera.y;
-      this._level.container.x = -this._cameraX;
-      this._level.container.y = -this._cameraY;
-      this._level.additiveContainer.x = -this._cameraX;
-      this._level.additiveContainer.y = -this._cameraY;
-      this._level.topContainer.x = -this._cameraX;
-      this._level.topContainer.y = -this._cameraY;
-    };
-    const restore = () => {
-      this._cameraX = savedCamera.x;
-      this._cameraY = savedCamera.y;
-      this._level.container.x = -this._cameraX;
-      this._level.container.y = -this._cameraY;
-      this._level.additiveContainer.x = -this._cameraX;
-      this._level.additiveContainer.y = -this._cameraY;
-      this._level.topContainer.x = -this._cameraX;
-      this._level.topContainer.y = -this._cameraY;
-      hiddenObjects.forEach(({ object, visible }) => object.setVisible(visible));
-    };
-    hiddenObjects.forEach(({ object }) => object.setVisible(false));
-    applyCamera();
-    this.time.delayedCall(80, () => {
-      try {
-        const thumbnail = document.createElement("canvas");
-        thumbnail.width = 640;
-        thumbnail.height = 360;
-        const context = thumbnail.getContext("2d");
-        context.drawImage(this.game.canvas, 0, 0, thumbnail.width, thumbnail.height);
-        level.thumbnail = thumbnail.toDataURL("image/jpeg", 0.7);
-        levels[idx].thumbnail = level.thumbnail;
-        localStorage.setItem("created_levels", JSON.stringify(levels));
-        this._showEditorSaveNotice("Thumbnail captured");
-      } catch (error) {
-        console.warn("Could not capture level thumbnail", error);
-      } finally {
-        restore();
-      }
-    });
-  }
-
   _saveEditorLevel() {
     const levelData = {
         objects: window.levelObjects,
@@ -10987,7 +10934,6 @@ _serializeObject(object) {
         this._editorPendingSongId = undefined;
         this._editorPendingSongName = undefined;
     }
-    if (levelIndex !== -1 && !createdLevels[levelIndex].thumbnail) this._captureEditorThumbnail();
     this._showEditorSaveNotice();
     this._broadcastEditorState();
   }
@@ -11312,7 +11258,6 @@ LevelEditor.methodNames = [
   "_serializeLevel",
   "_serializeObject",
   "_showEditorSaveNotice",
-  "_captureEditorThumbnail",
   "_saveEditorLevel",
   "_initEditorTimeline",
   "_getEditorLevelWidth",

@@ -1472,7 +1472,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             likes:         lvl.likes || 0,
             stars:         lvl.stars || 0,
             coins:         lvl.coins || 0,
-            thumbnail:     lvl.thumbnail || "",
             star_reward:   lvl.star_reward || 0,
             coinsVerified: lvl.coinsVerified || false,
             length:        lvl.length || 0,
@@ -1483,29 +1482,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           localStorage.setItem(_savedKey, JSON.stringify(_savedLevels));
         }
       } catch (_e) {}
-    };
-    this._addLevelThumbnailBackground = (level, depth, onCreated = null) => {
-      const source = String(level?.thumbnail || "");
-      if (!source.startsWith("data:image/")) return;
-      const key = `level-thumbnail-${String(level.id || level.createdId || "local")}-${source.length}`;
-      const addImage = () => {
-        if (!this.textures.exists(key)) return;
-        const image = this.add.image(screenWidth / 2, screenHeight / 2, key)
-          .setScrollFactor(0).setDepth(depth).setDisplaySize(screenWidth, screenHeight).setAlpha(0.22);
-        onCreated?.(image);
-        return image;
-      };
-      if (this.textures.exists(key)) {
-        addImage();
-        return;
-      }
-      const image = new Image();
-      image.onload = () => {
-        if (!this.scene?.isActive?.()) return;
-        if (!this.textures.exists(key)) this.textures.addImage(key, image);
-        addImage();
-      };
-      image.src = source;
     };
     this._openPlayMenu = (onBack = null) => {
       if (this._playOverlay) return;
@@ -1544,10 +1520,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
       this._playOverlayObjects.push(overlay, blocker, backBtn, cornerBL, cornerBR);
       const lvl = window._selectedLevelData || {};
-      this._addLevelThumbnailBackground(lvl, 499, image => {
-        if (this._playOverlay === overlay && overlay.active) this._playOverlayObjects.push(image);
-        else image.destroy();
-      });
       if (lvl.id) localStorage.setItem("viewedLevel_" + lvl.id, "1");
       this._recordRecentLevel(lvl);
       this._saveOnlineLevelToSavedList(lvl);
@@ -2393,7 +2365,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           normalBest: 0,
           practiceBest: 0,
           description: lvl.description || "",
-          thumbnail: lvl.thumbnail || "",
           version: 1,
           status: "Unverified",
           createdId: this._getNextLocalId()
@@ -2902,12 +2873,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
 
         const container = this.add.container(0, 0).setDepth(150);
-        let levelThumbnailBackground = null;
-        let levelViewClosed = false;
-        this._addLevelThumbnailBackground(level, 100, image => {
-            if (levelViewClosed) image.destroy();
-            else levelThumbnailBackground = image;
-        });
         const boxWidth = sw * 0.6;
         const cornerRad = 18;
 
@@ -2994,11 +2959,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         descBox.on('pointerdown', () => { this._activeInput = 'desc'; updateDisplay(); });
 
         const cleanup = () => {
-            levelViewClosed = true;
             clearInterval(cursorInterval);
             window.removeEventListener('keydown', keyHandler);
             window.removeEventListener('keydown', forceVerifyKeyHandler);
-            levelThumbnailBackground?.destroy();
             container.destroy();
             overlay.destroy();
             blocker.destroy();
@@ -3115,7 +3078,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                     client_id: level.createdId || "",
                     name: uploadDetails.name,
                     description: uploadDetails.description,
-                    thumbnail: level.thumbnail || "",
                     song: level.song || "",
                     difficulty: 0,
                     length: parseInt(level.levelLength) || 0,
@@ -13782,6 +13744,7 @@ _applyMirrorEffect() {
       if (!root.active) return;
       this.tweens.add({ targets: root, alpha: 0, duration: 180, onComplete: () => {
         if (sourceChest?.active) sourceChest.setVisible(true).setInteractive();
+        if (reward.destroySource && sourceChest?.active) sourceChest.destroy();
         root.destroy(true);
         this._dailyChestAnimationOverlay = null;
       }});
@@ -13936,6 +13899,35 @@ _applyMirrorEffect() {
       orbs: tier.orbs
     });
   }
+  _openVaultCodeChest(codeId, codeData) {
+    const claimed = (() => {
+      try { return JSON.parse(localStorage.getItem("wd_vault_chest_codes") || "{}"); } catch (_) { return {}; }
+    })();
+    if (claimed[codeId]) {
+      showNativePhaserDialog(this, { title: "EMPTY CHEST", message: "That chest has already been opened." });
+      return;
+    }
+    showNativePhaserDialog(this, {
+      title: codeData.title,
+      message: `${codeData.lore}\n\nThe vault unlocks a chest containing ${codeData.rewardText}.`,
+      confirm: true,
+      confirmLabel: "OPEN CHEST",
+      cancelLabel: "LATER",
+      onConfirm: () => {
+        claimed[codeId] = Date.now();
+        localStorage.setItem("wd_vault_chest_codes", JSON.stringify(claimed));
+        const chest = this.add.image(screenWidth / 2, screenHeight / 2, "GJ_GameSheet03", "chestIcon_001.png")
+          .setScale(1).setInteractive();
+        this._playDailyChestOpening(0, chest, {
+          name: codeData.title,
+          diamonds: codeData.reward.diamonds,
+          coins: codeData.reward.coins,
+          orbs: codeData.reward.orbs,
+          destroySource: true
+        });
+      }
+    });
+  }
   _showDiamondGuard(canEnter, diamonds, required) {
     if (this._diamondGuardOverlay) return;
     const lockedMessages = [
@@ -14025,6 +14017,37 @@ _applyMirrorEffect() {
           return;
         }
         const code = rawCode.toLowerCase();
+        const vaultChestCodes = {
+          "golden echo": {
+            title: "THE GOLDEN ECHO",
+            lore: "The first guardian left a copy of his voice in the walls. It still answers anyone who remembers the old name.",
+            rewardText: "12 diamonds, 20 coins, and 30 orbs",
+            reward: { diamonds: 12, coins: 20, orbs: 30 }
+          },
+          "the first key": {
+            title: "THE FIRST KEY",
+            lore: "Before the keys opened chests, they opened memories. The Keymaster remembers the player who turned the first one.",
+            rewardText: "18 diamonds, 10 coins, and 50 orbs",
+            reward: { diamonds: 18, coins: 10, orbs: 50 }
+          },
+          "deeper": {
+            title: "DEEPER",
+            lore: "There is another room beneath the room beneath the room. The builders stopped drawing maps before they reached it.",
+            rewardText: "25 diamonds, 35 coins, and 75 orbs",
+            reward: { diamonds: 25, coins: 35, orbs: 75 }
+          },
+          "the last attempt": {
+            title: "THE LAST ATTEMPT",
+            lore: "Every failed run is recorded somewhere. One page is marked complete, but nobody remembers writing it.",
+            rewardText: "30 diamonds, 50 coins, and 100 orbs",
+            reward: { diamonds: 30, coins: 50, orbs: 100 }
+          }
+        };
+        if (vaultChestCodes[code]) {
+          close();
+          this._openVaultCodeChest(code, vaultChestCodes[code]);
+          return;
+        }
         const vaultCodeActions = {
           featured: () => this._openOnlineLevelsScene({ type: 6 }),
           shop: () => this._openDiamondShop(true),
@@ -14183,7 +14206,6 @@ _applyMirrorEffect() {
     const stars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
     const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
     const coins = Math.max(0, Number(window.WDCoinEconomy?.getBalance?.() || 0));
-    const orbs = this._getManaOrbBalance();
     const now = new Date();
     const weekAnchor = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     weekAnchor.setUTCDate(weekAnchor.getUTCDate() + 4 - (weekAnchor.getUTCDay() || 7));
@@ -14202,16 +14224,15 @@ _applyMirrorEffect() {
     }
     let pathState = (() => { try { return JSON.parse(localStorage.getItem("wd_paths_week") || "null"); } catch (_) { return null; } })();
     if (!pathState || pathState.week !== weekKey) {
-      pathState = { week: weekKey, baseline: { stars, diamonds, coins, orbs }, claimed: {} };
+      pathState = { week: weekKey, baseline: { stars, diamonds, coins }, claimed: {} };
       localStorage.setItem("wd_paths_week", JSON.stringify(pathState));
     }
     const baseline = pathState.baseline || { stars: 0, diamonds: 0, coins: 0 };
     const gainedStars = Math.max(0, stars - Number(baseline.stars || 0));
     const gainedDiamonds = Math.max(0, diamonds - Number(baseline.diamonds || 0));
     const gainedCoins = Math.max(0, coins - Number(baseline.coins || 0));
-    const gainedOrbs = Math.max(0, orbs - Number(baseline.orbs || 0));
-    const currentXP = gainedStars + gainedDiamonds + gainedCoins + gainedOrbs;
-    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `WEEKLY PATH XP: ${currentXP}   •   +${gainedStars} stars   +${gainedDiamonds} diamonds   +${gainedCoins} coins   +${gainedOrbs} orbs`, 20).setOrigin(0.5).setTint(0xffe45c);
+    const currentXP = gainedStars + gainedDiamonds + gainedCoins;
+    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `WEEKLY PATH XP: ${currentXP}   •   +${gainedStars} stars   +${gainedDiamonds} diamonds   +${gainedCoins} coins`, 20).setOrigin(0.5).setTint(0xffe45c);
     root.add(xpLabel);
 
     // Server-configurable paths can replace this reward list later; each entry
