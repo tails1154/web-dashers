@@ -469,6 +469,17 @@ window.AccountAPI = {
     return data;
   },
 
+  async claimDailyChest(chestIndex) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Login required');
+    const res = await fetch(`${window._gdProxyUrl}?action=daily_chest`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chest_index: Number(chestIndex) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not claim Daily chest');
+    return data;
+  },
+
   async getCustomSongs(page = 1) {
     const res = await fetch(`${window._gdProxyUrl}?action=custom_songs&page=${encodeURIComponent(page)}`, { credentials: 'include' });
     const data = await res.json();

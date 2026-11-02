@@ -1143,6 +1143,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._makeBouncyButton(dailyChestSmall, 0.72, () => this._openDailyChest(0, dailyChestSmall), () => true);
       this._makeBouncyButton(dailyChestLarge, 0.9, () => this._openDailyChest(1, dailyChestLarge), () => true);
       this._refreshDailyChestButtons = () => {
+        const chestResetVersion = "2026-11-02-native-animation";
+        if (localStorage.getItem("wd_daily_chest_reset_version") !== chestResetVersion) {
+          localStorage.removeItem("wd_daily_chest_claims");
+          localStorage.setItem("wd_daily_chest_reset_version", chestResetVersion);
+        }
         let claims = {};
         try { claims = JSON.parse(localStorage.getItem("wd_daily_chest_claims") || "{}"); } catch (_) {}
         const day = this._getLocalCalendarDay();
@@ -13468,28 +13473,45 @@ _applyMirrorEffect() {
     const day = String(now.getDate()).padStart(2, "0");
     return `${now.getFullYear()}-${month}-${day}`;
   }
-  _openDailyChest(index, chest) {
+  async _openDailyChest(index, chest) {
     const chestIndex = Number(index) === 1 ? 1 : 0;
+    if (this._dailyChestClaimInFlight) return;
+    this._dailyChestClaimInFlight = chestIndex;
+    chest?.disableInteractive?.();
     let claims = {};
     try { claims = JSON.parse(localStorage.getItem("wd_daily_chest_claims") || "{}"); } catch (_) {}
     if (!claims || typeof claims !== "object" || Array.isArray(claims)) claims = {};
     const today = this._getLocalCalendarDay();
-    if (claims[String(chestIndex)] === today) {
-      showNativePhaserDialog(this, { title: "DAILY CHEST", message: "This chest is empty for today. Come back tomorrow." });
-      return;
+    try {
+      const result = await window.AccountAPI.claimDailyChest(chestIndex);
+      if (result.already_claimed) {
+        claims[String(chestIndex)] = today;
+        localStorage.setItem("wd_daily_chest_claims", JSON.stringify(claims));
+        this._refreshDailyChestButtons?.();
+        showNativePhaserDialog(this, { title: "DAILY CHEST", message: "This chest is empty for today. Come back tomorrow." });
+        return;
+      }
+      claims[String(chestIndex)] = today;
+      localStorage.setItem("wd_daily_chest_claims", JSON.stringify(claims));
+      localStorage.setItem("wd_diamonds", String(Math.max(0, Number(result.diamonds) || 0)));
+      localStorage.setItem("wd_coins", String(Math.max(0, Number(result.coins) || 0)));
+      localStorage.setItem("wd_mana_orbs", String(Math.max(0, Number(result.orbs) || 0)));
+      const awarded = result.awarded || {};
+      const reward = {
+        name: chestIndex === 0 ? "SMALL CHEST" : "LARGE CHEST",
+        diamonds: Math.max(0, Number(awarded.diamonds) || 0),
+        coins: Math.max(0, Number(awarded.coins) || 0),
+        orbs: Math.max(0, Number(awarded.orbs) || 0)
+      };
+      this._refreshIconCoinHud?.();
+      this._refreshDailyChestButtons?.();
+      this._playDailyChestOpening(chestIndex, chest, reward);
+    } catch (error) {
+      chest?.setInteractive?.();
+      showNativePhaserDialog(this, { title: "DAILY CHEST", message: error.message || "Could not claim Daily chest" });
+    } finally {
+      this._dailyChestClaimInFlight = null;
     }
-    const reward = chestIndex === 0
-      ? { name: "SMALL CHEST", diamonds: 3, coins: 12, orbs: 20 }
-      : { name: "LARGE CHEST", diamonds: 8, coins: 30, orbs: 50 };
-    claims[String(chestIndex)] = today;
-    localStorage.setItem("wd_daily_chest_claims", JSON.stringify(claims));
-    window.WDCoinEconomy?.add?.(reward.coins, this);
-    const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0) + reward.diamonds;
-    localStorage.setItem("wd_diamonds", String(diamonds));
-    this._setManaOrbBalance(this._getManaOrbBalance() + reward.orbs);
-    this._refreshIconCoinHud?.();
-    this._refreshDailyChestButtons?.();
-    this._playDailyChestOpening(chestIndex, chest, reward);
   }
   _playDailyChestOpening(chestIndex, sourceChest, reward) {
     if (this._dailyChestAnimationOverlay) return;
@@ -13512,7 +13534,7 @@ _applyMirrorEffect() {
     const finish = () => {
       if (!root.active) return;
       this.tweens.add({ targets: root, alpha: 0, duration: 180, onComplete: () => {
-        if (sourceChest?.active) sourceChest.setVisible(true);
+        if (sourceChest?.active) sourceChest.setVisible(true).setInteractive();
         root.destroy(true);
         this._dailyChestAnimationOverlay = null;
       }});
