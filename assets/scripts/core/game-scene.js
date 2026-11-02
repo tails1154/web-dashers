@@ -1111,14 +1111,20 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const cornerBL = this.add.image(0,  sh, "GJ_GameSheet03", "GJ_sideArt_001.png")
         .setScrollFactor(0).setDepth(152).setOrigin(0, 1)
       const diamondEntryCost = 25;
+      this._syncDemonKeysFromOrbs();
       const treasureroom = this.add.image(sw - 55, 40, "GJ_GameSheet03", "GJ_lock_001.png")
         .setScrollFactor(0).setDepth(104).setInteractive();
+      const demonKeyLabel = this.add.bitmapText(sw - 55, 78, "goldFont", `KEYS: ${this._getDemonKeys()}`, 16)
+        .setOrigin(0.5).setScrollFactor(0).setDepth(104).setTint(0x8de8ff);
       this._makeBouncyButton(treasureroom, 1, () => {
-        const diamonds = parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0;
-        if (diamonds >= diamondEntryCost) {
-          this._showDiamondGuard(true, diamonds, diamondEntryCost);
+        const keys = this._getDemonKeys();
+        if (keys >= 5) {
+          this._openTreasureRoom();
         } else {
-          this._showDiamondGuard(false, diamonds, diamondEntryCost);
+          showNativePhaserDialog(this, {
+            title: "KEYMASTER",
+            message: `You need ${5 - keys} more Demon Key${5 - keys === 1 ? "" : "s"} to enter the Treasure Room.`
+          });
         }
       }, () => true);
       const shopButton = this.add.image(sw - 118, 112, "GJ_GameSheet03", "GJ_diamondsIcon_001.png")
@@ -1166,7 +1172,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setRotation(Math.PI).setInteractive();
       this._makeBouncyButton(backBtn, 1, () => this._closeCreatorMenu());
 
-      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, shopButton, shopLabel, dailyChestLabel, dailyChestSmall, dailyChestLarge, vaultsecret];
+      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, demonKeyLabel, shopButton, shopLabel, dailyChestLabel, dailyChestSmall, dailyChestLarge, vaultsecret];
 
       const menuButtons = [
         "GJ_createBtn_001.png",
@@ -10309,7 +10315,28 @@ _buildSettingsPopup() {
     this._deltaBuffer = _0x578d1b - _0xd8019e;
     return _0xd8019e * 60;
   }
+  _setNativeLoadingVisible(visible, label = "Loading...") {
+    if (visible) {
+      if (!this._nativeLoadingOverlay) {
+        const root = this.add.container(screenWidth / 2, screenHeight / 2).setScrollFactor(0).setDepth(10000);
+        const shade = this.add.rectangle(0, 0, screenWidth, screenHeight, 0x050817, 0.72).setOrigin(0.5).setInteractive();
+        const spinner = this.add.image(0, -24, "loadingCircle").setScale(0.72);
+        const text = this.add.bitmapText(0, 42, "goldFont", label, 24).setOrigin(0.5);
+        root.add([shade, spinner, text]);
+        this.tweens.add({ targets: spinner, angle: 360, duration: 900, repeat: -1 });
+        this._nativeLoadingOverlay = { root, text };
+      } else {
+        this._nativeLoadingOverlay.text.setText(label);
+      }
+      return;
+    }
+    if (this._nativeLoadingOverlay) {
+      this._nativeLoadingOverlay.root.destroy(true);
+      this._nativeLoadingOverlay = null;
+    }
+  }
   update(_0x54fa47, deltaTime) {
+    this._setNativeLoadingVisible(this.load.isLoading(), "Loading...");
     this._updateReplayGhost(deltaTime);
     this._updateDeathTimeline();
     this._updateRunTimer(deltaTime);
@@ -13627,6 +13654,66 @@ _applyMirrorEffect() {
           }
         });
       }
+    });
+  }
+  _getDemonKeys() {
+    const stored = parseInt(localStorage.getItem("wd_demon_keys") || "0", 10);
+    return Number.isFinite(stored) && stored > 0 ? stored : 0;
+  }
+  _syncDemonKeysFromOrbs() {
+    const orbMilestones = Math.floor(this._getManaOrbBalance() / 500);
+    if (orbMilestones > this._getDemonKeys()) {
+      localStorage.setItem("wd_demon_keys", String(orbMilestones));
+    }
+    return this._getDemonKeys();
+  }
+  _openTreasureRoom() {
+    if (this._treasureRoomOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2050);
+    this._treasureRoomOverlay = root;
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x071426, 0.98).setInteractive();
+    const panel = this.add.rectangle(sw / 2, sh / 2 + 12, Math.min(940, sw - 48), Math.min(540, sh - 90), 0x182642, 1)
+      .setStrokeStyle(5, 0x8de8ff, 1);
+    const title = this.add.bitmapText(sw / 2, 55, "goldFont", "TREASURE ROOM", 44).setOrigin(0.5);
+    const subtitle = this.add.bitmapText(sw / 2, 95, "bigFont", "Spend Demon Keys to open treasure chests", 21).setOrigin(0.5).setTint(0xbfeeff);
+    const keyLabel = this.add.bitmapText(sw / 2, 132, "goldFont", `DEMON KEYS: ${this._getDemonKeys()}`, 24).setOrigin(0.5).setTint(0x8de8ff);
+    const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
+    root.add([shade, panel, title, subtitle, keyLabel, close]);
+    const closeRoom = () => {
+      root.destroy(true);
+      this._treasureRoomOverlay = null;
+      this._openCreatorMenu();
+    };
+    this._makeBouncyButton(close, 1, closeRoom);
+    const tiers = [
+      { cost: 1, x: sw / 2 - 260, label: "SILVER CHEST", diamonds: 2, coins: 8, orbs: 15 },
+      { cost: 5, x: sw / 2, label: "GOLD CHEST", diamonds: 8, coins: 25, orbs: 45 },
+      { cost: 10, x: sw / 2 + 260, label: "LARGE CHEST", diamonds: 18, coins: 60, orbs: 100 }
+    ];
+    tiers.forEach(tier => {
+      const chest = this.add.image(tier.x, sh / 2 - 34, "GJ_GameSheet03", "chestIcon_001.png")
+        .setScale(tier.cost === 1 ? 3.1 : tier.cost === 5 ? 3.7 : 4.3).setInteractive();
+      const label = this.add.bitmapText(tier.x, sh / 2 + 62, "goldFont", tier.label, 22).setOrigin(0.5);
+      const cost = this.add.bitmapText(tier.x, sh / 2 + 96, "bigFont", `${tier.cost} KEY${tier.cost === 1 ? "" : "S"}`, 20).setOrigin(0.5).setTint(0x8de8ff);
+      root.add([chest, label, cost]);
+      this._makeBouncyButton(chest, chest.scaleX, () => {
+        this._openTreasureChest(tier, chest, keyLabel);
+      }, () => this._getDemonKeys() >= tier.cost && !this._dailyChestAnimationOverlay);
+    });
+    const note = this.add.bitmapText(sw / 2, sh - 55, "bigFont", "Keys are earned from mana-orb milestones.", 19).setOrigin(0.5).setTint(0x9aaec8);
+    root.add(note);
+  }
+  _openTreasureChest(tier, chest, keyLabel) {
+    if (this._getDemonKeys() < tier.cost || this._dailyChestAnimationOverlay) return;
+    localStorage.setItem("wd_demon_keys", String(this._getDemonKeys() - tier.cost));
+    keyLabel.setText(`DEMON KEYS: ${this._getDemonKeys()}`);
+    this._playDailyChestOpening(0, chest, {
+      name: tier.label,
+      diamonds: tier.diamonds,
+      coins: tier.coins,
+      orbs: tier.orbs
     });
   }
   _showDiamondGuard(canEnter, diamonds, required) {
