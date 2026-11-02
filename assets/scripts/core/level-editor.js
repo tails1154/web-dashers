@@ -130,6 +130,7 @@ class LevelEditor {
     this._editorCollabPeers = new Map();
     this._editorCollabChat = [];
     this._editorCollabLastPresenceAt = 0;
+    this._editorCollabSnapshot = null;
     this._editorCollabRemoteLabels = new Map();
     this._editorCollabChatButtonGroup = null;
     this._editorCollabRemoteGraphics = this.add.graphics().setScrollFactor(0).setDepth(1998);
@@ -138,6 +139,7 @@ class LevelEditor {
     const activeEditorClient = window._tailsConnectClient;
     if (activeEditorClient?.protocol === "tc3" && activeEditorClient.socket?.readyState === WebSocket.OPEN) {
         this._attachEditorCollabClient(activeEditorClient);
+        this._editorCollabSnapshot = JSON.parse(JSON.stringify(window.levelObjects || []));
     }
     this._editorAutosaveSeconds = 60;
     if (this._editorAutosaveNotice?.destroy) this._editorAutosaveNotice.destroy();
@@ -10834,6 +10836,10 @@ _serializeObject(object) {
       this._applyEditorCollabState(data);
       return;
     }
+    if (data.type === "editor-object-operation") {
+      this._applyEditorCollabOperation(data);
+      return;
+    }
     if (data.type === "editor-presence") {
       const peerId = String(data.from || data.peerId || "remote");
       this._editorCollabPeers.set(peerId, { ...data, lastSeen: Date.now() });
@@ -10983,6 +10989,26 @@ _serializeObject(object) {
     if (statusText?.active && statusText.scene) statusText.setText(this._editorCollabStatus).setVisible(true).setAlpha(1);
   }
 
+  _applyEditorCollabOperation(data) {
+    if (this._editorCollabApplying || !data?.operation) return;
+    const operation = data.operation;
+    const objectId = Number(operation.objectId);
+    if (!Number.isInteger(objectId) || !this._getEditorSaveObjectForObjectId(objectId)) return;
+    const selectedBefore = this._getCurrentSelectedEditorObjectIds?.() || [];
+    this._editorCollabApplying = true;
+    try {
+      this._selectEditorObjectsByIds([objectId], 0x00ff00);
+      if (operation.dx || operation.dy) this._moveObject(Number(operation.dx) || 0, Number(operation.dy) || 0);
+      if (operation.rotation) this._rotateObject(Number(operation.rotation) || 0);
+      if (operation.flip) this._flipObject(operation.flip === "y" ? "y" : "x");
+      if (operation.scale) this._setEditorObjectScale(this._getEditorSaveObjectForObjectId(objectId), Number(operation.scale) || 1);
+    } finally {
+      this._editorCollabApplying = false;
+      if (selectedBefore.length) this._selectEditorObjectsByIds(selectedBefore, 0x00ff00);
+      else this._clearEditorSelection();
+    }
+  }
+
   _openEditorCollabDialog(joinExisting = false) {
     if (!joinExisting) {
       this._startEditorCollabSession("host");
@@ -11015,7 +11041,7 @@ _serializeObject(object) {
       clearTimeout(this._editorCollabBroadcastTimer);
       this._editorCollabBroadcastTimer = null;
     }
-    const send = () => {
+    const sendFullState = () => {
       const levelData = { objects: window.levelObjects || [], settings: window.settingslist || "" };
       client.send({
         type: "editor-state",
@@ -11025,9 +11051,54 @@ _serializeObject(object) {
         songId: this._editorPendingSongId ?? window.currentlevel?.[0] ?? "",
         songName: this._editorPendingSongName ?? window.currentlevel?.[1] ?? ""
       });
+      this._editorCollabSnapshot = JSON.parse(JSON.stringify(window.levelObjects || []));
     };
-    if (immediate) send();
-    else this._editorCollabBroadcastTimer = setTimeout(send, 120);
+    const sendChanges = () => {
+      const current = window.levelObjects || [];
+      if (immediate || !Array.isArray(this._editorCollabSnapshot) || this._editorCollabSnapshot.length !== current.length) {
+        sendFullState();
+        return;
+      }
+      let sentOperation = false;
+      let requiresFullState = false;
+      current.forEach((object, index) => {
+        const previous = this._editorCollabSnapshot[index];
+        if (!object || !previous) {
+          if (object !== previous) requiresFullState = true;
+          return;
+        }
+        if (!Number.isInteger(object._eeObjectId)) {
+          if (JSON.stringify(object) !== JSON.stringify(previous)) requiresFullState = true;
+          return;
+        }
+        const dx = (Number(object.x) - Number(previous.x)) * 2;
+        const dy = (Number(previous.y) - Number(object.y)) * 2;
+        const rotation = (Number(object.rot) || 0) - (Number(previous.rot) || 0);
+        const flip = object.flipX !== previous.flipX ? "x" : object.flipY !== previous.flipY ? "y" : "";
+        const scale = Number(object.scale || 1) !== Number(previous.scale || 1) ? Number(object.scale || 1) : 0;
+        const comparableObject = { ...object };
+        const comparablePrevious = { ...previous };
+        ["x", "y", "rot", "flipX", "flipY", "scale"].forEach(key => {
+          delete comparableObject[key];
+          delete comparablePrevious[key];
+        });
+        if (JSON.stringify(comparableObject) !== JSON.stringify(comparablePrevious)) requiresFullState = true;
+        if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001 && Math.abs(rotation) < 0.001 && !flip && !scale) return;
+        client.send({
+          type: "editor-object-operation",
+          from: client.clientId,
+          levelId: String(window.currentlevel?.[2] || ""),
+          operation: { objectId: object._eeObjectId, dx, dy, rotation, flip, scale }
+        });
+        sentOperation = true;
+      });
+      this._editorCollabSnapshot = JSON.parse(JSON.stringify(current));
+      if (requiresFullState && !sentOperation) {
+        sendFullState();
+      }
+    };
+    if (immediate) sendChanges();
+    else this._editorCollabBroadcastTimer = setTimeout(sendChanges, 120);
   }
 
   _applyEditorCollabState(data) {
