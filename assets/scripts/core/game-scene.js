@@ -2995,13 +2995,30 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const _progressKey = "bestPercent_" + (level.createdId || "local_0");
         const _normalBest = parseFloat(localStorage.getItem(_progressKey) || "0");
         const _isHackVerified = Boolean(level.hackVerified || level.verification_hacks || level.verification_start_pos);
-        const _isVerified = _normalBest >= 100 && !_isHackVerified;
+        const _verificationCoinCount = (() => {
+            try {
+                const collected = JSON.parse(localStorage.getItem("wd_collected_coins") || "{}");
+                const coins = collected && collected[level.createdId || "local_0"];
+                return Array.isArray(coins) ? coins.length : 0;
+            } catch (_) {
+                return 0;
+            }
+        })();
+        const _hasVerificationCoins = _verificationCoinCount >= 3;
+        const _isVerified = _normalBest >= 100 && !_isHackVerified && _hasVerificationCoins;
         if (!_isVerified) {
             shareBtn.setTint(0x666666);
         }
         const uploadLocalLevel = async (forceVerify = false) => {
             if (!forceVerify && _isHackVerified) {
                 showNativePhaserDialog(this, { title: "UPLOAD BLOCKED", message: "This level cannot be uploaded because it was verified with cheats or StartPos." });
+                return;
+            }
+            if (!forceVerify && !_hasVerificationCoins) {
+                showNativePhaserDialog(this, {
+                    title: "COINS REQUIRED",
+                    message: `Collect all 3 coins in this level before verifying it. You have ${_verificationCoinCount}/3.`
+                });
                 return;
             }
             if (!forceVerify && !_isVerified) return;
