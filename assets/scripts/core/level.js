@@ -2047,7 +2047,8 @@ window.LevelObject = class LevelObject {
     const sourceBase64 = String(raw[700] ?? raw["700"] ?? "");
     const imageKeyPart = sourceBase64.slice(0, 10).replace(/[^a-zA-Z0-9]/g, "_");
     const baseTextureKey = `custom-image-block-${linkedObjectId}-${sourceBase64.length}-${imageKeyPart}`;
-    const mime = String(raw[701] ?? raw["701"] ?? "image/png").replace(/[^a-zA-Z0-9.+-]/g, "") || "image/png";
+    const mime = String(raw[701] ?? raw["701"] ?? "image/png").replace(/[^a-zA-Z0-9.+\/-]/g, "") || "image/png";
+    const isAnimatedGif = mime.toLowerCase() === "image/gif";
 
     const sprite = scene.add.image(worldX, b(worldY), "image-block-placeholder.svg")
       .setOrigin(0.5)
@@ -2071,9 +2072,31 @@ window.LevelObject = class LevelObject {
     if (sourceBase64) {
       const image = new Image();
       image.onload = () => {
-        if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
         if (!sprite.active) return;
-        sprite.setTexture(baseTextureKey);
+        if (isAnimatedGif) {
+          const canvasTexture = scene.textures.exists(baseTextureKey)
+            ? scene.textures.get(baseTextureKey)
+            : scene.textures.addCanvas(baseTextureKey, document.createElement("canvas"));
+          const canvas = canvasTexture.getSourceImage();
+          canvas.width = image.naturalWidth || image.width || width;
+          canvas.height = image.naturalHeight || image.height || height;
+          const context = canvas.getContext("2d");
+          if (!context) return;
+
+          const drawFrame = () => {
+            if (!sprite.active || !image.complete) return;
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(image, 0, 0, canvas.width, canvas.height);
+            canvasTexture.refresh();
+          };
+          drawFrame();
+          const animationTimer = scene.time.addEvent({ delay: 33, loop: true, callback: drawFrame });
+          sprite.once("destroy", () => animationTimer.remove());
+          sprite._eeCustomImageAnimation = animationTimer;
+        } else {
+          if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
+          sprite.setTexture(baseTextureKey);
+        }
         sprite.setDisplaySize(width * scale, height * scale);
       };
       image.src = `data:${mime};base64,${sourceBase64}`;
