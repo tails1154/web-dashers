@@ -1472,6 +1472,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             likes:         lvl.likes || 0,
             stars:         lvl.stars || 0,
             coins:         lvl.coins || 0,
+            thumbnail:     lvl.thumbnail || "",
             star_reward:   lvl.star_reward || 0,
             coinsVerified: lvl.coinsVerified || false,
             length:        lvl.length || 0,
@@ -1482,6 +1483,29 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           localStorage.setItem(_savedKey, JSON.stringify(_savedLevels));
         }
       } catch (_e) {}
+    };
+    this._addLevelThumbnailBackground = (level, depth, onCreated = null) => {
+      const source = String(level?.thumbnail || "");
+      if (!source.startsWith("data:image/")) return;
+      const key = `level-thumbnail-${String(level.id || level.createdId || "local")}-${source.length}`;
+      const addImage = () => {
+        if (!this.textures.exists(key)) return;
+        const image = this.add.image(screenWidth / 2, screenHeight / 2, key)
+          .setScrollFactor(0).setDepth(depth).setDisplaySize(screenWidth, screenHeight).setAlpha(0.22);
+        onCreated?.(image);
+        return image;
+      };
+      if (this.textures.exists(key)) {
+        addImage();
+        return;
+      }
+      const image = new Image();
+      image.onload = () => {
+        if (!this.scene?.isActive?.()) return;
+        if (!this.textures.exists(key)) this.textures.addImage(key, image);
+        addImage();
+      };
+      image.src = source;
     };
     this._openPlayMenu = (onBack = null) => {
       if (this._playOverlay) return;
@@ -1520,6 +1544,10 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
 
       this._playOverlayObjects.push(overlay, blocker, backBtn, cornerBL, cornerBR);
       const lvl = window._selectedLevelData || {};
+      this._addLevelThumbnailBackground(lvl, 499, image => {
+        if (this._playOverlay === overlay && overlay.active) this._playOverlayObjects.push(image);
+        else image.destroy();
+      });
       if (lvl.id) localStorage.setItem("viewedLevel_" + lvl.id, "1");
       this._recordRecentLevel(lvl);
       this._saveOnlineLevelToSavedList(lvl);
@@ -2365,6 +2393,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           normalBest: 0,
           practiceBest: 0,
           description: lvl.description || "",
+          thumbnail: lvl.thumbnail || "",
           version: 1,
           status: "Unverified",
           createdId: this._getNextLocalId()
@@ -2873,6 +2902,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         }
 
         const container = this.add.container(0, 0).setDepth(150);
+        let levelThumbnailBackground = null;
+        let levelViewClosed = false;
+        this._addLevelThumbnailBackground(level, 100, image => {
+            if (levelViewClosed) image.destroy();
+            else levelThumbnailBackground = image;
+        });
         const boxWidth = sw * 0.6;
         const cornerRad = 18;
 
@@ -2959,9 +2994,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         descBox.on('pointerdown', () => { this._activeInput = 'desc'; updateDisplay(); });
 
         const cleanup = () => {
+            levelViewClosed = true;
             clearInterval(cursorInterval);
             window.removeEventListener('keydown', keyHandler);
             window.removeEventListener('keydown', forceVerifyKeyHandler);
+            levelThumbnailBackground?.destroy();
             container.destroy();
             overlay.destroy();
             blocker.destroy();
@@ -3078,6 +3115,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                     client_id: level.createdId || "",
                     name: uploadDetails.name,
                     description: uploadDetails.description,
+                    thumbnail: level.thumbnail || "",
                     song: level.song || "",
                     difficulty: 0,
                     length: parseInt(level.levelLength) || 0,
