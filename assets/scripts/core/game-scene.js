@@ -1048,7 +1048,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._level?.topContainer?.bringToTop?.(this._versusLevelIcon);
         }
       };
-      if (window._tailsConnectClient) {
+      if (window._tailsConnectClient?.game === "WebDashersVersus" && window._tailsConnectClient?.protocol !== "tc3") {
         this._versusClient = window.getTailsConnectClient(this);
         this._versusActive = true;
         this._versusRemote = this._versusClient.lastHello || null;
