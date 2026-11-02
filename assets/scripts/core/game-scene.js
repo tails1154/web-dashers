@@ -13840,7 +13840,7 @@ _applyMirrorEffect() {
     this.tweens.add({ targets: toast, alpha: 0, delay: 2800, duration: 450, onComplete: () => toast.destroy(true) });
   }
 
-  _openPathsScene() {
+  async _openPathsScene() {
     if (this._pathsOverlay) return;
     const sw = screenWidth;
     const sh = screenHeight;
@@ -13858,6 +13858,21 @@ _applyMirrorEffect() {
       this._openCreatorMenu();
     });
 
+    const pathLoading = this.add.container(sw / 2, sh / 2).setDepth(901);
+    const pathSpinner = this.add.image(0, -24, "loadingCircle").setScale(0.72);
+    const pathLoadingText = this.add.bitmapText(0, 42, "goldFont", "Loading Paths...", 24).setOrigin(0.5);
+    pathLoading.add([pathSpinner, pathLoadingText]);
+    root.add(pathLoading);
+    this.tweens.add({ targets: pathSpinner, angle: 360, duration: 900, repeat: -1 });
+    let pathConfig = null;
+    try {
+      pathConfig = await window.AccountAPI.getPaths();
+    } catch (error) {
+      console.warn("Could not load server Paths:", error);
+    }
+    if (!root.active) return;
+    pathLoading.destroy(true);
+
     const stars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
     const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
     const coins = Math.max(0, Number(window.WDCoinEconomy?.getBalance?.() || 0));
@@ -13866,7 +13881,10 @@ _applyMirrorEffect() {
     weekAnchor.setUTCDate(weekAnchor.getUTCDate() + 4 - (weekAnchor.getUTCDay() || 7));
     const yearStart = new Date(Date.UTC(weekAnchor.getUTCFullYear(), 0, 1));
     const weekNumber = Math.ceil((((weekAnchor - yearStart) / 86400000) + 1) / 7);
-    const weekKey = `${weekAnchor.getUTCFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
+    let weekKey = `${weekAnchor.getUTCFullYear()}-W${String(weekNumber).padStart(2, "0")}`;
+    if (typeof pathConfig?.week === "string" && /^\d{4}-W\d{2}$/.test(pathConfig.week)) {
+      weekKey = pathConfig.week;
+    }
     const pathVersion = "2";
     if (localStorage.getItem("wd_paths_version") !== pathVersion) {
       localStorage.removeItem("wd_paths_week");
@@ -13889,13 +13907,19 @@ _applyMirrorEffect() {
 
     // Server-configurable paths can replace this reward list later; each entry
     // is intentionally just a star/XP threshold and an icon reward.
-    const rewards = [
+    const fallbackRewards = [
       { xp: 100, icon: "player_02" },
       { xp: 500, icon: "player_05" },
       { xp: 1500, icon: "player_10" },
       { xp: 3500, icon: "player_15" },
       { xp: 7500, icon: "player_20" },
     ];
+    const rewards = Array.isArray(pathConfig?.rewards) && pathConfig.rewards.length === fallbackRewards.length
+      ? pathConfig.rewards.map((reward, index) => ({
+        xp: Math.max(0, Number(reward?.xp) || fallbackRewards[index].xp),
+        icon: /^[a-z0-9_]+$/i.test(String(reward?.icon || "")) ? String(reward.icon) : fallbackRewards[index].icon
+      }))
+      : fallbackRewards;
     const claimed = pathState.claimed || {};
     const startX = sw / 2 - ((rewards.length - 1) * 150) / 2;
     const line = this.add.graphics().lineStyle(12, 0x48627e, 1);

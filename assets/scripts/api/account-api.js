@@ -480,6 +480,13 @@ window.AccountAPI = {
     return data;
   },
 
+  async getPaths() {
+    const res = await fetch(`${window._gdProxyUrl}?action=paths`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load Paths');
+    return data;
+  },
+
   async getCustomSongs(page = 1) {
     const res = await fetch(`${window._gdProxyUrl}?action=custom_songs&page=${encodeURIComponent(page)}`, { credentials: 'include' });
     const data = await res.json();
