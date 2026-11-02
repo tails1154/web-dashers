@@ -2443,6 +2443,10 @@ class LevelEditor {
             if (imageBlock && !itemsForGrid.some(item => item.id === 5075)) {
                 itemsForGrid.push({ type: "object", id: 5075, frame: imageBlock.frame });
             }
+            const dashStopBlock = getObjectFromId(5076);
+            if (dashStopBlock && !itemsForGrid.some(item => item.id === 5076)) {
+                itemsForGrid.push({ type: "object", id: 5076, frame: dashStopBlock.frame });
+            }
         }
     } else if (this._editorTab === "edit") {
         const moveActions = [
