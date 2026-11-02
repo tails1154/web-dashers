@@ -131,6 +131,7 @@ class LevelEditor {
     this._editorCollabChat = [];
     this._editorCollabLastPresenceAt = 0;
     this._editorCollabRemoteLabels = new Map();
+    this._editorCollabChatButtonGroup = null;
     this._editorCollabRemoteGraphics = this.add.graphics().setScrollFactor(0).setDepth(1998);
     this._editorCollabStatusText = this.add.bitmapText(screenWidth - 16, 16, "bigFont", "", 16)
         .setOrigin(1, 0).setScrollFactor(0).setDepth(2001).setTint(0xbfeeff).setVisible(false);
@@ -10532,6 +10533,10 @@ class LevelEditor {
         const label = this.add.bitmapText(x, y - 2, "goldFont", data.text, 40).setOrigin(0.5, 0.5).setScale(0.8);
 
         this._editorMenuContainer.add([btnImg, label]);
+        if (data.text === "Chat") {
+            this._editorCollabChatButtonGroup = { button: btnImg, label };
+            this._setEditorCollabChatAvailable(!!this._editorCollabClient);
+        }
 
         this._makeCompositeBouncyButton(btnImg, [btnImg, label], 0.75, () => {
             data.cb();
@@ -10806,6 +10811,7 @@ _serializeObject(object) {
 
   _attachEditorCollabClient(client) {
     this._editorCollabClient = client;
+    this._setEditorCollabChatAvailable(true);
     client.onStatus = text => {
       this._editorCollabStatus = text;
       this._editorCollabStatusText?.setText(text).setVisible(true);
@@ -10838,8 +10844,28 @@ _serializeObject(object) {
       if (!text) return;
       this._editorCollabChat.push({ name, text, at: Date.now() });
       this._editorCollabChat = this._editorCollabChat.slice(-30);
-      this._editorCollabStatusText?.setText(`${name}: ${text}`).setVisible(true);
+      this._showEditorCollabToast(`${name}: ${text}`);
     }
+  }
+
+  _setEditorCollabChatAvailable(available) {
+    const group = this._editorCollabChatButtonGroup;
+    if (!group) return;
+    group.button.setVisible(!!available).setActive(!!available);
+    group.label.setVisible(!!available).setActive(!!available);
+    if (available) group.button.setInteractive();
+    else group.button.disableInteractive();
+  }
+
+  _showEditorCollabToast(message) {
+    const toast = this._editorCollabStatusText;
+    if (!toast) return;
+    this.tweens.killTweensOf(toast);
+    toast.setText(String(message || "").slice(0, 180)).setVisible(true).setAlpha(1);
+    this.time.delayedCall(3200, () => {
+      if (!toast.active) return;
+      this.tweens.add({ targets: toast, alpha: 0, duration: 300, onComplete: () => toast.setVisible(false) });
+    });
   }
 
   _updateEditorCollabPresence() {
@@ -10944,32 +10970,38 @@ _serializeObject(object) {
     for (const label of this._editorCollabRemoteLabels?.values?.() || []) label.destroy();
     this._editorCollabRemoteLabels?.clear();
     this._editorCollabStatusText?.setVisible(false);
+    this._setEditorCollabChatAvailable(false);
   }
 
-  _openEditorCollabDialog() {
+  _startEditorCollabSession(mode, room = "") {
+    const client = window.getTailsConnectClient(this);
+    this._attachEditorCollabClient(client);
+    client.connect(mode, room, "webdashers-editor");
+    this._editorCollabStatus = mode === "host" ? "Creating live edit room..." : "Joining live edit room...";
+    this._editorCollabStatusText?.setText(this._editorCollabStatus).setVisible(true).setAlpha(1);
+  }
+
+  _openEditorCollabDialog(joinExisting = false) {
+    if (!joinExisting) {
+      this._startEditorCollabSession("host");
+      window.showNativePhaserDialog(this, {
+        title: "LIVE EDIT",
+        message: "A new collaboration room is being created. Your room code will appear in the editor status.",
+        confirmLabel: "OK"
+      });
+      return;
+    }
     window.showNativePhaserDialog(this, {
-      title: "LIVE EDIT",
-      message: "Enter HOST to create a room, or enter a room code to join another editor.",
+      title: "JOIN COLLABORATION",
+      message: "Enter the room code shared by the level host.",
       input: true,
-      defaultValue: "HOST",
-      placeholder: "HOST or room code",
-      confirmLabel: "CONNECT",
+      placeholder: "Room code",
+      confirmLabel: "JOIN",
       cancelLabel: "CANCEL",
       onConfirm: value => {
-        const target = String(value || "").trim();
-        if (!target) return;
-        const client = window.getTailsConnectClient(this);
-        this._attachEditorCollabClient(client);
-        const isHost = target.toUpperCase() === "HOST";
-        client.connect(isHost ? "host" : "join", isHost ? "" : target, "webdashers-editor");
-        this._editorCollabStatus = isHost ? "Creating live edit room..." : "Joining live edit room...";
-        this._editorCollabStatusText?.setText(this._editorCollabStatus).setVisible(true);
-        window.showNativePhaserDialog(this, {
-          title: "LIVE EDIT",
-          message: isHost ? "Room is being created. Your room code will appear in the status." : "Joining the live edit room.",
-          confirmLabel: "OK",
-          cancelLabel: "CLOSE"
-        });
+        const room = String(value || "").trim();
+        if (!room) return;
+        this._startEditorCollabSession("join", room);
       }
     });
   }
@@ -11368,6 +11400,8 @@ LevelEditor.methodNames = [
   "_openCustomSongSelector",
   "_attachEditorCollabClient",
   "_handleEditorCollabMessage",
+  "_setEditorCollabChatAvailable",
+  "_showEditorCollabToast",
   "_updateEditorCollabPresence",
   "_drawEditorCollabPeers",
   "_openEditorCollabChat",

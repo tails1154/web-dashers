@@ -2505,6 +2505,15 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const newBtn = this.add.image(newBtnX, newBtnY, "GJ_GameSheet03", "GJ_newBtn_001.png")
             .setScale(0.9)
             .setInteractive();
+
+        const joinCollabBtn = this.add.nineslice(newBtnX, newBtnY - 145, "GJ_button01", null, 180, 46, 14, 14, 14, 14)
+            .setScale(0.72).setInteractive();
+        const joinCollabTxt = this.add.bitmapText(newBtnX, newBtnY - 146, "bigFont", "JOIN COLLAB", 19)
+            .setOrigin(0.5).setScale(0.78);
+        this._makeCompositeBouncyButton(joinCollabBtn, [joinCollabBtn, joinCollabTxt], 0.72, () => {
+            this._openEditorCollabDialog(true);
+        });
+        container.add([joinCollabBtn, joinCollabTxt]);
         
         this._makeBouncyButton(newBtn, 0.9, () => {
             const rawData = localStorage.getItem("created_levels");
@@ -2555,7 +2564,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._openCreatorMenu(); 
         });
 
-        this._editorObjects = [overlay, blocker, container, backBtn, maskShape];
+        this._editorObjects = [overlay, blocker, container, backBtn, maskShape, joinCollabBtn, joinCollabTxt];
     };
     this._importGMD = () => {
         const fileInput = document.createElement('input');
@@ -13822,9 +13831,16 @@ _applyMirrorEffect() {
       .setOrigin(0.5).setMaxWidth(panelW - 70).setCenterAlign().setTint(0xffffff);
     const count = this.add.bitmapText(sw / 2, sh / 2 - panelH / 2 + 252, "bigFont", `${diamonds} / ${required} DIAMONDS`, 19)
       .setOrigin(0.5).setTint(0xd98cff);
+    const hints = canEnter ? this.add.bitmapText(
+      sw / 2,
+      sh / 2 - panelH / 2 + 282,
+      "bigFont",
+      "HINTS: echoes remember names • keys open memories • go deeper • one last attempt",
+      14
+    ).setOrigin(0.5).setTint(0x8da9c8) : null;
     const foreground = this.add.image(sw / 2, sh / 2 + panelH / 2 - 34, "SecretSheet", "dungeon_foreground_001.png")
       .setScale(Math.min(1.8, (panelW - 40) / 310)).setAlpha(0.92);
-    root.add([shade, panel, inner, dungeonBarsLeft, dungeonBarsRight, foreground, body, title, bodyText, count]);
+    root.add([shade, panel, inner, dungeonBarsLeft, dungeonBarsRight, foreground, body, title, bodyText, count, hints].filter(Boolean));
 
     let inputText = "";
     let inputFocused = canEnter;
