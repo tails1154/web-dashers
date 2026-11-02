@@ -13155,19 +13155,51 @@ _applyMirrorEffect() {
         status.setText("No gauntlets available.").setVisible(true);
         return;
       }
-      gauntlets.forEach((gauntlet, index) => {
-        const y = 120 + index * 88;
-        const panel = this.add.nineslice(sw / 2, y, "GJ_button01", null, 620, 70, 24, 24, 24, 24)
-          .setInteractive();
-        const progress = this._getGauntletProgress(gauntlet);
-        const label = this.add.bitmapText(sw / 2, y, "goldFont", `${gauntlet.name}  ${progress}/${gauntlet.levels.length}`, 27).setOrigin(0.5);
-        root.add([panel, label]);
-        this._makeCompositeBouncyButton(panel, [panel, label], 1, () => {
-          root.destroy(true);
-          this._gauntletsOverlay = null;
-          this._openGauntletLevelsMenu(gauntlet);
+      const pageSize = 3;
+      let page = 0;
+      const pageObjects = [];
+      const pageLabel = this.add.bitmapText(sw / 2, sh - 42, "goldFont", "", 22).setOrigin(0.5);
+      const previous = this.add.image(sw / 2 - 150, sh - 42, "GJ_GameSheet03", "GJ_arrow_03_001.png")
+        .setFlipX(true).setRotation(Math.PI).setInteractive();
+      const next = this.add.image(sw / 2 + 150, sh - 42, "GJ_GameSheet03", "GJ_arrow_03_001.png")
+        .setInteractive();
+      root.add([pageLabel, previous, next]);
+      const renderPage = () => {
+        pageObjects.splice(0).forEach(object => object.destroy());
+        const pageCount = Math.ceil(gauntlets.length / pageSize);
+        const start = page * pageSize;
+        gauntlets.slice(start, start + pageSize).forEach((gauntlet, index) => {
+          const y = 120 + index * 88;
+          const panel = this.add.nineslice(sw / 2, y, "GJ_button01", null, 620, 70, 24, 24, 24, 24)
+            .setInteractive();
+          const progress = this._getGauntletProgress(gauntlet);
+          const label = this.add.bitmapText(sw / 2, y, "goldFont", `${gauntlet.name}  ${progress}/${gauntlet.levels.length}`, 27).setOrigin(0.5);
+          pageObjects.push(panel, label);
+          root.add([panel, label]);
+          this._makeCompositeBouncyButton(panel, [panel, label], 1, () => {
+            root.destroy(true);
+            this._gauntletsOverlay = null;
+            this._openGauntletLevelsMenu(gauntlet);
+          });
         });
+        pageLabel.setText(`PAGE ${page + 1} / ${pageCount}`);
+        pageLabel.setVisible(pageCount > 1);
+        previous.setVisible(pageCount > 1);
+        next.setVisible(pageCount > 1);
+        previous.setAlpha(page > 0 ? 1 : 0.35);
+        next.setAlpha(page + 1 < pageCount ? 1 : 0.35);
+      };
+      this._makeBouncyButton(previous, 1, () => {
+        if (page <= 0) return;
+        page -= 1;
+        renderPage();
       });
+      this._makeBouncyButton(next, 1, () => {
+        if (page + 1 >= Math.ceil(gauntlets.length / pageSize)) return;
+        page += 1;
+        renderPage();
+      });
+      renderPage();
     }).catch(error => status.setText(error.message || "Could not load Gauntlets").setVisible(true));
   }
 
