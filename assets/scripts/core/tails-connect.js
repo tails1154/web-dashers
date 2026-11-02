@@ -17,14 +17,18 @@ class TailsConnectClient {
   _status(text) { if (this.onStatus) this.onStatus(text); }
 
   connect(mode = "matchmake", room = "", game = "WebDashersVersus") {
+    const requestedRoom = String(room || "").trim().toUpperCase();
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      if (this.game === game) return;
+      if (this.game === game && this._requestedMode === mode && this._requestedRoom === requestedRoom) return;
       this.close();
     }
     if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
+      if (this.game === game && this._requestedMode === mode && this._requestedRoom === requestedRoom) return;
       this.socket.close();
       this.socket = null;
     }
+    this._requestedMode = mode;
+    this._requestedRoom = requestedRoom;
     this._status("Connecting to TailsConnect...");
     this.protocol = game === "webdashers-editor" ? "tc3" : "legacy";
     this.game = game;
@@ -45,7 +49,7 @@ class TailsConnectClient {
           this.socket.send(`TC3 HOST ${JSON.stringify({ game, maxPlayers: 8 })}`);
         } else {
           this.role = "join";
-          this.socket.send(`TC3 JOIN ${JSON.stringify({ game, room: room.trim().toUpperCase() })}`);
+          this.socket.send(`TC3 JOIN ${JSON.stringify({ game, room: requestedRoom })}`);
         }
         return;
       }
@@ -56,7 +60,7 @@ class TailsConnectClient {
       } else if (mode === "join") {
         this.role = "join";
         this._status("Joining TailsConnect room...");
-        this.socket.send(`JOIN WebDashersVersus,${room.trim().toUpperCase()}`);
+        this.socket.send(`JOIN WebDashersVersus,${requestedRoom}`);
       } else {
         this._status("Searching for an opponent...");
         this.socket.send("MATCHMAKE WebDashersVersus,2");

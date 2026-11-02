@@ -2608,6 +2608,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 levels.push(draft);
                 localStorage.setItem("created_levels", JSON.stringify(levels));
                 window._editorCollabPendingJoinRoom = room;
+                // Start the handshake before restarting into the editor. The
+                // new LevelEditor instance will attach to this live client and
+                // receive the host snapshot as soon as it joins the room.
+                const collabClient = window.getTailsConnectClient(this);
+                collabClient.connect("join", room, "webdashers-editor");
                 this._closeEditorMenu?.();
                 this._startCreatedLevel(draft, true).catch(error => {
                     delete window._editorCollabPendingJoinRoom;
