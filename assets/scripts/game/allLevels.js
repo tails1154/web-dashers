@@ -218,4 +218,12 @@ window.allLevels = [
 ]
 
 // Songs available in the editor without adding placeholder main levels.
-window.editorOnlySongs = [];
+window.editorOnlySongs = [
+    [
+        "press_start",
+        "Press Start",
+        "editor_song_press_start",
+        ["RobTop", "MDK"],
+        "PressStart"
+    ]
+];
