@@ -1225,8 +1225,15 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         });
       };
       this._refreshDailyChestButtons();
-      const vaultsecret = this.add.image(1095, 601, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
-        .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666);
+      const vaultX = sw - 55;
+      const vaultY = sh - 78;
+      const vaultsecret = this.add.image(vaultX, vaultY, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
+        .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666).setInteractive();
+      this._expandHitArea(vaultsecret, 1.25);
+      this._makeBouncyButton(vaultsecret, 1, () => {
+        const diamonds = Number(window.WDCoinEconomy?.getDiamonds?.() || localStorage.getItem("wd_diamonds") || 0);
+        this._showDiamondGuard(diamonds >= diamondEntryCost, diamonds, diamondEntryCost);
+      }, () => true);
 
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
         .setScrollFactor(0).setDepth(104).setFlipY(true).setFlipX(true)
