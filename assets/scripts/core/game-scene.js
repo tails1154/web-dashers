@@ -13974,6 +13974,7 @@ _applyMirrorEffect() {
     const stars = Math.max(0, Number(window.WDCoinEconomy?.getStars?.() || 0));
     const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0);
     const coins = Math.max(0, Number(window.WDCoinEconomy?.getBalance?.() || 0));
+    const orbs = this._getManaOrbBalance();
     const now = new Date();
     const weekAnchor = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
     weekAnchor.setUTCDate(weekAnchor.getUTCDate() + 4 - (weekAnchor.getUTCDay() || 7));
@@ -13983,7 +13984,7 @@ _applyMirrorEffect() {
     if (typeof pathConfig?.week === "string" && /^\d{4}-W\d{2}$/.test(pathConfig.week)) {
       weekKey = pathConfig.week;
     }
-    const pathVersion = "2";
+    const pathVersion = "3";
     if (localStorage.getItem("wd_paths_version") !== pathVersion) {
       localStorage.removeItem("wd_paths_week");
       localStorage.removeItem("wd_paths_xp");
@@ -13992,25 +13993,26 @@ _applyMirrorEffect() {
     }
     let pathState = (() => { try { return JSON.parse(localStorage.getItem("wd_paths_week") || "null"); } catch (_) { return null; } })();
     if (!pathState || pathState.week !== weekKey) {
-      pathState = { week: weekKey, baseline: { stars, diamonds, coins }, claimed: {} };
+      pathState = { week: weekKey, baseline: { stars, diamonds, coins, orbs }, claimed: {} };
       localStorage.setItem("wd_paths_week", JSON.stringify(pathState));
     }
     const baseline = pathState.baseline || { stars: 0, diamonds: 0, coins: 0 };
     const gainedStars = Math.max(0, stars - Number(baseline.stars || 0));
     const gainedDiamonds = Math.max(0, diamonds - Number(baseline.diamonds || 0));
     const gainedCoins = Math.max(0, coins - Number(baseline.coins || 0));
-    const currentXP = gainedStars + gainedDiamonds + gainedCoins;
-    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `WEEKLY PATH XP: ${currentXP}   •   +${gainedStars} stars   +${gainedDiamonds} diamonds   +${gainedCoins} coins`, 22).setOrigin(0.5).setTint(0xffe45c);
+    const gainedOrbs = Math.max(0, orbs - Number(baseline.orbs || 0));
+    const currentXP = gainedStars + gainedDiamonds + gainedCoins + gainedOrbs;
+    const xpLabel = this.add.bitmapText(sw / 2, 132, "bigFont", `WEEKLY PATH XP: ${currentXP}   •   +${gainedStars} stars   +${gainedDiamonds} diamonds   +${gainedCoins} coins   +${gainedOrbs} orbs`, 20).setOrigin(0.5).setTint(0xffe45c);
     root.add(xpLabel);
 
     // Server-configurable paths can replace this reward list later; each entry
     // is intentionally just a star/XP threshold and an icon reward.
     const fallbackRewards = [
-      { xp: 100, icon: "player_02" },
-      { xp: 500, icon: "player_05" },
-      { xp: 1500, icon: "player_10" },
-      { xp: 3500, icon: "player_15" },
-      { xp: 7500, icon: "player_20" },
+      { xp: 50, icon: "player_02" },
+      { xp: 100, icon: "player_05" },
+      { xp: 150, icon: "player_10" },
+      { xp: 200, icon: "player_15" },
+      { xp: 250, icon: "player_20" },
     ];
     const rewards = Array.isArray(pathConfig?.rewards) && pathConfig.rewards.length === fallbackRewards.length
       ? pathConfig.rewards.map((reward, index) => ({
