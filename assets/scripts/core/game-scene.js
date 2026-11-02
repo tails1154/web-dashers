@@ -496,6 +496,66 @@ function showNativePhaserDialog(scene, options = {}) {
 }
 window.showNativePhaserDialog = showNativePhaserDialog;
 
+const WD_TEXTURE_PACK_KEY = "wd_active_texture_pack";
+
+function _loadTexturePackImage(data) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Texture pack image could not be loaded"));
+    image.src = String(data || "");
+  });
+}
+
+async function applyStoredTexturePack(scene) {
+  if (!scene?.textures || scene._wdTexturePackApplied) return;
+  const stored = localStorage.getItem(WD_TEXTURE_PACK_KEY);
+  if (!stored) return;
+
+  let pack;
+  try {
+    pack = JSON.parse(stored);
+  } catch (_) {
+    localStorage.removeItem(WD_TEXTURE_PACK_KEY);
+    return;
+  }
+  if (!pack || typeof pack !== "object" || !pack.textures || typeof pack.textures !== "object") return;
+
+  scene._wdTexturePackApplied = true;
+  for (const [target, sourceData] of Object.entries(pack.textures)) {
+    try {
+      const separator = target.indexOf("/");
+      const textureKey = separator > 0 ? target.slice(0, separator) : target;
+      const frameName = separator > 0 ? target.slice(separator + 1) : null;
+      if (!scene.textures.exists(textureKey)) continue;
+      const texture = scene.textures.get(textureKey);
+      const frame = frameName ? texture.get(frameName) : texture.get();
+      const source = texture.source?.[0]?.image;
+      if (!frame || !source) continue;
+      const replacement = await _loadTexturePackImage(sourceData);
+      const canvas = document.createElement("canvas");
+      canvas.width = source.width || replacement.naturalWidth;
+      canvas.height = source.height || replacement.naturalHeight;
+      const context = canvas.getContext("2d");
+      if (!context) continue;
+      context.drawImage(source, 0, 0, canvas.width, canvas.height);
+      if (frameName) {
+        context.drawImage(replacement, frame.cutX, frame.cutY, frame.width, frame.height);
+      } else {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(replacement, 0, 0, canvas.width, canvas.height);
+      }
+      texture.source[0].image = canvas;
+      texture.refresh();
+    } catch (error) {
+      console.warn("Texture pack entry skipped:", target, error);
+    }
+  }
+  scene._wdTexturePackName = String(pack.name || "Custom Texture Pack");
+}
+
+window.applyStoredTexturePack = applyStoredTexturePack;
+
 function installWebDashersCrashReporting() {
   if (window._wdCrashReportingInstalled) return;
   window._wdCrashReportingInstalled = true;
@@ -545,6 +605,7 @@ class GameScene extends Phaser.Scene {
     });
   }
   create() {
+    applyStoredTexturePack(this).catch(error => console.warn("Texture pack could not be applied:", error));
     this._bgSpeedX = 0.1;
     this._bgSpeedY = 0.1;
     this._menuCameraX = -centerX;
@@ -12486,6 +12547,7 @@ _applyMirrorEffect() {
         return grp;
     };
 
+    _makeSettingsBtn(_sColL, _sRow1Y, "Texture Packs", _sBtnW2, true, () => { this._buildTexturePacksPopup(); });
     _makeSettingsBtn(_sColR, _sRow1Y, "How To Play", _sBtnW2, true, () => { this._buildHowToPlayPopup(); });
     _makeSettingsBtn(_sColL, _sRow2Y, "Options",    _sBtnW2, true,  () => { this._buildSettingsPopup(); });
     _makeSettingsBtn(_sColR, _sRow2Y, "Graphics",   _sBtnW2, false, null);
@@ -12587,6 +12649,82 @@ _applyMirrorEffect() {
       ease: "Bounce.Out"
     });
   }
+  _buildTexturePacksPopup() {
+    if (this._texturePackPopup || !this._settingsLayerInternal) return;
+    const popup = this.add.container(screenWidth / 2, 320).setDepth(260);
+    const panel = this._drawScale9(0, 0, 620, 360, "GJ_square01", 24, 0x202020, 0.98);
+    const title = this.add.bitmapText(0, -132, "bigFont", "Texture Packs", 42).setOrigin(0.5);
+    let storedPack = null;
+    try { storedPack = JSON.parse(localStorage.getItem(WD_TEXTURE_PACK_KEY) || "null"); } catch (_) {}
+    const currentName = this._wdTexturePackName || storedPack?.name || "Default textures";
+    const status = this.add.bitmapText(0, -76, "goldFont", currentName, 22).setOrigin(0.5);
+    const help = this.add.text(0, -32, "Import a JSON texture pack. Restarting applies it everywhere.", {
+      fontFamily: "Arial", fontSize: "16px", color: "#d7e8ff", align: "center", wordWrap: { width: 520 }
+    }).setOrigin(0.5);
+    popup.add([panel, title, status, help]);
+
+    const makeButton = (x, y, label, action) => {
+      const button = this.add.nineslice(x, y, "GJ_button01", null, 220, 52, 12, 12, 12, 12).setInteractive();
+      const text = this.add.bitmapText(x, y, "bigFont", label, 21).setOrigin(0.5);
+      popup.add([button, text]);
+      this._makeCompositeBouncyButton(button, [button, text], 1, action);
+    };
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.style.display = "none";
+    document.body.appendChild(input);
+    this._texturePackFileInput = input;
+    const close = () => {
+      input.remove();
+      this._texturePackFileInput = null;
+      popup.destroy(true);
+      this._texturePackPopup = null;
+    };
+    makeButton(-125, 45, "IMPORT PACK", () => input.click());
+    makeButton(125, 45, "RESET", () => {
+      localStorage.removeItem(WD_TEXTURE_PACK_KEY);
+      status.setText("Default textures restored; restart to apply");
+    });
+    const closeButton = this.add.image(276, -150, "GJ_WebSheet", "GJ_closeBtn_001.png").setScale(0.7).setInteractive();
+    popup.add(closeButton);
+    this._makeBouncyButton(closeButton, 0.7, close);
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        status.setText("Pack must be 8 MB or smaller").setTint(0xff8b8b);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const pack = JSON.parse(String(reader.result || ""));
+          const entries = pack?.textures;
+          if (!pack || typeof pack !== "object" || !entries || typeof entries !== "object" || !Object.keys(entries).length) {
+            throw new Error("The pack needs a non-empty textures object");
+          }
+          if (Object.keys(entries).length > 100) throw new Error("A pack may contain at most 100 textures");
+          for (const value of Object.values(entries)) {
+            if (typeof value !== "string" || !value.startsWith("data:image/")) throw new Error("Textures must be data URLs");
+          }
+          localStorage.setItem(WD_TEXTURE_PACK_KEY, JSON.stringify({
+            name: String(pack.name || file.name.replace(/\.json$/i, "") || "Custom Texture Pack").slice(0, 48),
+            version: 1,
+            textures: entries
+          }));
+          status.setText("Pack imported. Restarting...").setTint(0x9dffb0);
+          this.time.delayedCall(450, () => window.location.reload());
+        } catch (error) {
+          status.setText(error.message || "Invalid texture pack").setTint(0xff8b8b);
+        }
+      };
+      reader.onerror = () => status.setText("Could not read texture pack").setTint(0xff8b8b);
+      reader.readAsText(file);
+    });
+    this._settingsLayerInternal.add(popup);
+    this._texturePackPopup = popup;
+  }
   _buildAccountPopup() {
     if (this._accountPopup || !this._settingsLayerInternal) return;
     const centerX = screenWidth / 2;
@@ -12677,6 +12815,11 @@ _applyMirrorEffect() {
         this._settingsLayerInternal.destroy();
         this._settingsLayerInternal = null;
       }
+      if (this._texturePackPopup) {
+        this._texturePackPopup = null;
+      }
+      this._texturePackFileInput?.remove?.();
+      this._texturePackFileInput = null;
       this._accountPopup = null;
 
       if (this._pauseBtn) {
