@@ -10814,7 +10814,8 @@ _serializeObject(object) {
     this._setEditorCollabChatAvailable(true);
     client.onStatus = text => {
       this._editorCollabStatus = text;
-      this._editorCollabStatusText?.setText(text).setVisible(true);
+      const statusText = this._editorCollabStatusText;
+      if (statusText?.active && statusText.scene) statusText.setText(text).setVisible(true).setAlpha(1);
     };
     client.onMessage = data => this._handleEditorCollabMessage(data);
   }
@@ -10978,7 +10979,8 @@ _serializeObject(object) {
     this._attachEditorCollabClient(client);
     client.connect(mode, room, "webdashers-editor");
     this._editorCollabStatus = mode === "host" ? "Creating live edit room..." : "Joining live edit room...";
-    this._editorCollabStatusText?.setText(this._editorCollabStatus).setVisible(true).setAlpha(1);
+    const statusText = this._editorCollabStatusText;
+    if (statusText?.active && statusText.scene) statusText.setText(this._editorCollabStatus).setVisible(true).setAlpha(1);
   }
 
   _openEditorCollabDialog(joinExisting = false) {
@@ -11406,6 +11408,7 @@ LevelEditor.methodNames = [
   "_drawEditorCollabPeers",
   "_openEditorCollabChat",
   "_closeEditorCollab",
+  "_startEditorCollabSession",
   "_openEditorCollabDialog",
   "_broadcastEditorState",
   "_applyEditorCollabState",
