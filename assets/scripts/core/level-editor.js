@@ -10851,7 +10851,7 @@ _serializeObject(object) {
 
   _setEditorCollabChatAvailable(available) {
     const group = this._editorCollabChatButtonGroup;
-    if (!group) return;
+    if (!group?.button?.scene || !group?.label?.scene) return;
     group.button.setVisible(!!available).setActive(!!available);
     group.label.setVisible(!!available).setActive(!!available);
     if (available) group.button.setInteractive();
