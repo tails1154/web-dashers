@@ -10576,17 +10576,6 @@ class LevelEditor {
         localStorage.setItem("wd_editor_snap_to_grid", window.wdEditorSnapToGrid ? "true" : "false");
     });
 
-    const bookmarkButton = (x, text, callback, y = screenHeight - 116) => {
-        const button = this.add.nineslice(x, y, "GJ_button01", null, 170, 42, 14, 14, 14, 14).setScale(0.78).setInteractive();
-        const label = this.add.bitmapText(x, y, "bigFont", text, 17).setOrigin(0.5);
-        this._editorMenuContainer.add([button, label]);
-        this._makeCompositeBouncyButton(button, [button, label], 0.78, callback, () => true);
-    };
-    bookmarkButton(screenWidth / 2 - 190, "SAVE VIEW", () => this._saveEditorCameraBookmark());
-    bookmarkButton(screenWidth / 2, "JUMP TO VIEW", () => this._restoreEditorCameraBookmark());
-    bookmarkButton(screenWidth / 2 + 190, "CLEAR VIEW", () => this._clearEditorCameraBookmark());
-    bookmarkButton(screenWidth / 2 - 95, "SAVE SET", () => this._saveEditorSelectionSet(), screenHeight - 166);
-    bookmarkButton(screenWidth / 2 + 95, "LOAD SET", () => this._loadEditorSelectionSet(), screenHeight - 166);
   }
 
   _editorCameraBookmarkKey() {
