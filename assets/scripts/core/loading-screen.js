@@ -323,6 +323,7 @@ class BootScene extends Phaser.Scene {
       this.load.image("player-input-on.svg", "assets/generated/player-input-on.svg?v=1");
       this.load.image("wave-slide.svg", "assets/generated/wave-slide.svg?v=1");
       this.load.image("image-block-placeholder.svg", "assets/generated/image-block-placeholder.svg?v=1");
+      this.load.image("dash-stop-block.svg", "assets/generated/dash-stop-block.svg?v=1");
       this.load.image("shop_cube_cyan_001.png", "assets/generated/shop_cube_cyan_001.png?v=4");
       this.load.image("shop_cube_magenta_001.png", "assets/generated/shop_cube_magenta_001.png?v=4");
       this.load.image("shop_cube_gold_001.png", "assets/generated/shop_cube_gold_001.png?v=4");

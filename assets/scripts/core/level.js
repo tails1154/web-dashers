@@ -226,6 +226,7 @@ const ringType = "ring";
 const triggerType = "trigger";
 const speedType = "speed";
 const slopeType = "slope";
+const dashStopBlockType = "dash_stop_block";
 const _SLOPE_DATA = {
   289:{gw:1,gh:1,angle:45,sq:false,dir:1}, 291:{gw:2,gh:1,angle:22.5,sq:false,dir:1},
   294:{gw:1,gh:1,angle:45,sq:false},295:{gw:2,gh:1,angle:22.5,sq:false},
@@ -588,6 +589,20 @@ if (!allObjects[5074]) {
 if (!allObjects[5075]) {
   allObjects[5075] = { can_color: false, frame: "image-block-placeholder.svg", editorFrame: "image-block-placeholder.svg", gridH: 1, gridW: 1, type: "image_block", z: 2, default_detail_color_channel: -1, default_base_color_channel: 0 };
 }
+if (!allObjects[5076]) {
+  allObjects[5076] = {
+    can_color: false,
+    frame: "dash-stop-block.svg",
+    editorFrame: "dash-stop-block.svg",
+    gridH: 1,
+    gridW: 1,
+    type: dashStopBlockType,
+    editorOnly: true,
+    z: 2,
+    default_detail_color_channel: -1,
+    default_base_color_channel: 0
+  };
+}
 const _cameraTriggerDefinitions = [
   [5080, "camera_shake", "camera-shake.svg", 0.012, "Shake"],
   [5081, "camera_flash", "camera-flash.svg", 0.65, "Flash"],
@@ -813,6 +828,7 @@ window.LevelObject = class LevelObject {
     this._editorTriggerVisuals = [];
     this._orbSprites = [];
     this._coinSprites = [];
+    this._dashStopBlocks = [];
     this._sawSprites = [];
     this._glowSpriteKeys = new Set();
     this._enterEffectTriggers = [];
@@ -2210,6 +2226,50 @@ window.LevelObject = class LevelObject {
 
   if (objectDef?.type === "image_block") {
     return this._spawnCustomImageBlock(levelObj);
+  }
+
+  if (objectDef?.type === dashStopBlockType) {
+    if (this._nextObjectId === undefined) this._nextObjectId = 0;
+    const linkedObjectId = this._nextObjectId++;
+    levelObj._eeObjectId = linkedObjectId;
+    if (levelObj._raw) delete levelObj._raw._eeObjectId;
+    this._resetobject[linkedObjectId] = levelObj;
+
+    const worldX = Number(levelObj.x || 0) * 2;
+    const worldY = Number(levelObj.y || 0) * 2;
+    const scale = Phaser.Math.Clamp(parseFloat(levelObj.scale ?? 1) || 1, 0.01, 20);
+    const block = {
+      x: worldX,
+      y: worldY,
+      width: (objectDef.gridW || 1) * 60 * scale,
+      height: (objectDef.gridH || 1) * 60 * scale,
+      rotation: Number(levelObj.rot || 0) || 0,
+      objectId: linkedObjectId
+    };
+    this._dashStopBlocks.push(block);
+
+    // The marker is an editor aid only. The collision zone remains available
+    // during playtest/gameplay while its visual is omitted outside the editor.
+    if (!window.isEditor) return objectDef;
+    const sprite = scene.add.image(worldX, b(worldY), objectDef.frame)
+      .setOrigin(0.5)
+      .setDisplaySize(block.width, block.height)
+      .setAngle(block.rotation)
+      .setFlipX(!!levelObj.flipX)
+      .setFlipY(!!levelObj.flipY);
+    sprite._eeObjectId = linkedObjectId;
+    sprite._eeDashStopBlock = true;
+    sprite._eeWorldX = worldX;
+    sprite._eeBaseY = b(worldY);
+    sprite._eeEditorLayer = parseInt(levelObj.editorLayer ?? levelObj._raw?.[20] ?? levelObj._raw?.["20"] ?? 0, 10) || 0;
+    sprite._eeEditorLayer2 = parseInt(levelObj.editorLayer2 ?? levelObj._raw?.[61] ?? levelObj._raw?.["61"] ?? 0, 10) || 0;
+    sprite._eeZDepth = 3;
+    sprite._eeOrigAlpha = 1;
+    sprite.setDepth(3);
+    this._addVisualSprite(sprite);
+    this._addToSection(sprite);
+    this.objectSprites[linkedObjectId] = [sprite];
+    return objectDef;
   }
 
   if (objectDef && objectDef.type === triggerType) {

@@ -633,12 +633,23 @@ class LevelEditor {
         }
     }
     this._setEditorLetterBlocksVisible(visible);
+    this._setEditorDashStopBlocksVisible(visible);
   }
 
   _setEditorLetterBlocksVisible(visible) {
     const letterIds = new Set([5065, 5066, 5067, 5068, 5069]);
     for (const saveObj of (window.levelObjects || [])) {
         if (!saveObj || !letterIds.has(parseInt(saveObj.id, 10))) continue;
+        const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : -1;
+        for (const sprite of (this._level?.objectSprites?.[linkedId] || [])) {
+            sprite?.setVisible?.(visible);
+        }
+    }
+  }
+
+  _setEditorDashStopBlocksVisible(visible) {
+    for (const saveObj of (window.levelObjects || [])) {
+        if (!saveObj || parseInt(saveObj.id, 10) !== 5076) continue;
         const linkedId = Number.isInteger(saveObj._eeObjectId) ? saveObj._eeObjectId : -1;
         for (const sprite of (this._level?.objectSprites?.[linkedId] || [])) {
             sprite?.setVisible?.(visible);
@@ -2300,7 +2311,7 @@ class LevelEditor {
         { id: "pinned",  icon: "tab8", types: null },
         { id: "recent",  icon: "tab3", types: null },
         { id: "all",     icon: "tab3", types: null },
-        { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco", "image_block"] },
+        { id: "blocks",  icon: "tab1", types: ["solid", "soliddeco", "image_block", "dash_stop_block"] },
         { id: "slopes",  icon: "tab6", types: ["slope"] },
         { id: "hazards", icon: "tab2", types: ["hazard", "spike"] },
         { id: "orbs",    icon: "tab3", types: ["ring", "pad", "portal", "speed", "coin", "head_block"] },
@@ -11276,6 +11287,7 @@ LevelEditor.methodNames = [
   "_refreshEditorPlaytestControls",
   "_setEditorPlaytestGuiVisible",
   "_setEditorLetterBlocksVisible",
+  "_setEditorDashStopBlocksVisible",
   "_setEditorLevelSectionsFullyVisible",
   "_resetEditorPlaytestSectionCulling",
   "_refreshEditorPlaytestGlowVisibility",

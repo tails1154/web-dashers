@@ -4736,6 +4736,21 @@ if (this.p.isFlying || this.p.isUfo) {
     }) || null;
   }
 
+  _dashStopBlockAt(playerWorldX, playerWorldY, playerSize) {
+    const zones = this._gameLayer?._dashStopBlocks;
+    if (!Array.isArray(zones) || !zones.length) return null;
+    return zones.find(zone => {
+      const halfW = Math.max(1, Number(zone.width) || 60) / 2 + playerSize;
+      const halfH = Math.max(1, Number(zone.height) || 60) / 2 + playerSize;
+      const rotation = Number(zone.rotation || 0) * Math.PI / 180;
+      const dx = playerWorldX - Number(zone.x || 0);
+      const dy = playerWorldY - Number(zone.y || 0);
+      const localX = (dx * Math.cos(rotation)) + (dy * Math.sin(rotation));
+      const localY = (-dx * Math.sin(rotation)) + (dy * Math.cos(rotation));
+      return Math.abs(localX) <= halfW && Math.abs(localY) <= halfH;
+    }) || null;
+  }
+
   checkCollisions(_0x2f5078) {
     this.noclipStats.totalFrames++;
     this.p.diedThisFrame = false;
@@ -4749,7 +4764,8 @@ if (this.p.isFlying || this.p.isUfo) {
     const playerSize = this.p.isMini ? 18 : 30;
     const waveHitSize = this.p.isMini ? 6 : 9;
     const pieceWidth = _0x2f5078 + centerX;
-    const dashStopBlock = this._letterBlockAt("S", pieceWidth, this.p.y, playerSize);
+    const dashStopBlock = this._dashStopBlockAt(pieceWidth, this.p.y, playerSize) ||
+      this._letterBlockAt("S", pieceWidth, this.p.y, playerSize);
     if (dashStopBlock) {
       this.p.isDashing = false;
       this.p.dashYVelocity = 0;
