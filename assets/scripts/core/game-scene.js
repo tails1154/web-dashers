@@ -1132,6 +1132,27 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         this._closeCreatorMenu(true);
         this._openDiamondShop(true);
       }, () => true);
+      const dailyChestLabel = this.add.text(sw - 90, 265, "DAILY CHESTS", {
+        fontFamily: "Arial Black", fontSize: "13px", color: "#ffffff",
+        stroke: "#15204b", strokeThickness: 4
+      }).setOrigin(0.5).setScrollFactor(0).setDepth(104);
+      const dailyChestSmall = this.add.image(sw - 125, 215, "GJ_GameSheet03", "chestIcon_001.png")
+        .setScrollFactor(0).setDepth(104).setScale(0.72).setInteractive();
+      const dailyChestLarge = this.add.image(sw - 55, 215, "GJ_GameSheet03", "chestIcon_001.png")
+        .setScrollFactor(0).setDepth(104).setScale(0.9).setTint(0xffd86b).setInteractive();
+      this._makeBouncyButton(dailyChestSmall, 0.72, () => this._openDailyChest(0, dailyChestSmall), () => true);
+      this._makeBouncyButton(dailyChestLarge, 0.9, () => this._openDailyChest(1, dailyChestLarge), () => true);
+      this._refreshDailyChestButtons = () => {
+        let claims = {};
+        try { claims = JSON.parse(localStorage.getItem("wd_daily_chest_claims") || "{}"); } catch (_) {}
+        const day = this._getLocalCalendarDay();
+        [dailyChestSmall, dailyChestLarge].forEach((chest, index) => {
+          const claimed = claims[String(index)] === day;
+          chest.setAlpha(claimed ? 0.4 : 1);
+          chest.setTint(index === 1 ? (claimed ? 0x8a7a4d : 0xffd86b) : 0xffffff);
+        });
+      };
+      this._refreshDailyChestButtons();
       const vaultsecret = this.add.image(1095, 601, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
         .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666);
 
@@ -1140,7 +1161,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         .setRotation(Math.PI).setInteractive();
       this._makeBouncyButton(backBtn, 1, () => this._closeCreatorMenu());
 
-      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, shopButton, shopLabel, vaultsecret];
+      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, shopButton, shopLabel, dailyChestLabel, dailyChestSmall, dailyChestLarge, vaultsecret];
 
       const menuButtons = [
         "GJ_createBtn_001.png",
@@ -13430,6 +13451,50 @@ _applyMirrorEffect() {
     }
   }
 
+  _getLocalCalendarDay() {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+  _openDailyChest(index, chest) {
+    const chestIndex = Number(index) === 1 ? 1 : 0;
+    let claims = {};
+    try { claims = JSON.parse(localStorage.getItem("wd_daily_chest_claims") || "{}"); } catch (_) {}
+    if (!claims || typeof claims !== "object" || Array.isArray(claims)) claims = {};
+    const today = this._getLocalCalendarDay();
+    if (claims[String(chestIndex)] === today) {
+      showNativePhaserDialog(this, { title: "DAILY CHEST", message: "This chest is empty for today. Come back tomorrow." });
+      return;
+    }
+    const reward = chestIndex === 0
+      ? { name: "SMALL CHEST", diamonds: 3, coins: 12, orbs: 20 }
+      : { name: "LARGE CHEST", diamonds: 8, coins: 30, orbs: 50 };
+    claims[String(chestIndex)] = today;
+    localStorage.setItem("wd_daily_chest_claims", JSON.stringify(claims));
+    window.WDCoinEconomy?.add?.(reward.coins, this);
+    const diamonds = Math.max(0, parseInt(localStorage.getItem("wd_diamonds") || "0", 10) || 0) + reward.diamonds;
+    localStorage.setItem("wd_diamonds", String(diamonds));
+    this._setManaOrbBalance(this._getManaOrbBalance() + reward.orbs);
+    this._refreshIconCoinHud?.();
+    this._refreshDailyChestButtons?.();
+    this._audio.playEffect("manaOrb");
+    if (chest?.active) {
+      this.tweens.add({
+        targets: chest,
+        scale: chest.scaleX * 1.18,
+        angle: 8,
+        duration: 100,
+        yoyo: true,
+        repeat: 2,
+        ease: "Quad.Out"
+      });
+    }
+    showNativePhaserDialog(this, {
+      title: `${reward.name} OPENED`,
+      message: `+${reward.diamonds} diamonds\n+${reward.coins} coins\n+${reward.orbs} mana orbs`
+    });
+  }
   _showDiamondGuard(canEnter, diamonds, required) {
     if (this._diamondGuardOverlay) return;
     const lockedMessages = [
