@@ -1228,11 +1228,18 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const vaultX = sw - 55;
       const vaultY = sh - 78;
       const vaultsecret = this.add.image(vaultX, vaultY, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
-        .setScrollFactor(0).setDepth(104).setScale(1).setTint(0x666666).setInteractive();
+        .setScrollFactor(0).setDepth(104).setScale(1).setInteractive();
       this._expandHitArea(vaultsecret, 1.25);
       this._makeBouncyButton(vaultsecret, 1, () => {
-        const diamonds = Number(window.WDCoinEconomy?.getDiamonds?.() || localStorage.getItem("wd_diamonds") || 0);
-        this._showDiamondGuard(diamonds >= diamondEntryCost, diamonds, diamondEntryCost);
+        const keys = this._getDemonKeys();
+        if (keys >= 5) {
+          this._openTreasureRoom();
+        } else {
+          showNativePhaserDialog(this, {
+            title: "CHEST ROOM",
+            message: `You need ${5 - keys} more Demon Key${5 - keys === 1 ? "" : "s"} to open the Chest Room.`
+          });
+        }
       }, () => true);
 
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
