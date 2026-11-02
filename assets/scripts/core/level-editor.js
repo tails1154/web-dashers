@@ -133,6 +133,7 @@ class LevelEditor {
     this._editorCollabSnapshot = null;
     this._editorCollabRemoteLabels = new Map();
     this._editorCollabChatButtonGroup = null;
+    this._editorCollabEndButtonGroup = null;
     this._editorCollabRemoteGraphics = this.add.graphics().setScrollFactor(0).setDepth(1998);
     this._editorCollabStatusText = this.add.bitmapText(screenWidth - 16, 16, "bigFont", "", 16)
         .setOrigin(1, 0).setScrollFactor(0).setDepth(2001).setTint(0xbfeeff).setVisible(false);
@@ -10524,6 +10525,7 @@ class LevelEditor {
         { text: "Save", cb: () => this._saveEditorLevel() },
         { text: "Collaborate", cb: () => this._openEditorCollabDialog() },
         { text: "Chat", cb: () => this._openEditorCollabChat() },
+        { text: "End Collab", cb: () => this._closeEditorCollab() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -10538,6 +10540,10 @@ class LevelEditor {
         if (data.text === "Chat") {
             this._editorCollabChatButtonGroup = { button: btnImg, label };
             this._setEditorCollabChatAvailable(!!this._editorCollabClient);
+        }
+        if (data.text === "End Collab") {
+            this._editorCollabEndButtonGroup = { button: btnImg, label };
+            this._setEditorCollabEndAvailable(!!this._editorCollabClient);
         }
 
         this._makeCompositeBouncyButton(btnImg, [btnImg, label], 0.75, () => {
@@ -10814,6 +10820,7 @@ _serializeObject(object) {
   _attachEditorCollabClient(client) {
     this._editorCollabClient = client;
     this._setEditorCollabChatAvailable(true);
+    this._setEditorCollabEndAvailable(true);
     client.onStatus = text => {
       this._editorCollabStatus = text;
       const statusText = this._editorCollabStatusText;
@@ -10842,6 +10849,7 @@ _serializeObject(object) {
     }
     if (data.type === "editor-presence") {
       const peerId = String(data.from || data.peerId || "remote");
+      if (!(this._editorCollabPeers instanceof Map)) this._editorCollabPeers = new Map();
       this._editorCollabPeers.set(peerId, { ...data, lastSeen: Date.now() });
       return;
     }
@@ -10849,6 +10857,7 @@ _serializeObject(object) {
       const name = String(data.name || "Collaborator").slice(0, 24);
       const text = String(data.text || "").trim().slice(0, 240);
       if (!text) return;
+      if (!Array.isArray(this._editorCollabChat)) this._editorCollabChat = [];
       this._editorCollabChat.push({ name, text, at: Date.now() });
       this._editorCollabChat = this._editorCollabChat.slice(-30);
       this._showEditorCollabToast(`${name}: ${text}`);
@@ -10857,6 +10866,15 @@ _serializeObject(object) {
 
   _setEditorCollabChatAvailable(available) {
     const group = this._editorCollabChatButtonGroup;
+    if (!group?.button?.scene || !group?.label?.scene) return;
+    group.button.setVisible(!!available).setActive(!!available);
+    group.label.setVisible(!!available).setActive(!!available);
+    if (available) group.button.setInteractive();
+    else group.button.disableInteractive();
+  }
+
+  _setEditorCollabEndAvailable(available) {
+    const group = this._editorCollabEndButtonGroup;
     if (!group?.button?.scene || !group?.label?.scene) return;
     group.button.setVisible(!!available).setActive(!!available);
     group.label.setVisible(!!available).setActive(!!available);
@@ -10978,6 +10996,7 @@ _serializeObject(object) {
     this._editorCollabRemoteLabels?.clear();
     this._editorCollabStatusText?.setVisible(false);
     this._setEditorCollabChatAvailable(false);
+    this._setEditorCollabEndAvailable(false);
   }
 
   _startEditorCollabSession(mode, room = "") {
@@ -11474,6 +11493,7 @@ LevelEditor.methodNames = [
   "_attachEditorCollabClient",
   "_handleEditorCollabMessage",
   "_setEditorCollabChatAvailable",
+  "_setEditorCollabEndAvailable",
   "_showEditorCollabToast",
   "_updateEditorCollabPresence",
   "_drawEditorCollabPeers",
