@@ -13546,6 +13546,22 @@ _applyMirrorEffect() {
     this._makeCompositeBouncyButton(collect, [collect, collectLabel], 1, finish);
     collect.setVisible(false);
     collectLabel.setVisible(false);
+    const emitChestParticles = (settings, quantity) => {
+      const emitter = this.add.particles(0, 0, "GJ_WebSheet", {
+        frame: "square.png",
+        speed: settings.speed,
+        angle: settings.angle,
+        gravityY: settings.gravityY || 0,
+        lifespan: settings.lifespan,
+        scale: { start: 0.8, end: 0 },
+        alpha: { start: 0.95, end: 0 },
+        tint: [0xffd84d, 0xd98cff, 0x9ee8ff],
+        quantity,
+        emitting: false
+      }).setDepth(2201).setScrollFactor(0);
+      root.add(emitter);
+      emitter.explode(quantity, sw / 2, sh / 2 - 86);
+    };
     this._audio.playEffect("chestClick");
     this.tweens.add({
       targets: chest,
@@ -13556,6 +13572,14 @@ _applyMirrorEffect() {
       ease: "Back.Out",
       onComplete: () => {
         this._audio.playEffect("chestOpen01");
+        // Port of the native chestOpen.plist: 175 +/- 75 speed,
+        // 90 +/- 30 degrees, and strong upward gravity.
+        emitChestParticles({
+          speed: { min: 100, max: 250 },
+          angle: { min: 60, max: 120 },
+          gravityY: -700,
+          lifespan: { min: 500, max: 2000 }
+        }, 50);
         this.tweens.add({
           targets: chest,
           scaleX: 4.7,
@@ -13567,21 +13591,24 @@ _applyMirrorEffect() {
           ease: "Quad.Out",
           onComplete: () => {
             this._audio.playEffect("chestLand");
-            const burst = this.add.particles(0, 0, "GJ_WebSheet", {
-              frame: "square.png",
-              x: sw / 2,
-              y: sh / 2 - 86,
-              speed: { min: 90, max: 250 },
-              angle: { min: 210, max: 330 },
-              scale: { start: 0.8, end: 0 },
-              alpha: { start: 0.95, end: 0 },
-              tint: [0xffd84d, 0xd98cff, 0x9ee8ff],
-              lifespan: 900,
-              quantity: 26,
-              emitting: false
-            }).setDepth(2201).setScrollFactor(0);
-            root.add(burst);
-            burst.explode(26, sw / 2, sh / 2 - 86);
+            // Port of chestOpened.plist: the slower 40 +/- 15 settling burst.
+            emitChestParticles({
+              speed: { min: 25, max: 55 },
+              angle: { min: 45, max: 135 },
+              lifespan: { min: 750, max: 2250 }
+            }, 50);
+            const wave = this.add.graphics().setDepth(2202).setScrollFactor(0);
+            wave.lineStyle(4, 0xffd84d, 0.9).strokeCircle(sw / 2, sh / 2 - 86, 10);
+            root.add(wave);
+            this.tweens.add({
+              targets: wave,
+              scaleX: 11,
+              scaleY: 11,
+              alpha: 0,
+              duration: 1000,
+              ease: "Quad.Out",
+              onComplete: () => wave.destroy()
+            });
             this._audio.playEffect("reward01");
             rewardItems.forEach((item, index) => {
               const x = sw / 2 - 120 + index * 120;
