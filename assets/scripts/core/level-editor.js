@@ -85,6 +85,7 @@ class LevelEditor {
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
     const zoom = Math.max(0.1, Number(this._editorZoom || 1));
     this._level.updateVisibility?.(this._cameraX / zoom, screenWidth / zoom);
+    this._updateEditorCollabPresence?.();
     if (Array.isArray(this._level._groundTiles)) {
         this._level.updateGroundTiles?.(this._cameraY);
     }
@@ -126,16 +127,16 @@ class LevelEditor {
     this._editorCollabClient = null;
     this._editorCollabBroadcastTimer = null;
     this._editorCollabApplying = false;
+    this._editorCollabPeers = new Map();
+    this._editorCollabChat = [];
+    this._editorCollabLastPresenceAt = 0;
+    this._editorCollabRemoteLabels = new Map();
+    this._editorCollabRemoteGraphics = this.add.graphics().setScrollFactor(0).setDepth(1998);
+    this._editorCollabStatusText = this.add.bitmapText(screenWidth - 16, 16, "bigFont", "", 16)
+        .setOrigin(1, 0).setScrollFactor(0).setDepth(2001).setTint(0xbfeeff).setVisible(false);
     const activeEditorClient = window._tailsConnectClient;
     if (activeEditorClient?.protocol === "tc3" && activeEditorClient.socket?.readyState === WebSocket.OPEN) {
-        this._editorCollabClient = activeEditorClient;
-        activeEditorClient.onMessage = data => {
-            if (data?.type === "tc3-peer-join") {
-                if (activeEditorClient.role === "host") this._broadcastEditorState(true);
-                return;
-            }
-            if (data?.type === "editor-state") this._applyEditorCollabState(data);
-        };
+        this._attachEditorCollabClient(activeEditorClient);
     }
     this._editorAutosaveSeconds = 60;
     if (this._editorAutosaveNotice?.destroy) this._editorAutosaveNotice.destroy();
@@ -10474,6 +10475,7 @@ class LevelEditor {
     const returnToLevelView = async (showLoading = false) => {
         this._showEditorPauseMenu(false);
         this._stopEditorPlaytest?.();
+        this._closeEditorCollab?.();
 
         const levelId = window.currentlevel?.[2] || window._onlineLevelId;
         if (levelId) {
@@ -10517,6 +10519,8 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
+        { text: "Collaborate", cb: () => this._openEditorCollabDialog() },
+        { text: "Chat", cb: () => this._openEditorCollabChat() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -10800,6 +10804,148 @@ _serializeObject(object) {
   return parts.join(",");
   }
 
+  _attachEditorCollabClient(client) {
+    this._editorCollabClient = client;
+    client.onStatus = text => {
+      this._editorCollabStatus = text;
+      this._editorCollabStatusText?.setText(text).setVisible(true);
+    };
+    client.onMessage = data => this._handleEditorCollabMessage(data);
+  }
+
+  _handleEditorCollabMessage(data) {
+    if (!data) return;
+    if (data.type === "tc3-peer-join") {
+      if (this._editorCollabClient?.role === "host") this._broadcastEditorState(true);
+      return;
+    }
+    if (data.type === "tc3-peer-leave") {
+      if (data.peerId) this._editorCollabPeers.delete(String(data.peerId));
+      return;
+    }
+    if (data.type === "editor-state") {
+      this._applyEditorCollabState(data);
+      return;
+    }
+    if (data.type === "editor-presence") {
+      const peerId = String(data.from || data.peerId || "remote");
+      this._editorCollabPeers.set(peerId, { ...data, lastSeen: Date.now() });
+      return;
+    }
+    if (data.type === "editor-chat") {
+      const name = String(data.name || "Collaborator").slice(0, 24);
+      const text = String(data.text || "").trim().slice(0, 240);
+      if (!text) return;
+      this._editorCollabChat.push({ name, text, at: Date.now() });
+      this._editorCollabChat = this._editorCollabChat.slice(-30);
+      this._editorCollabStatusText?.setText(`${name}: ${text}`).setVisible(true);
+    }
+  }
+
+  _updateEditorCollabPresence() {
+    const client = this._editorCollabClient;
+    if (!client || client.protocol !== "tc3" || client.socket?.readyState !== WebSocket.OPEN) return;
+    const now = Date.now();
+    if (now - this._editorCollabLastPresenceAt < 100) return;
+    this._editorCollabLastPresenceAt = now;
+    const pointer = this.input.activePointer;
+    const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+    const worldX = (Number(pointer?.x || 0) + Number(this._cameraX || 0)) / zoom;
+    const worldY = (Number(pointer?.y || 0) + Number(this._cameraY || 0)) / zoom;
+    const selectedId = this._getCurrentSelectedEditorObjectIds?.()[0] ?? window.editorSelectedObject;
+    const selected = Number.isInteger(selectedId) ? this._getEditorSaveObjectForObjectId(selectedId) : null;
+    client.send({
+      type: "editor-presence",
+      from: client.clientId,
+      name: String(window.AccountAPI?.currentUser?.username || localStorage.getItem("playerName") || "Builder").slice(0, 24),
+      x: worldX,
+      y: worldY,
+      selectedBlock: Number(window.selectedObjId || 0),
+      selectedObjectId: Number.isInteger(selectedId) ? selectedId : -1,
+      selectedX: selected ? Number(selected.x || 0) * 2 : null,
+      selectedY: selected ? (typeof b === "function" ? b(Number(selected.y || 0) * 2) : Number(selected.y || 0) * 2) : null
+    });
+    this._drawEditorCollabPeers();
+  }
+
+  _drawEditorCollabPeers() {
+    const graphics = this._editorCollabRemoteGraphics;
+    if (!graphics) return;
+    const now = Date.now();
+    graphics.clear();
+    const activePeerIds = new Set();
+    for (const [peerId, peer] of this._editorCollabPeers) {
+      if (now - Number(peer.lastSeen || 0) > 5000) {
+        this._editorCollabPeers.delete(peerId);
+        this._editorCollabRemoteLabels.get(peerId)?.destroy();
+        this._editorCollabRemoteLabels.delete(peerId);
+        continue;
+      }
+      activePeerIds.add(peerId);
+      const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+      const x = Number(peer.x || 0) * zoom - Number(this._cameraX || 0);
+      const y = Number(peer.y || 0) * zoom - Number(this._cameraY || 0);
+      const color = 0xff8cff;
+      graphics.lineStyle(3, color, 0.95);
+      graphics.strokeTriangle(x, y - 12, x + 9, y + 9, x - 9, y + 9);
+      graphics.fillStyle(color, 0.22).fillCircle(x, y, 18);
+      if (Number.isFinite(Number(peer.selectedX)) && Number.isFinite(Number(peer.selectedY))) {
+        const selectedX = Number(peer.selectedX) * zoom - Number(this._cameraX || 0);
+        const selectedY = Number(peer.selectedY) * zoom - Number(this._cameraY || 0);
+        graphics.lineStyle(2, color, 0.8).strokeRect(selectedX - 24, selectedY - 24, 48, 48);
+      }
+      let label = this._editorCollabRemoteLabels.get(peerId);
+      if (!label || !label.active) {
+        label = this.add.bitmapText(0, 0, "bigFont", "", 14).setOrigin(0, 1).setScrollFactor(0).setDepth(1999).setTint(color);
+        this._editorCollabRemoteLabels.set(peerId, label);
+      }
+      label.setPosition(x + 12, y - 12).setText(`${String(peer.name || "Builder").slice(0, 18)} • block ${Number(peer.selectedBlock || 0)}`);
+    }
+    for (const [peerId, label] of this._editorCollabRemoteLabels) {
+      if (!activePeerIds.has(peerId)) {
+        label.destroy();
+        this._editorCollabRemoteLabels.delete(peerId);
+      }
+    }
+  }
+
+  _openEditorCollabChat() {
+    const history = this._editorCollabChat.length
+      ? this._editorCollabChat.slice(-8).map(entry => `${entry.name}: ${entry.text}`).join("\n")
+      : "No messages yet.";
+    window.showNativePhaserDialog(this, {
+      title: "COLLABORATION CHAT",
+      message: `${history}\n\nType a message to send to everyone in the editor room.`,
+      input: true,
+      placeholder: "Message",
+      confirmLabel: "SEND",
+      cancelLabel: "CLOSE",
+      onConfirm: value => {
+        const text = String(value || "").trim().slice(0, 240);
+        const client = this._editorCollabClient;
+        if (!text || !client || client.socket?.readyState !== WebSocket.OPEN) return;
+        client.send({
+          type: "editor-chat",
+          from: client.clientId,
+          name: String(window.AccountAPI?.currentUser?.username || localStorage.getItem("playerName") || "Builder").slice(0, 24),
+          text
+        });
+        this._handleEditorCollabMessage({ type: "editor-chat", name: "You", text });
+      }
+    });
+  }
+
+  _closeEditorCollab() {
+    const client = this._editorCollabClient;
+    if (client?.protocol === "tc3") client.close();
+    this._editorCollabClient = null;
+    this._editorCollabPeers?.clear();
+    this._editorCollabRemoteGraphics?.clear();
+    for (const label of this._editorCollabRemoteLabels?.values?.() || []) label.destroy();
+    this._editorCollabRemoteLabels?.clear();
+    this._editorCollabStatusText?.setVisible(false);
+  }
+
   _openEditorCollabDialog() {
     window.showNativePhaserDialog(this, {
       title: "LIVE EDIT",
@@ -10813,20 +10959,7 @@ _serializeObject(object) {
         const target = String(value || "").trim();
         if (!target) return;
         const client = window.getTailsConnectClient(this);
-        this._editorCollabClient = client;
-        client.onStatus = text => {
-          this._editorCollabStatus = text;
-          if (this._editorCollabStatusText?.scene) {
-            this._editorCollabStatusText.setText(text).setVisible(true);
-          }
-        };
-        client.onMessage = data => {
-          if (data?.type === "tc3-peer-join") {
-            if (client.role === "host") this._broadcastEditorState(true);
-            return;
-          }
-          if (data?.type === "editor-state") this._applyEditorCollabState(data);
-        };
+        this._attachEditorCollabClient(client);
         const isHost = target.toUpperCase() === "HOST";
         client.connect(isHost ? "host" : "join", isHost ? "" : target, "webdashers-editor");
         this._editorCollabStatus = isHost ? "Creating live edit room..." : "Joining live edit room...";
@@ -10852,6 +10985,7 @@ _serializeObject(object) {
       const levelData = { objects: window.levelObjects || [], settings: window.settingslist || "" };
       client.send({
         type: "editor-state",
+        from: client.clientId,
         levelId: String(window.currentlevel?.[2] || ""),
         levelString: this._serializeLevel(levelData),
         songId: this._editorPendingSongId ?? window.currentlevel?.[0] ?? "",
@@ -11232,6 +11366,12 @@ LevelEditor.methodNames = [
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
   "_openCustomSongSelector",
+  "_attachEditorCollabClient",
+  "_handleEditorCollabMessage",
+  "_updateEditorCollabPresence",
+  "_drawEditorCollabPeers",
+  "_openEditorCollabChat",
+  "_closeEditorCollab",
   "_openEditorCollabDialog",
   "_broadcastEditorState",
   "_applyEditorCollabState",

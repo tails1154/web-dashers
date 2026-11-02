@@ -39,7 +39,7 @@ class TailsConnectClient {
         this.socket.send('TC3 HELLO {"version":3,"features":["relay","presence","disconnects"]}');
         if (mode === "host") {
           this.role = "host";
-          this.socket.send(`TC3 HOST ${JSON.stringify({ game, maxPlayers: 2 })}`);
+          this.socket.send(`TC3 HOST ${JSON.stringify({ game, maxPlayers: 8 })}`);
         } else {
           this.role = "join";
           this.socket.send(`TC3 JOIN ${JSON.stringify({ game, room: room.trim().toUpperCase() })}`);
