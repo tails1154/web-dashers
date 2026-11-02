@@ -2417,7 +2417,14 @@ class LevelEditor {
                     itemsForGrid.unshift({ type: "object", id: triggerId, frame: trigger.frame });
                 }
             }
-            const triggerOrder = new Map(triggerIds.map((id, index) => [id, index]));
+            // Keep Start Position at the front of the Triggers palette so it is
+            // immediately available when the category is opened. Object 34 is
+            // the alternate start-position variant and follows the main one.
+            const triggerOrder = new Map([
+                [31, 0],
+                [34, 1],
+                ...triggerIds.map((id, index) => [id, index + 2])
+            ]);
             itemsForGrid.sort((a, b) => (triggerOrder.get(a.id) ?? 9999) - (triggerOrder.get(b.id) ?? 9999));
         }
         if (activeCatDef?.id === "blocks") {
