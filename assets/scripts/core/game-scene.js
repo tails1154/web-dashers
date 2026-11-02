@@ -13478,21 +13478,95 @@ _applyMirrorEffect() {
     this._setManaOrbBalance(this._getManaOrbBalance() + reward.orbs);
     this._refreshIconCoinHud?.();
     this._refreshDailyChestButtons?.();
-    this._audio.playEffect("manaOrb");
-    if (chest?.active) {
-      this.tweens.add({
-        targets: chest,
-        scale: chest.scaleX * 1.18,
-        angle: 8,
-        duration: 100,
-        yoyo: true,
-        repeat: 2,
-        ease: "Quad.Out"
-      });
-    }
-    showNativePhaserDialog(this, {
-      title: `${reward.name} OPENED`,
-      message: `+${reward.diamonds} diamonds\n+${reward.coins} coins\n+${reward.orbs} mana orbs`
+    this._playDailyChestOpening(chestIndex, chest, reward);
+  }
+  _playDailyChestOpening(chestIndex, sourceChest, reward) {
+    if (this._dailyChestAnimationOverlay) return;
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2200);
+    this._dailyChestAnimationOverlay = root;
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x050817, 0.94).setInteractive();
+    const panel = this.add.nineslice(sw / 2, sh / 2 + 16, "GJ_button01", null, Math.min(620, sw - 48), 430, 28, 28, 28, 28);
+    const title = this.add.bitmapText(sw / 2, 94, "goldFont", reward.name, 34).setOrigin(0.5);
+    const subtitle = this.add.bitmapText(sw / 2, 132, "bigFont", "DAILY REWARD", 20).setOrigin(0.5).setTint(0xbfeeff);
+    const chest = this.add.image(sw / 2, sh / 2 - 86, "GJ_GameSheet03", "chestIcon_001.png")
+      .setScale(4.2).setAlpha(0).setOrigin(0.5);
+    const rewardItems = [
+      { icon: "GJ_diamondsIcon_001.png", label: `+${reward.diamonds}`, tint: 0xd98cff },
+      { icon: "GJ_coinsIcon_001.png", label: `+${reward.coins}`, tint: 0xffd84d },
+      { icon: "currencyOrbIcon_001.png", label: `+${reward.orbs}`, tint: 0x9ee8ff }
+    ];
+    const rewardObjects = [];
+    const finish = () => {
+      if (!root.active) return;
+      this.tweens.add({ targets: root, alpha: 0, duration: 180, onComplete: () => {
+        if (sourceChest?.active) sourceChest.setVisible(true);
+        root.destroy(true);
+        this._dailyChestAnimationOverlay = null;
+      }});
+    };
+    const collect = this.add.nineslice(sw / 2, sh / 2 + 155, "GJ_button01", null, 210, 54, 18, 18, 18, 18).setInteractive();
+    const collectLabel = this.add.bitmapText(sw / 2, sh / 2 + 155, "goldFont", "COLLECT", 22).setOrigin(0.5);
+    root.add([shade, panel, title, subtitle, chest, collect, collectLabel]);
+    if (sourceChest?.active) sourceChest.setVisible(false);
+    this._makeCompositeBouncyButton(collect, [collect, collectLabel], 1, finish);
+    collect.setVisible(false);
+    collectLabel.setVisible(false);
+    this._audio.playEffect("chestClick");
+    this.tweens.add({
+      targets: chest,
+      alpha: 1,
+      y: sh / 2 - 86,
+      scale: 4.2,
+      duration: 360,
+      ease: "Back.Out",
+      onComplete: () => {
+        this._audio.playEffect("chestOpen01");
+        this.tweens.add({
+          targets: chest,
+          scaleX: 4.7,
+          scaleY: 3.8,
+          angle: 5,
+          duration: 130,
+          yoyo: true,
+          repeat: 2,
+          ease: "Quad.Out",
+          onComplete: () => {
+            this._audio.playEffect("chestLand");
+            const burst = this.add.particles(0, 0, "GJ_WebSheet", {
+              frame: "square.png",
+              x: sw / 2,
+              y: sh / 2 - 86,
+              speed: { min: 90, max: 250 },
+              angle: { min: 210, max: 330 },
+              scale: { start: 0.8, end: 0 },
+              alpha: { start: 0.95, end: 0 },
+              tint: [0xffd84d, 0xd98cff, 0x9ee8ff],
+              lifespan: 900,
+              quantity: 26,
+              emitting: false
+            }).setDepth(2201).setScrollFactor(0);
+            root.add(burst);
+            burst.explode(26, sw / 2, sh / 2 - 86);
+            this._audio.playEffect("reward01");
+            rewardItems.forEach((item, index) => {
+              const x = sw / 2 - 120 + index * 120;
+              const icon = this.add.image(x, sh / 2 + 45, "GJ_GameSheet03", item.icon)
+                .setScale(0.7).setTint(item.tint).setAlpha(0).setScrollFactor(0);
+              const label = this.add.bitmapText(x, sh / 2 + 95, "goldFont", item.label, 25)
+                .setOrigin(0.5).setTint(item.tint).setAlpha(0).setScrollFactor(0);
+              rewardObjects.push(icon, label);
+              root.add([icon, label]);
+              this.tweens.add({ targets: [icon, label], alpha: 1, scale: 1, duration: 320, delay: index * 90, ease: "Back.Out" });
+            });
+            this.time.delayedCall(650, () => {
+              collect.setVisible(true);
+              collectLabel.setVisible(true);
+            });
+          }
+        });
+      }
     });
   }
   _showDiamondGuard(canEnter, diamonds, required) {
