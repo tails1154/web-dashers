@@ -1,3 +1,33 @@
+if (!window._wdServerFetchInstalled && typeof window.fetch === "function") {
+  const nativeFetch = window.fetch.bind(window);
+  window._wdServerFetchInstalled = true;
+  window._wdServerRequestCount = 0;
+  window.fetch = (input, options) => {
+    const requestUrl = typeof input === "string" ? input : String(input?.url || "");
+    const configuredRoots = [window._gdProxyUrl, window._apiBase, window.PROXY_BASE]
+      .filter(Boolean).map(value => String(value));
+    const isAssetRequest = requestUrl.startsWith("assets/") || requestUrl.includes("/assets/") || requestUrl.startsWith("data:");
+    const isServerRequest = !isAssetRequest && (configuredRoots.some(root => requestUrl.startsWith(root)) ||
+      requestUrl.includes("/cgi-bin/gd/server.py") ||
+      requestUrl.includes("/api/auth/") ||
+      requestUrl.includes("/api/saves") ||
+      requestUrl.includes("gdbrowser.com/api/") ||
+      /^https?:\/\//i.test(requestUrl) ||
+      !requestUrl.startsWith("assets/"));
+    if (!isServerRequest) return nativeFetch(input, options);
+    window._wdServerRequestCount += 1;
+    window.dispatchEvent(new CustomEvent("wd-server-loading", {
+      detail: { pending: window._wdServerRequestCount, url: requestUrl }
+    }));
+    return nativeFetch(input, options).finally(() => {
+      window._wdServerRequestCount = Math.max(0, window._wdServerRequestCount - 1);
+      window.dispatchEvent(new CustomEvent("wd-server-loading", {
+        detail: { pending: window._wdServerRequestCount, url: requestUrl }
+      }));
+    });
+  };
+}
+
 window.AccountAPI = {
   currentUser: null,
   _leaderboardSyncTimer: null,

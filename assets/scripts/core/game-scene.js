@@ -5462,6 +5462,17 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
     this._rightBtn.setRotation(Math.PI);
     window.scene = this.scene;
     window._wdGameScene = this;
+    this._nativeServerRequestCount = Number(window._wdServerRequestCount || 0);
+    this._nativeServerLoadingListener = event => {
+      if (window._wdGameScene !== this) return;
+      this._nativeServerRequestCount = Math.max(0, Number(event.detail?.pending) || 0);
+      this._setNativeLoadingVisible(this._nativeServerRequestCount > 0, "Loading...");
+    };
+    window.addEventListener("wd-server-loading", this._nativeServerLoadingListener);
+    this.events.once("shutdown", () => {
+      window.removeEventListener("wd-server-loading", this._nativeServerLoadingListener);
+      if (window._wdGameScene === this) window._wdGameScene = null;
+    });
     window.rightbuttoncallback = () => {
       if (this._levelSelectOverlay && this._levelSelectSwitchLevel) {
         this._levelSelectSwitchLevel(1);
@@ -10336,7 +10347,7 @@ _buildSettingsPopup() {
     }
   }
   update(_0x54fa47, deltaTime) {
-    this._setNativeLoadingVisible(this.load.isLoading(), "Loading...");
+    this._setNativeLoadingVisible(this.load.isLoading() || this._nativeServerRequestCount > 0, "Loading...");
     this._updateReplayGhost(deltaTime);
     this._updateDeathTimeline();
     this._updateRunTimer(deltaTime);
