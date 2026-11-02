@@ -13261,6 +13261,14 @@ _applyMirrorEffect() {
             localStorage.setItem("wd_gauntlet_claims", JSON.stringify(claimedGauntlets));
             claimLabel.setText("CLAIMED");
             claimButton.setTint(0x666666);
+            claimChest.setTint(0x777777);
+            this._refreshIconCoinHud?.();
+            this._playDailyChestOpening(0, claimChest, {
+              name: "GAUNTLET REWARD",
+              diamonds: Math.max(0, Number(result?.diamonds) || 10),
+              coins: 0,
+              orbs: 0
+            });
           } catch (error) {
             claimButton.setInteractive();
             showNativePhaserDialog(this, { title: "GAUNTLET REWARD", message: error.message || "Could not claim Gauntlet reward" });
@@ -13499,7 +13507,7 @@ _applyMirrorEffect() {
       { icon: "GJ_diamondsIcon_001.png", label: `+${reward.diamonds}`, tint: 0xd98cff },
       { icon: "GJ_coinsIcon_001.png", label: `+${reward.coins}`, tint: 0xffd84d },
       { icon: "currencyOrbIcon_001.png", label: `+${reward.orbs}`, tint: 0x9ee8ff }
-    ];
+    ].filter(item => !item.label.endsWith("+0"));
     const rewardObjects = [];
     const finish = () => {
       if (!root.active) return;
