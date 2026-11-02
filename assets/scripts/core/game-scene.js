@@ -1178,15 +1178,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const demonKeyLabel = this.add.bitmapText(sw - 55, 78, "goldFont", `KEYS: ${this._getDemonKeys()}`, 16)
         .setOrigin(0.5).setScrollFactor(0).setDepth(104).setTint(0x8de8ff);
       this._makeBouncyButton(treasureroom, 1, () => {
-        const keys = this._getDemonKeys();
-        if (keys >= 5) {
-          this._openTreasureRoom();
-        } else {
-          showNativePhaserDialog(this, {
-            title: "KEYMASTER",
-            message: `You need ${5 - keys} more Demon Key${5 - keys === 1 ? "" : "s"} to enter the Treasure Room.`
-          });
-        }
+        const diamonds = Number(window.WDCoinEconomy?.getDiamonds?.() || localStorage.getItem("wd_diamonds") || 0);
+        this._showDiamondGuard(diamonds >= diamondEntryCost, diamonds, diamondEntryCost);
       }, () => true);
       const shopButton = this.add.image(sw - 118, 112, "GJ_GameSheet03", "GJ_diamondsIcon_001.png")
         .setScrollFactor(0).setDepth(104).setScale(0.72).setInteractive();
@@ -1236,8 +1229,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._openTreasureRoom();
         } else {
           showNativePhaserDialog(this, {
-            title: "CHEST ROOM",
-            message: `You need ${5 - keys} more Demon Key${5 - keys === 1 ? "" : "s"} to open the Chest Room.`
+            title: "KEYMASTER",
+            message: `You need ${5 - keys} more Demon Key${5 - keys === 1 ? "" : "s"} to enter the Chest Room.`
           });
         }
       }, () => true);
