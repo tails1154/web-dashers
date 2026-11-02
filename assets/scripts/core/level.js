@@ -3450,7 +3450,7 @@ window.LevelObject = class LevelObject {
       _0x141e9c.normal.visible = _0x488507;
     }
   }
-  updateVisibility(_0xa5f1e1) {
+  updateVisibility(_0xa5f1e1, viewportWidth = screenWidth) {
     this.updateTriggerEditorVisuals();
     if (window.enableLDM || window.noParticles) {
       try {
@@ -3486,15 +3486,18 @@ window.LevelObject = class LevelObject {
     if (!Number.isFinite(cd)) cd = 3;
     cd = Math.max(0, Math.min(3, Math.floor(cd)));
 
+    const visibleWidth = Number.isFinite(Number(viewportWidth)) && Number(viewportWidth) > 0
+      ? Number(viewportWidth)
+      : screenWidth;
     let particleScale, sliderHeight;
     if (cd === 3) {
       particleScale = Math.max(0, Math.floor((_0xa5f1e1 - 200) / 400));
-      sliderHeight = Math.min(_0x1dce22, Math.floor((_0xa5f1e1 + screenWidth + 200) / 400));
+      sliderHeight = Math.min(_0x1dce22, Math.floor((_0xa5f1e1 + visibleWidth + 200) / 400));
     } else if (cd === 0) {
       particleScale = _0x1dce22 + 1;
       sliderHeight = -1;
     } else {
-      const rightEdgeX = _0xa5f1e1 + screenWidth;
+      const rightEdgeX = _0xa5f1e1 + visibleWidth;
       const centerSection = Math.max(0, Math.floor(rightEdgeX / 400));
       const rangeRadius = cd;
       particleScale = Math.max(0, centerSection - rangeRadius);

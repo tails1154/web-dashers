@@ -83,7 +83,8 @@ class LevelEditor {
 
     this._bg.tilePositionX = this._cameraX * 0.1;
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
-    this._level.updateVisibility?.(this._cameraX);
+    const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+    this._level.updateVisibility?.(this._cameraX / zoom, screenWidth / zoom);
     if (Array.isArray(this._level._groundTiles)) {
         this._level.updateGroundTiles?.(this._cameraY);
     }
@@ -757,6 +758,7 @@ class LevelEditor {
     this._level.container.y = -this._cameraY;
 
     this._cameraXRef._v = this._cameraX;
+    this._level.updateVisibility?.(this._cameraX / this._editorZoom, screenWidth / this._editorZoom);
     this._bg.tilePositionX = this._cameraX * 0.1;
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
     this._updateEditorGrid();
@@ -1870,6 +1872,7 @@ class LevelEditor {
     this._level.container.setScale(newZoom);
     this._cameraX = (worldAnchorX * newZoom) - anchorX;
     this._cameraY = (worldAnchorY * newZoom) - anchorY;
+    this._level.updateVisibility?.(this._cameraX / newZoom, screenWidth / newZoom);
     this._updateEditorGrid();
     this._zoomText.setText(`Zoom: ${newZoom.toFixed(2)}x`);
     this._zoomText.setAlpha(1);
