@@ -10884,10 +10884,6 @@ _serializeObject(object) {
     if (!toast?.active || !toast.scene) return;
     this.tweens.killTweensOf(toast);
     toast.setText(String(message || "").slice(0, 180)).setVisible(true).setAlpha(1);
-    this.time.delayedCall(3200, () => {
-      if (!toast.active) return;
-      this.tweens.add({ targets: toast, alpha: 0, duration: 300, onComplete: () => toast.setVisible(false) });
-    });
   }
 
   _updateEditorCollabPresence() {
