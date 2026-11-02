@@ -17,7 +17,10 @@ class TailsConnectClient {
   _status(text) { if (this.onStatus) this.onStatus(text); }
 
   connect(mode = "matchmake", room = "", game = "WebDashersVersus") {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      if (this.game === game) return;
+      this.close();
+    }
     if (this.socket && this.socket.readyState === WebSocket.CONNECTING) {
       this.socket.close();
       this.socket = null;
