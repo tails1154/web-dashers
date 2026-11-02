@@ -1155,7 +1155,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         "GJ_featuredBtn_001.png",
         "GJ_listsBtn_001.png",
         "GJ_pathsBtn_001.png",
-        "GJ_mapPacksBtn_001.png",
         "GJ_searchBtn_001.png",
       ];
 
@@ -1189,7 +1188,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const isEventButton = frame === "GJ_eventBtn_001.png";
         const isGauntletButton = frame === "GJ_gauntletsBtn_001.png";
         const isListsButton = frame === "GJ_listsBtn_001.png";
-        const isMapPacksButton = frame === "GJ_mapPacksBtn_001.png";
         if (isPathsButton) {
           btn.setInteractive();
           this._makeBouncyButton(btn, btnScale, () => {
@@ -1327,12 +1325,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._makeBouncyButton(btn, btnScale, () => {
             this._closeCreatorMenu(true);
             this._openListsMenu();
-          }, () => true);
-        } else if (isMapPacksButton) {
-          btn.setInteractive();
-          this._makeBouncyButton(btn, btnScale, () => {
-            this._closeCreatorMenu(true);
-            this._openMapPacksMenu();
           }, () => true);
         } else {
           btn.postFX.addColorMatrix().grayscale(1);
