@@ -10814,6 +10814,7 @@ _serializeObject(object) {
       this._editorCollabStatus = text;
       const statusText = this._editorCollabStatusText;
       if (statusText?.active && statusText.scene) statusText.setText(text).setVisible(true).setAlpha(1);
+      this._showEditorCollabToast(text);
     };
     client.onMessage = data => this._handleEditorCollabMessage(data);
   }
@@ -10873,7 +10874,7 @@ _serializeObject(object) {
 
   _showEditorCollabToast(message) {
     const toast = this._editorCollabStatusText;
-    if (!toast) return;
+    if (!toast?.active || !toast.scene) return;
     this.tweens.killTweensOf(toast);
     toast.setText(String(message || "").slice(0, 180)).setVisible(true).setAlpha(1);
     this.time.delayedCall(3200, () => {
@@ -10995,6 +10996,7 @@ _serializeObject(object) {
     this._editorCollabStatus = mode === "host" ? "Creating live edit room..." : "Joining live edit room...";
     const statusText = this._editorCollabStatusText;
     if (statusText?.active && statusText.scene) statusText.setText(this._editorCollabStatus).setVisible(true).setAlpha(1);
+    this._showEditorCollabToast(this._editorCollabStatus);
   }
 
   _applyEditorCollabOperation(data) {
