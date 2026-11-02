@@ -1765,15 +1765,36 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const popupBlocker = this.add.zone(centerX, sh / 2, sw, sh)
           .setScrollFactor(0).setDepth(799).setInteractive();
         const popup = this.add.container(centerX, sh / 2).setScrollFactor(0).setDepth(800);
-        const bg = this.add.rectangle(0, 0, Math.min(650, sw - 50), 300, 0x171717, 0.98).setStrokeStyle(4, 0xffd84d, 1);
-        const heading = this.add.bitmapText(0, -115, "bigFont", "Level Description", 34).setOrigin(0.5).setTint(0xffd84d);
+        const bg = this.add.rectangle(0, 0, Math.min(650, sw - 50), 350, 0x171717, 0.98).setStrokeStyle(4, 0xffd84d, 1);
+        const heading = this.add.bitmapText(0, -140, "bigFont", "Level Description", 34).setOrigin(0.5).setTint(0xffd84d);
         const description = String(lvl.description || "No description").replace(/\s+/g, " ").trim();
-        const body = this.add.text(0, -35, `ID: ${String(lvl.id || "Unknown")}\n\n${description}`, {
+        const body = this.add.text(0, -48, `ID: ${String(lvl.id || "Unknown")}\n\n${description}`, {
           fontFamily: "Arial", fontSize: "22px", color: "#ffffff", align: "center",
           wordWrap: { width: Math.min(570, sw - 110) }, lineSpacing: 6
         }).setOrigin(0.5);
-        const close = this.add.bitmapText(0, 105, "goldFont", "CLOSE", 28).setOrigin(0.5).setInteractive();
-        popup.add([bg, heading, body, close]);
+        const reportButton = this.add.image(-105, 137, "GJ_GameSheet03", "GJ_longBtn06_001.png")
+          .setScale(0.72).setInteractive();
+        const reportLabel = this.add.bitmapText(-105, 137, "bigFont", "REPORT", 18).setOrigin(0.5);
+        const close = this.add.bitmapText(110, 137, "goldFont", "CLOSE", 28).setOrigin(0.5).setInteractive();
+        popup.add([bg, heading, body, reportButton, reportLabel, close]);
+        this._makeBouncyButton(reportButton, 0.72, () => {
+          showNativePhaserDialog(this, {
+            title: "REPORT LEVEL",
+            message: "Tell the moderators why this level should be reviewed.",
+            input: true,
+            placeholder: "Reason for report",
+            confirmLabel: "REPORT",
+            cancelLabel: "CANCEL",
+            onConfirm: async reason => {
+              try {
+                await window.AccountAPI.reportLevel(lvl.id, reason);
+                showNativePhaserDialog(this, { title: "REPORT SENT", message: "Thanks. Moderators can now review this level." });
+              } catch (errorValue) {
+                showNativePhaserDialog(this, { title: "REPORT FAILED", message: errorValue.message || "Could not report this level." });
+              }
+            }
+          });
+        });
         this._makeBouncyButton(close, 1, () => {
           popupBlocker.destroy();
           popup.destroy(true);

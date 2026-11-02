@@ -632,6 +632,17 @@ window.AccountAPI = {
     return data;
   },
 
+  async reportLevel(id, reason) {
+    if (!this.currentUser && !(await this.checkSession())) throw new Error('Sign in to report levels');
+    const res = await fetch(`${window._gdProxyUrl}?action=report_level`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, reason: String(reason || '').trim().slice(0, 500) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not report level');
+    return data;
+  },
+
   async ratePrompt(levelId, currentRating = 0) {
     if (!this.currentUser && !(await this.checkSession())) throw new Error('Sign in to rate levels');
     return new Promise(resolve => {
