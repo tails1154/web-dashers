@@ -159,6 +159,13 @@ window.allLevels = [
 	    ["RobTop", "Dex Arson"],
 	    "Machina"
 	],
+	[
+	    "press_start",
+	    "Press Start",
+	    "level_27",
+	    ["tails1154", "MDK"],
+	    "PressStart"
+	],
 	/*
     [
         "every_end",

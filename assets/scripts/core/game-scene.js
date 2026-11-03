@@ -6050,6 +6050,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         "level_23":        "diffIcon_04_btn_001",
       "level_24":        "diffIcon_03_btn_001",
         "level_26":        "diffIcon_04_btn_001",
+        "level_27":        "diffIcon_04_btn_001",
         "level_99":        "diffIcon_10_btn_001",
         "level_100":       "diffIcon_10_btn_001",
         "level_137409445": "diffIcon_00_btn_001",
