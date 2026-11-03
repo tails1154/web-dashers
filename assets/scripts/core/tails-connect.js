@@ -12,6 +12,7 @@ class TailsConnectClient {
     this.requestCounter = 0;
     this.pendingAcks = new Map();
     this.clientId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    this._intentionalClose = false;
   }
 
   _status(text) { if (this.onStatus) this.onStatus(text); }
@@ -41,6 +42,7 @@ class TailsConnectClient {
     this._status("Connecting to TailsConnect...");
     this.protocol = game === "webdashers-editor" ? "tc3" : "legacy";
     this.game = game;
+    this._intentionalClose = false;
     this.socket = new WebSocket("wss://tails1154.com:9842");
     const connectingSocket = this.socket;
     const connectTimeout = setTimeout(() => {
@@ -134,7 +136,11 @@ class TailsConnectClient {
     this.socket.onerror = () => this._reportFailure("WebSocket connection failed");
     this.socket.onclose = () => {
       this._stopHeartbeat();
-      this._status("Opponent disconnected");
+      if (this.socket !== connectingSocket) return;
+      if (!this._intentionalClose && this.protocol === "tc3") {
+        this.onMessage?.({ type: "tc3-peer-leave", reason: "connection_closed" });
+      }
+      this._status(this.protocol === "tc3" ? "Editor collaborator disconnected" : "Opponent disconnected");
     };
   }
 
@@ -176,6 +182,7 @@ class TailsConnectClient {
   }
 
   close() {
+    this._intentionalClose = true;
     this._stopHeartbeat();
     if (this.protocol === "tc3" && this.socket?.readyState === WebSocket.OPEN) this.socket.send("TC3 LEAVE");
     if (this.socket) this.socket.close();

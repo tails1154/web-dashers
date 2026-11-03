@@ -10848,7 +10848,11 @@ _serializeObject(object) {
       return;
     }
     if (data.type === "tc3-peer-leave") {
-      if (data.peerId) this._editorCollabPeers.delete(String(data.peerId));
+      const message = data.reason === "host_stopped"
+        ? "Collaboration ended by the host."
+        : "Collaboration ended: collaborator disconnected.";
+      this._closeEditorCollab();
+      this._showEditorCollabToast(message);
       return;
     }
     if (data.type === "editor-state") {
@@ -10930,6 +10934,8 @@ _serializeObject(object) {
   _drawEditorCollabPeers() {
     const graphics = this._editorCollabRemoteGraphics;
     if (!graphics) return;
+    if (!(this._editorCollabPeers instanceof Map)) this._editorCollabPeers = new Map();
+    if (!(this._editorCollabRemoteLabels instanceof Map)) this._editorCollabRemoteLabels = new Map();
     const now = Date.now();
     graphics.clear();
     const activePeerIds = new Set();
@@ -11121,7 +11127,7 @@ _serializeObject(object) {
         sentOperation = true;
       });
       this._editorCollabSnapshot = JSON.parse(JSON.stringify(current));
-      if (requiresFullState && !sentOperation) {
+      if (requiresFullState) {
         sendFullState();
       }
     };
@@ -11132,7 +11138,6 @@ _serializeObject(object) {
   _applyEditorCollabState(data) {
     if (!data?.levelString || this._editorCollabApplying) return;
     const currentId = String(window.currentlevel?.[2] || "");
-    if (data.levelId && currentId && String(data.levelId) !== currentId) return;
     this._editorCollabApplying = true;
     window._onlineLevelString = String(data.levelString);
     window._onlineLevelId = currentId;
