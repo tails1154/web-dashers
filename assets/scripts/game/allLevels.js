@@ -108,12 +108,6 @@ window.allLevels = [
 	    ["RobTop", "DJ-Nate"] 
     ],
     [
-        "geometrical_dominator",
-	    "Geometrical Dominator",
-	    "level_19",
-	    ["RobTop", "Waterflame"] 
-    ],
-    [
         "deadlocked",
 	    "Deadlocked",
 	    "level_20",
