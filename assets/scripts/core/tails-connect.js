@@ -16,6 +16,15 @@ class TailsConnectClient {
 
   _status(text) { if (this.onStatus) this.onStatus(text); }
 
+  _reportFailure(message) {
+    const error = new Error(`TailsConnect: ${String(message || "Unknown connection failure")}`);
+    if (typeof window.reportWebDashersCrash === "function") {
+      window.reportWebDashersCrash("tailsconnect", error);
+      return;
+    }
+    this._status("Connection failure reported");
+  }
+
   connect(mode = "matchmake", room = "", game = "WebDashersVersus") {
     const requestedRoom = String(room || "").trim().toUpperCase();
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -88,8 +97,12 @@ class TailsConnectClient {
         } else if (command === "DATA") {
           this.onMessage?.(data);
         } else if (command === "ERROR") {
-          this._status(data.message || "TailsConnect error");
+          this._reportFailure(data.message || "Unknown TailsConnect error");
         }
+        return;
+      }
+      if (message.startsWith("ERROR ")) {
+        this._reportFailure(message.slice(6).trim() || "Unknown TailsConnect error");
         return;
       }
       if (message === "P2P") {
@@ -118,7 +131,7 @@ class TailsConnectClient {
         this.onMessage?.(payload);
       } catch (_) { /* non-game relay data */ }
     };
-    this.socket.onerror = () => this._status("TailsConnect connection failed");
+    this.socket.onerror = () => this._reportFailure("WebSocket connection failed");
     this.socket.onclose = () => {
       this._stopHeartbeat();
       this._status("Opponent disconnected");

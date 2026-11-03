@@ -531,6 +531,7 @@ function installWebDashersCrashReporting() {
     window._wdLastCrashReport = payload;
     if (window._wdGameScene?._showCrashScreen) window._wdGameScene._showCrashScreen(payload);
   };
+  window.reportWebDashersCrash = report;
   window.addEventListener("error", event => {
     if (event.error || event.message) report("error", event.error || event.message);
   });
