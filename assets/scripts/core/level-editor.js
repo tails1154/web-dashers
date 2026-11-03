@@ -11137,10 +11137,20 @@ _serializeObject(object) {
 
   _applyEditorCollabState(data) {
     if (!data?.levelString || this._editorCollabApplying) return;
-    const currentId = String(window.currentlevel?.[2] || "");
+    const currentId = String(window.currentlevel?.[2] || window._onlineLevelId || "");
+    if (!currentId) return;
     this._editorCollabApplying = true;
     window._onlineLevelString = String(data.levelString);
     window._onlineLevelId = currentId;
+    if (!Array.isArray(window.currentlevel)) window.currentlevel = ["Placeholder", "Collaboration", currentId, ["Local", "SongAuthor"]];
+    window.currentlevel[2] = currentId;
+    this._editorCollabSnapshot = null;
+    try {
+      this.cache.text.entries.set(currentId, window._onlineLevelString);
+      this.cache.text.add(currentId, window._onlineLevelString);
+    } catch (error) {
+      console.warn("Could not cache collaborative editor state in Phaser", error);
+    }
     try {
       const createdLevels = JSON.parse(localStorage.getItem("created_levels") || "[]");
       const record = createdLevels.find(level => String(level?.createdId) === currentId);
