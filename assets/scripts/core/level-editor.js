@@ -1153,6 +1153,7 @@ class LevelEditor {
     }
     this._refreshEditorCollisionCaches();
     this._applyEditorLayerFilter?.();
+    if (Number.isInteger(saveObj._eeObjectId)) this._broadcastEditorObjectSync("upsert", [saveObj._eeObjectId]);
   }
 
 
@@ -2730,7 +2731,7 @@ class LevelEditor {
     sortTriggers(this._level?._spawnTriggers);
 
     this._refreshEditorCollisionCaches();
-    this._broadcastEditorState();
+    this._broadcastEditorObjectSync("upsert", selectedObjectIds);
   }
 
 
@@ -2783,7 +2784,7 @@ class LevelEditor {
     }
 
     this._refreshEditorCollisionCaches();
-    this._broadcastEditorState();
+    this._broadcastEditorObjectSync("upsert", selectedObjectIds);
   }
 
 
@@ -2837,6 +2838,7 @@ class LevelEditor {
     }
 
     this._refreshEditorCollisionCaches();
+    this._broadcastEditorObjectSync("upsert", selectedObjectIds);
   }
 
 
@@ -3460,7 +3462,7 @@ class LevelEditor {
     this._applyEditorLayerFilter?.();
     this._buildObjectGrid();
     this._updateEditorActionButtons();
-    this._broadcastEditorState();
+    this._broadcastEditorObjectSync("delete", selectedObjectIds);
   }
 
 
@@ -3870,7 +3872,7 @@ class LevelEditor {
     this._refreshEditorLayerSelectorVisual?.();
     this._applyEditorLayerFilter?.();
     this._refreshEditorPlaytestGlowVisibility?.();
-    this._broadcastEditorState();
+    this._broadcastEditorObjectSync("upsert", [placedIndex]);
   }
 
 
@@ -4002,6 +4004,7 @@ class LevelEditor {
     this._refreshEditorCollisionCaches();
     window.editorSelectedObject = -1;
     this._updateEditorActionButtons();
+    this._broadcastEditorObjectSync("delete", [foundObjectIndex]);
   }
 
 
@@ -10863,6 +10866,10 @@ _serializeObject(object) {
       this._applyEditorCollabOperation(data);
       return;
     }
+    if (data.type === "editor-object-sync") {
+      this._applyEditorCollabObjectSync(data);
+      return;
+    }
     if (data.type === "editor-presence") {
       const peerId = String(data.from || data.peerId || "remote");
       if (!(this._editorCollabPeers instanceof Map)) this._editorCollabPeers = new Map();
@@ -11040,6 +11047,88 @@ _serializeObject(object) {
       this._editorCollabApplying = false;
       if (selectedBefore.length) this._selectEditorObjectsByIds(selectedBefore, 0x00ff00);
       else this._clearEditorSelection();
+    }
+  }
+
+  _broadcastEditorObjectSync(action, objectIds = []) {
+    const client = this._editorCollabClient || window._tailsConnectClient;
+    if (this._editorCollabApplying || !client || client.protocol !== "tc3") return;
+    const ids = Array.isArray(objectIds) ? objectIds : [objectIds];
+    const changes = ids.map(objectId => {
+      const parsedId = Number(objectId);
+      const saveIndex = this._getEditorSaveIndexForObjectId(parsedId);
+      const saveObject = saveIndex === -1 ? null : window.levelObjects?.[saveIndex];
+      return {
+        objectId: Number.isInteger(parsedId) ? parsedId : -1,
+        saveIndex,
+        object: saveObject ? JSON.parse(JSON.stringify(saveObject)) : null
+      };
+    }).filter(change => change.saveIndex !== -1 || action === "delete");
+    if (!changes.length) return;
+    client.send({
+      type: "editor-object-sync",
+      from: client.clientId,
+      action,
+      changes
+    });
+  }
+
+  _applyEditorCollabObjectSync(data) {
+    if (this._editorCollabApplying || !Array.isArray(data?.changes)) return;
+    this._editorCollabApplying = true;
+    try {
+      for (const change of data.changes) {
+        const saveIndex = Number(change.saveIndex);
+        if (!Number.isInteger(saveIndex) || saveIndex < 0) continue;
+        const current = window.levelObjects?.[saveIndex] || null;
+        if (data.action === "delete" || !change.object) {
+          const localObjectId = Number.isInteger(current?._eeObjectId) ? current._eeObjectId : -1;
+          if (localObjectId >= 0) {
+            this._selectEditorObjectsByIds([localObjectId], 0x00ff00);
+            this._deleteSelectedObject();
+          } else if (Array.isArray(window.levelObjects)) {
+            window.levelObjects[saveIndex] = null;
+          }
+          continue;
+        }
+
+        const incoming = change.object;
+        if (!current) {
+          while (window.levelObjects.length < saveIndex) window.levelObjects.push(null);
+          window.levelObjects[saveIndex] = incoming;
+          this._level._spawnObject(incoming);
+          continue;
+        }
+
+        const localObjectId = Number.isInteger(current._eeObjectId) ? current._eeObjectId : -1;
+        if (localObjectId < 0 || String(current.id) !== String(incoming.id)) {
+          window.levelObjects[saveIndex] = incoming;
+          this.scene.restart();
+          return;
+        }
+        this._selectEditorObjectsByIds([localObjectId], 0x00ff00);
+        const dx = (Number(incoming.x) - Number(current.x)) * 2;
+        const dy = (Number(current.y) - Number(incoming.y)) * 2;
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) this._moveObject(dx, dy);
+        const rotationDelta = (Number(incoming.rot) || 0) - (Number(current.rot) || 0);
+        if (Math.abs(rotationDelta) > 0.001) this._rotateObject(rotationDelta);
+        if (!!incoming.flipX !== !!current.flipX) this._flipObject("x");
+        if (!!incoming.flipY !== !!current.flipY) this._flipObject("y");
+        if (Number(incoming.scale || 1) !== Number(current.scale || 1)) {
+          this._setEditorObjectScale(current, Number(incoming.scale) || 1);
+        }
+        Object.keys(incoming).forEach(key => {
+          if (!["x", "y", "rot", "flipX", "flipY", "scale", "_eeObjectId"].includes(key)) current[key] = incoming[key];
+        });
+        current._raw = incoming._raw || current._raw;
+        this._syncEditorCollidersForObjectId(localObjectId, current);
+      }
+      this._refreshEditorCollisionCaches();
+      this._applyEditorLayerFilter?.();
+      this._buildObjectGrid();
+    } finally {
+      this._editorCollabApplying = false;
+      this._clearEditorSelection();
     }
   }
 
