@@ -2595,7 +2595,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                     song: "Stereo Madness",
                     songId: -1,
                     levelId: null,
-                    levelString: "",
+                    levelString: "H4sIAAAAAAAACq1QwRHDMAhbyO0hwIlzfWWGDsAAXaHD10Z-9Ff3Ln4gG4GMeD2tFYRLaEBrWGitARCUwKTHDbEFRCT2wF3yBOrXvYVEC7wRKSi6JoirBY8FwdHB9iVJjZ5ckP1rlf19taIv7pLGh-wP43XROPq9z9mOtX1uS7LldcKKzPx41ZKwEbz0yPueUSfPF9qApx3kMlrGJE7PSBbCIlYpy5QVuheMciE0AgiaoFRUihk5I2ec0Knp1PTK9slxYDM2OIFmjL8bv-1mBmB6YrvO4UErHR4fJXMaP9sDAAA=",
                     levelLength: 0,
                     normalBest: 0,
                     practiceBest: 0,
@@ -10497,38 +10497,41 @@ _buildSettingsPopup() {
 
         if (window.isEditorPause) return;
         const pointer = this.input.activePointer;
+        const editorState = this._levelEditor;
+        if (!editorState) return;
         this._hitObjects = this.input.hitTestPointer(pointer);
-        this._levelEditor._handleEditorCamera(deltaTime); 
-        this._levelEditor._updateEditorGrid(); 
-        if (pointer.isDown && !this._isDraggingSlider) {
-            if (this._isSwipeEnabled) {
-              if (this._editorTab !== "edit") {
+        editorState._handleEditorCamera(deltaTime);
+        editorState._updateEditorGrid();
+        if (pointer.isDown && !editorState._isDraggingSlider) {
+            if (editorState._isSwipeEnabled) {
+              if (editorState._editorTab !== "edit") {
                 if (this._hitObjects.length !== 0) return;
                 const currentGridX = Math.floor((pointer.x + this._cameraX) / 60) * 60;
                 const currentGridY = Math.floor((pointer.y + this._cameraY + 20) / 60) * 60;
 
-                if (currentGridX !== this._lastSwipeGridX || currentGridY !== this._lastSwipeGridY) {
-                    this._levelEditor._editorAction();
-                    this._lastSwipeGridX = currentGridX;
-                    this._lastSwipeGridY = currentGridY;
+                if (currentGridX !== editorState._lastSwipeGridX || currentGridY !== editorState._lastSwipeGridY) {
+                    editorState._editorAction();
+                    editorState._lastSwipeGridX = currentGridX;
+                    editorState._lastSwipeGridY = currentGridY;
                 }
               }
             } else {
-                if (!this._isDragging && this._hitObjects.length !== 0) return;
-                const dragX = pointer.x - this._clickStartPos.x;
-                const dragY = pointer.y - this._clickStartPos.y;
+                if (!editorState._isDragging && this._hitObjects.length !== 0) return;
+                const clickStart = editorState._clickStartPos || { x: pointer.x, y: pointer.y };
+                const dragX = pointer.x - clickStart.x;
+                const dragY = pointer.y - clickStart.y;
                 const dragDistance = Math.sqrt(dragX * dragX + dragY * dragY);
                 if (dragDistance > 10) {
-                    this._isDragging = true;
-                    this._cameraX = this._cameraStartX - dragX;
-                    this._cameraY = this._cameraStartY - dragY;
+                    editorState._isDragging = true;
+                    this._cameraX = (editorState._cameraStartX ?? this._cameraX) - dragX;
+                    this._cameraY = (editorState._cameraStartY ?? this._cameraY) - dragY;
                 }
             }
         }
-        this._levelEditor._updateEditorTimeline();
+        editorState._updateEditorTimeline();
         if (this._editorPlaytestActive && this._editorPlaytestPaused) {
-            this._levelEditor._refreshEditorPlaytestGlowVisibility();
-            this._levelEditor._syncEditorPlaytestPlayerVisual(deltaTime / 1000);
+            editorState._refreshEditorPlaytestGlowVisibility();
+            editorState._syncEditorPlaytestPlayerVisual(deltaTime / 1000);
         }
         return;
     }
