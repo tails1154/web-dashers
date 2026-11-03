@@ -85,7 +85,6 @@ class LevelEditor {
     this._bg.tilePositionY = this._bgInitY + this._cameraY * 0.1;
     const zoom = Math.max(0.1, Number(this._editorZoom || 1));
     this._level.updateVisibility?.(this._cameraX / zoom, screenWidth / zoom);
-    this._updateEditorCollabPresence?.();
     if (Array.isArray(this._level._groundTiles)) {
         this._level.updateGroundTiles?.(this._cameraY);
     }
@@ -124,24 +123,6 @@ class LevelEditor {
     this._editorPlaytestSavedView = null;
     this._editorPlaytestPauseView = null;
     this._editorPlaytestLastTrailPoint = null;
-    this._editorCollabClient = null;
-    this._editorCollabBroadcastTimer = null;
-    this._editorCollabApplying = false;
-    this._editorCollabPeers = new Map();
-    this._editorCollabChat = [];
-    this._editorCollabLastPresenceAt = 0;
-    this._editorCollabSnapshot = null;
-    this._editorCollabRemoteLabels = new Map();
-    this._editorCollabChatButtonGroup = null;
-    this._editorCollabEndButtonGroup = null;
-    this._editorCollabRemoteGraphics = this.add.graphics().setScrollFactor(0).setDepth(1998);
-    this._editorCollabStatusText = this.add.bitmapText(screenWidth - 16, 16, "bigFont", "", 16)
-        .setOrigin(1, 0).setScrollFactor(0).setDepth(2001).setTint(0xbfeeff).setVisible(false);
-    const activeEditorClient = window._tailsConnectClient;
-    if (activeEditorClient?.protocol === "tc3" && activeEditorClient.socket?.readyState === WebSocket.OPEN) {
-        this._attachEditorCollabClient(activeEditorClient);
-        this._editorCollabSnapshot = JSON.parse(JSON.stringify(window.levelObjects || []));
-    }
     this._editorAutosaveSeconds = 60;
     if (this._editorAutosaveNotice?.destroy) this._editorAutosaveNotice.destroy();
     this._editorAutosaveNotice = this.add.bitmapText(
@@ -1153,7 +1134,6 @@ class LevelEditor {
     }
     this._refreshEditorCollisionCaches();
     this._applyEditorLayerFilter?.();
-    if (Number.isInteger(saveObj._eeObjectId)) this._broadcastEditorObjectSync("upsert", [saveObj._eeObjectId]);
   }
 
 
@@ -2731,7 +2711,6 @@ class LevelEditor {
     sortTriggers(this._level?._spawnTriggers);
 
     this._refreshEditorCollisionCaches();
-    this._broadcastEditorObjectSync("upsert", selectedObjectIds);
   }
 
 
@@ -2784,7 +2763,6 @@ class LevelEditor {
     }
 
     this._refreshEditorCollisionCaches();
-    this._broadcastEditorObjectSync("upsert", selectedObjectIds);
   }
 
 
@@ -2838,7 +2816,6 @@ class LevelEditor {
     }
 
     this._refreshEditorCollisionCaches();
-    this._broadcastEditorObjectSync("upsert", selectedObjectIds);
   }
 
 
@@ -3462,7 +3439,6 @@ class LevelEditor {
     this._applyEditorLayerFilter?.();
     this._buildObjectGrid();
     this._updateEditorActionButtons();
-    this._broadcastEditorObjectSync("delete", selectedObjectIds);
   }
 
 
@@ -3872,7 +3848,6 @@ class LevelEditor {
     this._refreshEditorLayerSelectorVisual?.();
     this._applyEditorLayerFilter?.();
     this._refreshEditorPlaytestGlowVisibility?.();
-    this._broadcastEditorObjectSync("upsert", [placedIndex]);
   }
 
 
@@ -4004,7 +3979,6 @@ class LevelEditor {
     this._refreshEditorCollisionCaches();
     window.editorSelectedObject = -1;
     this._updateEditorActionButtons();
-    this._broadcastEditorObjectSync("delete", [foundObjectIndex]);
   }
 
 
@@ -10481,7 +10455,6 @@ class LevelEditor {
           this._refreshEditorLayerSelectorVisual?.();
           this._applyEditorLayerFilter?.();
           this._buildObjectGrid?.();
-          this._broadcastEditorState?.();
           window.showNativePhaserDialog(this, { title: "COIN GENERATED", message: "The generated coin was placed in the current editor view." });
         } catch (error) {
           window.showNativePhaserDialog(this, {
@@ -10504,7 +10477,6 @@ class LevelEditor {
     const returnToLevelView = async (showLoading = false) => {
         this._showEditorPauseMenu(false);
         this._stopEditorPlaytest?.();
-        this._closeEditorCollab?.();
 
         const levelId = window.currentlevel?.[2] || window._onlineLevelId;
         if (levelId) {
@@ -10548,9 +10520,6 @@ class LevelEditor {
             } 
         },
         { text: "Save", cb: () => this._saveEditorLevel() },
-        { text: "Collaborate", cb: () => this._openEditorCollabDialog() },
-        { text: "Chat", cb: () => this._openEditorCollabChat() },
-        { text: "End Collab", cb: () => this._closeEditorCollab() },
         { text: "Exit", cb: () => { returnToLevelView(false); } }
     ];
 
@@ -10562,15 +10531,6 @@ class LevelEditor {
         const label = this.add.bitmapText(x, y - 2, "goldFont", data.text, 40).setOrigin(0.5, 0.5).setScale(0.8);
 
         this._editorMenuContainer.add([btnImg, label]);
-        if (data.text === "Chat") {
-            this._editorCollabChatButtonGroup = { button: btnImg, label };
-            this._setEditorCollabChatAvailable(!!this._editorCollabClient);
-        }
-        if (data.text === "End Collab") {
-            this._editorCollabEndButtonGroup = { button: btnImg, label };
-            this._setEditorCollabEndAvailable(!!this._editorCollabClient);
-        }
-
         this._makeCompositeBouncyButton(btnImg, [btnImg, label], 0.75, () => {
             data.cb();
         }, () => true);
@@ -10831,436 +10791,6 @@ _serializeObject(object) {
   return parts.join(",");
   }
 
-  _attachEditorCollabClient(client) {
-    this._editorCollabClient = client;
-    this._setEditorCollabChatAvailable(true);
-    this._setEditorCollabEndAvailable(true);
-    client.onStatus = text => {
-      this._editorCollabStatus = text;
-      const statusText = this._editorCollabStatusText;
-      if (statusText?.active && statusText.scene) statusText.setText(text).setVisible(true).setAlpha(1);
-      this._showEditorCollabToast(text);
-    };
-    client.onMessage = data => this._handleEditorCollabMessage(data);
-  }
-
-  _handleEditorCollabMessage(data) {
-    if (!data) return;
-    if (data.type === "tc3-peer-join") {
-      if (this._editorCollabClient?.role === "host") this._broadcastEditorState(true);
-      return;
-    }
-    if (data.type === "tc3-peer-leave") {
-      const message = data.reason === "host_stopped"
-        ? "Collaboration ended by the host."
-        : "Collaboration ended: collaborator disconnected.";
-      this._closeEditorCollab();
-      this._showEditorCollabToast(message);
-      return;
-    }
-    if (data.type === "editor-state") {
-      this._applyEditorCollabState(data);
-      return;
-    }
-    if (data.type === "editor-object-operation") {
-      this._applyEditorCollabOperation(data);
-      return;
-    }
-    if (data.type === "editor-object-sync") {
-      this._applyEditorCollabObjectSync(data);
-      return;
-    }
-    if (data.type === "editor-presence") {
-      const peerId = String(data.from || data.peerId || "remote");
-      if (!(this._editorCollabPeers instanceof Map)) this._editorCollabPeers = new Map();
-      this._editorCollabPeers.set(peerId, { ...data, lastSeen: Date.now() });
-      return;
-    }
-    if (data.type === "editor-chat") {
-      const name = String(data.name || "Collaborator").slice(0, 24);
-      const text = String(data.text || "").trim().slice(0, 240);
-      if (!text) return;
-      if (!Array.isArray(this._editorCollabChat)) this._editorCollabChat = [];
-      this._editorCollabChat.push({ name, text, at: Date.now() });
-      this._editorCollabChat = this._editorCollabChat.slice(-30);
-      this._showEditorCollabToast(`${name}: ${text}`);
-    }
-  }
-
-  _setEditorCollabChatAvailable(available) {
-    const group = this._editorCollabChatButtonGroup;
-    if (!group?.button?.scene || !group?.label?.scene) return;
-    group.button.setVisible(!!available).setActive(!!available);
-    group.label.setVisible(!!available).setActive(!!available);
-    if (available) group.button.setInteractive();
-    else group.button.disableInteractive();
-  }
-
-  _setEditorCollabEndAvailable(available) {
-    const group = this._editorCollabEndButtonGroup;
-    if (!group?.button?.scene || !group?.label?.scene) return;
-    group.button.setVisible(!!available).setActive(!!available);
-    group.label.setVisible(!!available).setActive(!!available);
-    if (available) group.button.setInteractive();
-    else group.button.disableInteractive();
-  }
-
-  _showEditorCollabToast(message) {
-    const toast = this._editorCollabStatusText;
-    if (!toast?.active || !toast.scene) return;
-    this.tweens.killTweensOf(toast);
-    toast.setText(String(message || "").slice(0, 180)).setVisible(true).setAlpha(1);
-  }
-
-  _updateEditorCollabPresence() {
-    const client = this._editorCollabClient;
-    if (!client || client.protocol !== "tc3" || client.socket?.readyState !== WebSocket.OPEN) return;
-    const now = Date.now();
-    if (now - this._editorCollabLastPresenceAt < 100) return;
-    this._editorCollabLastPresenceAt = now;
-    const pointer = this.input.activePointer;
-    const zoom = Math.max(0.1, Number(this._editorZoom || 1));
-    const worldX = (Number(pointer?.x || 0) + Number(this._cameraX || 0)) / zoom;
-    const worldY = (Number(pointer?.y || 0) + Number(this._cameraY || 0)) / zoom;
-    const selectedId = this._getCurrentSelectedEditorObjectIds?.()[0] ?? window.editorSelectedObject;
-    const selected = Number.isInteger(selectedId) ? this._getEditorSaveObjectForObjectId(selectedId) : null;
-    client.send({
-      type: "editor-presence",
-      from: client.clientId,
-      name: String(window.AccountAPI?.currentUser?.username || localStorage.getItem("playerName") || "Builder").slice(0, 24),
-      x: worldX,
-      y: worldY,
-      selectedBlock: Number(window.selectedObjId || 0),
-      selectedObjectId: Number.isInteger(selectedId) ? selectedId : -1,
-      selectedX: selected ? Number(selected.x || 0) * 2 : null,
-      selectedY: selected ? (typeof b === "function" ? b(Number(selected.y || 0) * 2) : Number(selected.y || 0) * 2) : null
-    });
-    this._drawEditorCollabPeers();
-  }
-
-  _drawEditorCollabPeers() {
-    const graphics = this._editorCollabRemoteGraphics;
-    if (!graphics) return;
-    if (!(this._editorCollabPeers instanceof Map)) this._editorCollabPeers = new Map();
-    if (!(this._editorCollabRemoteLabels instanceof Map)) this._editorCollabRemoteLabels = new Map();
-    const now = Date.now();
-    graphics.clear();
-    const activePeerIds = new Set();
-    for (const [peerId, peer] of this._editorCollabPeers) {
-      if (now - Number(peer.lastSeen || 0) > 5000) {
-        this._editorCollabPeers.delete(peerId);
-        this._editorCollabRemoteLabels.get(peerId)?.destroy();
-        this._editorCollabRemoteLabels.delete(peerId);
-        continue;
-      }
-      activePeerIds.add(peerId);
-      const zoom = Math.max(0.1, Number(this._editorZoom || 1));
-      const x = Number(peer.x || 0) * zoom - Number(this._cameraX || 0);
-      const y = Number(peer.y || 0) * zoom - Number(this._cameraY || 0);
-      const color = 0xff8cff;
-      graphics.lineStyle(3, color, 0.95);
-      graphics.strokeTriangle(x, y - 12, x + 9, y + 9, x - 9, y + 9);
-      graphics.fillStyle(color, 0.22).fillCircle(x, y, 18);
-      if (Number.isFinite(Number(peer.selectedX)) && Number.isFinite(Number(peer.selectedY))) {
-        const selectedX = Number(peer.selectedX) * zoom - Number(this._cameraX || 0);
-        const selectedY = Number(peer.selectedY) * zoom - Number(this._cameraY || 0);
-        graphics.lineStyle(2, color, 0.8).strokeRect(selectedX - 24, selectedY - 24, 48, 48);
-      }
-      let label = this._editorCollabRemoteLabels.get(peerId);
-      if (!label || !label.active) {
-        label = this.add.bitmapText(0, 0, "bigFont", "", 14).setOrigin(0, 1).setScrollFactor(0).setDepth(1999).setTint(color);
-        this._editorCollabRemoteLabels.set(peerId, label);
-      }
-      label.setPosition(x + 12, y - 12).setText(`${String(peer.name || "Builder").slice(0, 18)} • block ${Number(peer.selectedBlock || 0)}`);
-    }
-    for (const [peerId, label] of this._editorCollabRemoteLabels) {
-      if (!activePeerIds.has(peerId)) {
-        label.destroy();
-        this._editorCollabRemoteLabels.delete(peerId);
-      }
-    }
-  }
-
-  _openEditorCollabChat() {
-    const history = this._editorCollabChat.length
-      ? this._editorCollabChat.slice(-8).map(entry => `${entry.name}: ${entry.text}`).join("\n")
-      : "No messages yet.";
-    window.showNativePhaserDialog(this, {
-      title: "COLLABORATION CHAT",
-      message: `${history}\n\nType a message to send to everyone in the editor room.`,
-      input: true,
-      placeholder: "Message",
-      confirmLabel: "SEND",
-      cancelLabel: "CLOSE",
-      onConfirm: value => {
-        const text = String(value || "").trim().slice(0, 240);
-        const client = this._editorCollabClient;
-        if (!text || !client || client.socket?.readyState !== WebSocket.OPEN) return;
-        client.send({
-          type: "editor-chat",
-          from: client.clientId,
-          name: String(window.AccountAPI?.currentUser?.username || localStorage.getItem("playerName") || "Builder").slice(0, 24),
-          text
-        });
-        this._handleEditorCollabMessage({ type: "editor-chat", name: "You", text });
-      }
-    });
-  }
-
-  _closeEditorCollab() {
-    const client = this._editorCollabClient;
-    if (client?.protocol === "tc3") client.close();
-    this._editorCollabClient = null;
-    this._editorCollabPeers?.clear();
-    this._editorCollabRemoteGraphics?.clear();
-    for (const label of this._editorCollabRemoteLabels?.values?.() || []) label.destroy();
-    this._editorCollabRemoteLabels?.clear();
-    this._editorCollabStatusText?.setVisible(false);
-    this._setEditorCollabChatAvailable(false);
-    this._setEditorCollabEndAvailable(false);
-  }
-
-  _startEditorCollabSession(mode, room = "") {
-    const client = window.getTailsConnectClient(this);
-    this._attachEditorCollabClient(client);
-    client.connect(mode, room, "webdashers-editor");
-    this._editorCollabStatus = mode === "host" ? "Creating live edit room..." : "Joining live edit room...";
-    const statusText = this._editorCollabStatusText;
-    if (statusText?.active && statusText.scene) statusText.setText(this._editorCollabStatus).setVisible(true).setAlpha(1);
-    this._showEditorCollabToast(this._editorCollabStatus);
-  }
-
-  _applyEditorCollabOperation(data) {
-    if (this._editorCollabApplying || !data?.operation) return;
-    const operation = data.operation;
-    const objectId = Number(operation.objectId);
-    if (!Number.isInteger(objectId) || !this._getEditorSaveObjectForObjectId(objectId)) return;
-    const selectedBefore = this._getCurrentSelectedEditorObjectIds?.() || [];
-    this._editorCollabApplying = true;
-    try {
-      this._selectEditorObjectsByIds([objectId], 0x00ff00);
-      if (operation.dx || operation.dy) this._moveObject(Number(operation.dx) || 0, Number(operation.dy) || 0);
-      if (operation.rotation) this._rotateObject(Number(operation.rotation) || 0);
-      if (operation.flip) this._flipObject(operation.flip === "y" ? "y" : "x");
-      if (operation.scale) this._setEditorObjectScale(this._getEditorSaveObjectForObjectId(objectId), Number(operation.scale) || 1);
-    } finally {
-      this._editorCollabApplying = false;
-      if (selectedBefore.length) this._selectEditorObjectsByIds(selectedBefore, 0x00ff00);
-      else this._clearEditorSelection();
-    }
-  }
-
-  _broadcastEditorObjectSync(action, objectIds = []) {
-    const client = this._editorCollabClient || window._tailsConnectClient;
-    if (this._editorCollabApplying || !client || client.protocol !== "tc3") return;
-    const ids = Array.isArray(objectIds) ? objectIds : [objectIds];
-    const changes = ids.map(objectId => {
-      const parsedId = Number(objectId);
-      const saveIndex = this._getEditorSaveIndexForObjectId(parsedId);
-      const saveObject = saveIndex === -1 ? null : window.levelObjects?.[saveIndex];
-      return {
-        objectId: Number.isInteger(parsedId) ? parsedId : -1,
-        saveIndex,
-        object: saveObject ? JSON.parse(JSON.stringify(saveObject)) : null
-      };
-    }).filter(change => change.saveIndex !== -1 || action === "delete");
-    if (!changes.length) return;
-    client.send({
-      type: "editor-object-sync",
-      from: client.clientId,
-      action,
-      changes
-    });
-  }
-
-  _applyEditorCollabObjectSync(data) {
-    if (this._editorCollabApplying || !Array.isArray(data?.changes)) return;
-    this._editorCollabApplying = true;
-    try {
-      for (const change of data.changes) {
-        const saveIndex = Number(change.saveIndex);
-        if (!Number.isInteger(saveIndex) || saveIndex < 0) continue;
-        const current = window.levelObjects?.[saveIndex] || null;
-        if (data.action === "delete" || !change.object) {
-          const localObjectId = Number.isInteger(current?._eeObjectId) ? current._eeObjectId : -1;
-          if (localObjectId >= 0) {
-            this._selectEditorObjectsByIds([localObjectId], 0x00ff00);
-            this._deleteSelectedObject();
-          } else if (Array.isArray(window.levelObjects)) {
-            window.levelObjects[saveIndex] = null;
-          }
-          continue;
-        }
-
-        const incoming = change.object;
-        if (!current) {
-          while (window.levelObjects.length < saveIndex) window.levelObjects.push(null);
-          window.levelObjects[saveIndex] = incoming;
-          this._level._spawnObject(incoming);
-          continue;
-        }
-
-        const localObjectId = Number.isInteger(current._eeObjectId) ? current._eeObjectId : -1;
-        if (localObjectId < 0 || String(current.id) !== String(incoming.id)) {
-          window.levelObjects[saveIndex] = incoming;
-          this.scene.restart();
-          return;
-        }
-        this._selectEditorObjectsByIds([localObjectId], 0x00ff00);
-        const dx = (Number(incoming.x) - Number(current.x)) * 2;
-        const dy = (Number(current.y) - Number(incoming.y)) * 2;
-        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) this._moveObject(dx, dy);
-        const rotationDelta = (Number(incoming.rot) || 0) - (Number(current.rot) || 0);
-        if (Math.abs(rotationDelta) > 0.001) this._rotateObject(rotationDelta);
-        if (!!incoming.flipX !== !!current.flipX) this._flipObject("x");
-        if (!!incoming.flipY !== !!current.flipY) this._flipObject("y");
-        if (Number(incoming.scale || 1) !== Number(current.scale || 1)) {
-          this._setEditorObjectScale(current, Number(incoming.scale) || 1);
-        }
-        Object.keys(incoming).forEach(key => {
-          if (!["x", "y", "rot", "flipX", "flipY", "scale", "_eeObjectId"].includes(key)) current[key] = incoming[key];
-        });
-        current._raw = incoming._raw || current._raw;
-        this._syncEditorCollidersForObjectId(localObjectId, current);
-      }
-      this._refreshEditorCollisionCaches();
-      this._applyEditorLayerFilter?.();
-      this._buildObjectGrid();
-    } finally {
-      this._editorCollabApplying = false;
-      this._clearEditorSelection();
-    }
-  }
-
-  _openEditorCollabDialog(joinExisting = false) {
-    if (!joinExisting) {
-      this._startEditorCollabSession("host");
-      window.showNativePhaserDialog(this, {
-        title: "LIVE EDIT",
-        message: "A new collaboration room is being created. Your room code will appear in the editor status.",
-        confirmLabel: "OK"
-      });
-      return;
-    }
-    window.showNativePhaserDialog(this, {
-      title: "JOIN COLLABORATION",
-      message: "Enter the room code shared by the level host.",
-      input: true,
-      placeholder: "Room code",
-      confirmLabel: "JOIN",
-      cancelLabel: "CANCEL",
-      onConfirm: value => {
-        const room = String(value || "").trim();
-        if (!room) return;
-        this._startEditorCollabSession("join", room);
-      }
-    });
-  }
-
-  _broadcastEditorState(immediate = false) {
-    const client = this._editorCollabClient || window._tailsConnectClient;
-    if (this._editorCollabApplying || !client || client.protocol !== "tc3") return;
-    if (this._editorCollabBroadcastTimer) {
-      clearTimeout(this._editorCollabBroadcastTimer);
-      this._editorCollabBroadcastTimer = null;
-    }
-    const sendFullState = () => {
-      const levelData = { objects: window.levelObjects || [], settings: window.settingslist || "" };
-      client.send({
-        type: "editor-state",
-        from: client.clientId,
-        levelId: String(window.currentlevel?.[2] || ""),
-        levelString: this._serializeLevel(levelData),
-        songId: this._editorPendingSongId ?? window.currentlevel?.[0] ?? "",
-        songName: this._editorPendingSongName ?? window.currentlevel?.[1] ?? ""
-      });
-      this._editorCollabSnapshot = JSON.parse(JSON.stringify(window.levelObjects || []));
-    };
-    const sendChanges = () => {
-      const current = window.levelObjects || [];
-      if (immediate || !Array.isArray(this._editorCollabSnapshot) || this._editorCollabSnapshot.length !== current.length) {
-        sendFullState();
-        return;
-      }
-      let sentOperation = false;
-      let requiresFullState = false;
-      current.forEach((object, index) => {
-        const previous = this._editorCollabSnapshot[index];
-        if (!object || !previous) {
-          if (object !== previous) requiresFullState = true;
-          return;
-        }
-        if (!Number.isInteger(object._eeObjectId)) {
-          if (JSON.stringify(object) !== JSON.stringify(previous)) requiresFullState = true;
-          return;
-        }
-        const dx = (Number(object.x) - Number(previous.x)) * 2;
-        const dy = (Number(previous.y) - Number(object.y)) * 2;
-        const rotation = (Number(object.rot) || 0) - (Number(previous.rot) || 0);
-        const flip = object.flipX !== previous.flipX ? "x" : object.flipY !== previous.flipY ? "y" : "";
-        const scale = Number(object.scale || 1) !== Number(previous.scale || 1) ? Number(object.scale || 1) : 0;
-        const comparableObject = { ...object };
-        const comparablePrevious = { ...previous };
-        ["x", "y", "rot", "flipX", "flipY", "scale"].forEach(key => {
-          delete comparableObject[key];
-          delete comparablePrevious[key];
-        });
-        if (JSON.stringify(comparableObject) !== JSON.stringify(comparablePrevious)) requiresFullState = true;
-        if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001 && Math.abs(rotation) < 0.001 && !flip && !scale) return;
-        client.send({
-          type: "editor-object-operation",
-          from: client.clientId,
-          levelId: String(window.currentlevel?.[2] || ""),
-          operation: { objectId: object._eeObjectId, dx, dy, rotation, flip, scale }
-        });
-        sentOperation = true;
-      });
-      this._editorCollabSnapshot = JSON.parse(JSON.stringify(current));
-      if (requiresFullState) {
-        sendFullState();
-      }
-    };
-    if (immediate) sendChanges();
-    else this._editorCollabBroadcastTimer = setTimeout(sendChanges, 120);
-  }
-
-  _applyEditorCollabState(data) {
-    if (!data?.levelString || this._editorCollabApplying) return;
-    const currentId = String(window.currentlevel?.[2] || window._onlineLevelId || "");
-    if (!currentId) return;
-    this._editorCollabApplying = true;
-    window._onlineLevelString = String(data.levelString);
-    window._onlineLevelId = currentId;
-    if (!Array.isArray(window.currentlevel)) window.currentlevel = ["Placeholder", "Collaboration", currentId, ["Local", "SongAuthor"]];
-    window.currentlevel[2] = currentId;
-    this._editorCollabSnapshot = null;
-    try {
-      if (typeof this.cache?.text?.add === "function") {
-        this.cache.text.add(currentId, window._onlineLevelString);
-      } else {
-        this.cache?.text?.entries?.set(currentId, window._onlineLevelString);
-      }
-    } catch (error) {
-      console.warn("Could not cache collaborative editor state in Phaser", error);
-    }
-    try {
-      const createdLevels = JSON.parse(localStorage.getItem("created_levels") || "[]");
-      const record = createdLevels.find(level => String(level?.createdId) === currentId);
-      if (record) {
-        record.levelString = window._onlineLevelString;
-        record.lastModified = Date.now();
-        localStorage.setItem("created_levels", JSON.stringify(createdLevels));
-      }
-    } catch (error) {
-      console.warn("Could not cache collaborative editor state", error);
-    }
-    this._stopEditorPlaytest?.();
-    this._showEditorPauseMenu(false);
-    this.time.delayedCall(0, () => {
-      if (this.scene?.isActive?.()) this.scene.restart();
-    });
-  }
-
   _showEditorSaveNotice(message = "Saved") {
     this._editorAutosaveNotice?.setText(message).setVisible(true).setAlpha(0.86);
     this.time.delayedCall(1400, () => {
@@ -11314,7 +10844,6 @@ _serializeObject(object) {
         this._editorPendingSongName = undefined;
     }
     this._showEditorSaveNotice();
-    this._broadcastEditorState();
   }
 
 
@@ -11609,19 +11138,6 @@ LevelEditor.methodNames = [
   "_openEditorMoveTriggerOptionsPopup",
   "_openEditorSpawnTriggerOptionsPopup",
   "_openCustomSongSelector",
-  "_attachEditorCollabClient",
-  "_handleEditorCollabMessage",
-  "_setEditorCollabChatAvailable",
-  "_setEditorCollabEndAvailable",
-  "_showEditorCollabToast",
-  "_updateEditorCollabPresence",
-  "_drawEditorCollabPeers",
-  "_openEditorCollabChat",
-  "_closeEditorCollab",
-  "_startEditorCollabSession",
-  "_openEditorCollabDialog",
-  "_broadcastEditorState",
-  "_applyEditorCollabState",
   "_openEditorTriggerFieldsPopup",
   "_openEditorZoomTriggerOptionsPopup",
   "_openEditorCameraTriggerOptionsPopup",

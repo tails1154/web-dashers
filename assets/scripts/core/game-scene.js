@@ -2507,15 +2507,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             .setScale(0.9)
             .setInteractive();
 
-        const joinCollabBtn = this.add.nineslice(newBtnX, newBtnY - 145, "GJ_button01", null, 180, 46, 14, 14, 14, 14)
-            .setScale(0.72).setInteractive();
-        const joinCollabTxt = this.add.bitmapText(newBtnX, newBtnY - 146, "bigFont", "JOIN COLLAB", 19)
-            .setOrigin(0.5).setScale(0.78);
-        this._makeCompositeBouncyButton(joinCollabBtn, [joinCollabBtn, joinCollabTxt], 0.72, () => {
-            this._openEditorCollabDialog(true);
-        });
-        container.add([joinCollabBtn, joinCollabTxt]);
-        
         this._makeBouncyButton(newBtn, 0.9, () => {
             const rawData = localStorage.getItem("created_levels");
             let createdLevels = rawData ? JSON.parse(rawData) : [];
@@ -2565,63 +2556,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           this._openCreatorMenu(); 
         });
 
-        this._editorObjects = [overlay, blocker, container, backBtn, maskShape, joinCollabBtn, joinCollabTxt];
-    };
-    this._openEditorCollabDialog = (joinExisting = false) => {
-        if (window.isEditor && this._levelEditor?._openEditorCollabDialog) {
-            this._levelEditor._openEditorCollabDialog(joinExisting);
-            return;
-        }
-        if (!joinExisting) {
-            showNativePhaserDialog(this, {
-                title: "LIVE EDIT",
-                message: "Open a level in the editor first, then choose Collaborate from the editor pause menu to create a room.",
-                confirmLabel: "OK"
-            });
-            return;
-        }
-        showNativePhaserDialog(this, {
-            title: "JOIN COLLABORATION",
-            message: "Enter the room code shared by the level host. A temporary editor draft will receive the host's level.",
-            input: true,
-            placeholder: "Room code",
-            confirmLabel: "JOIN",
-            cancelLabel: "CANCEL",
-            onConfirm: value => {
-                const room = String(value || "").trim().toUpperCase();
-                if (!room) return;
-                const createdId = this._getNextLocalId();
-                const draft = {
-                    levelName: "Collab Draft",
-                    song: "Stereo Madness",
-                    songId: -1,
-                    levelId: null,
-                    levelString: "H4sIAAAAAAAACq1QwRHDMAhbyO0hwIlzfWWGDsAAXaHD10Z-9Ff3Ln4gG4GMeD2tFYRLaEBrWGitARCUwKTHDbEFRCT2wF3yBOrXvYVEC7wRKSi6JoirBY8FwdHB9iVJjZ5ckP1rlf19taIv7pLGh-wP43XROPq9z9mOtX1uS7LldcKKzPx41ZKwEbz0yPueUSfPF9qApx3kMlrGJE7PSBbCIlYpy5QVuheMciE0AgiaoFRUihk5I2ec0Knp1PTK9slxYDM2OIFmjL8bv-1mBmB6YrvO4UErHR4fJXMaP9sDAAA=",
-                    levelLength: 0,
-                    normalBest: 0,
-                    practiceBest: 0,
-                    description: "Temporary editor draft for a collaboration session.",
-                    version: 1,
-                    status: "Unverified",
-                    createdId
-                };
-                const levels = JSON.parse(localStorage.getItem("created_levels") || "[]");
-                levels.push(draft);
-                localStorage.setItem("created_levels", JSON.stringify(levels));
-                window._editorCollabPendingJoinRoom = room;
-                // Start the handshake before restarting into the editor. The
-                // new LevelEditor instance will attach to this live client and
-                // receive the host snapshot as soon as it joins the room.
-                const collabClient = window.getTailsConnectClient(this);
-                collabClient.connect("join", room, "webdashers-editor");
-                this._closeEditorMenu?.();
-                this._startCreatedLevel(draft, true).catch(error => {
-                    delete window._editorCollabPendingJoinRoom;
-                    console.warn("Could not open editor collaboration:", error);
-                    showNativePhaserDialog(this, { title: "COLLABORATION FAILED", message: error.message || "Could not open the editor." });
-                });
-            }
-        });
+        this._editorObjects = [overlay, blocker, container, backBtn, maskShape];
     };
     this._importGMD = () => {
         const fileInput = document.createElement('input');
@@ -9468,11 +9403,6 @@ _buildSettingsPopup() {
         this._attemptsLabel.setVisible(false);
         window.selectedObjId = 1;
         this._levelEditor._initEditorLogic();
-        const pendingEditorCollabRoom = window._editorCollabPendingJoinRoom;
-        if (pendingEditorCollabRoom) {
-            delete window._editorCollabPendingJoinRoom;
-            this._levelEditor._startEditorCollabSession("join", pendingEditorCollabRoom);
-        }
         return;
     }
     this._cameraX = -centerX;
