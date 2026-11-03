@@ -11146,8 +11146,11 @@ _serializeObject(object) {
     window.currentlevel[2] = currentId;
     this._editorCollabSnapshot = null;
     try {
-      this.cache.text.entries.set(currentId, window._onlineLevelString);
-      this.cache.text.add(currentId, window._onlineLevelString);
+      if (typeof this.cache?.text?.add === "function") {
+        this.cache.text.add(currentId, window._onlineLevelString);
+      } else {
+        this.cache?.text?.entries?.set(currentId, window._onlineLevelString);
+      }
     } catch (error) {
       console.warn("Could not cache collaborative editor state in Phaser", error);
     }
@@ -11164,7 +11167,9 @@ _serializeObject(object) {
     }
     this._stopEditorPlaytest?.();
     this._showEditorPauseMenu(false);
-    this.scene.restart();
+    this.time.delayedCall(0, () => {
+      if (this.scene?.isActive?.()) this.scene.restart();
+    });
   }
 
   _showEditorSaveNotice(message = "Saved") {
