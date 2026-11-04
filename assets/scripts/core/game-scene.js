@@ -2987,6 +2987,16 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         const _progressKey = "bestPercent_" + (level.createdId || "local_0");
         const _normalBest = parseFloat(localStorage.getItem(_progressKey) || "0");
         const _isHackVerified = Boolean(level.hackVerified || level.verification_hacks || level.verification_start_pos);
+        const _levelCoinCount = (() => {
+            try {
+                const parsed = typeof parseLevel === "function" ? parseLevel(String(level.levelString || "")) : null;
+                return Array.isArray(parsed?.objects)
+                    ? parsed.objects.filter(object => Number(object?.id) === 1329).length
+                    : 0;
+            } catch (_) {
+                return 0;
+            }
+        })();
         const _verificationCoinCount = (() => {
             try {
                 const collected = JSON.parse(localStorage.getItem("wd_collected_coins") || "{}");
@@ -2996,7 +3006,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 return 0;
             }
         })();
-        const _hasVerificationCoins = _verificationCoinCount >= 3;
+        const _hasVerificationCoins = _verificationCoinCount >= _levelCoinCount;
         const _isVerified = _normalBest >= 100 && !_isHackVerified && _hasVerificationCoins;
         if (!_isVerified) {
             shareBtn.setTint(0x666666);
@@ -3009,7 +3019,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
             if (!forceVerify && !_hasVerificationCoins) {
                 showNativePhaserDialog(this, {
                     title: "COINS REQUIRED",
-                    message: `Collect all 3 coins in this level before verifying it. You have ${_verificationCoinCount}/3.`
+                    message: `Collect all ${_levelCoinCount} coin${_levelCoinCount === 1 ? "" : "s"} in this level before verifying it. You have ${_verificationCoinCount}/${_levelCoinCount}.`
                 });
                 return;
             }
