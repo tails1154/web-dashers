@@ -58,7 +58,23 @@
     const completed = Number(window._completedLevels || 0);
     let completedSet = [];
     try { completedSet = JSON.parse(localStorage.getItem("gd_completedSet") || "[]"); } catch (_) {}
-    const mainCompleted = MAIN_LEVEL_IDS.filter(id => completedSet.includes(id)).length;
+    if (!Array.isArray(completedSet)) completedSet = [];
+
+    // Older saves recorded a completed level through bestPercent but did not
+    // populate gd_completedSet. Treat a legitimate 100% record as completed
+    // and repair the set so the achievement remains stable after this check.
+    const completedIds = new Set(completedSet.map(id => String(id)));
+    for (const id of MAIN_LEVEL_IDS) {
+      if (Number(localStorage.getItem("bestPercent_" + id) || 0) >= 100) {
+        completedIds.add(id);
+      }
+    }
+    const repairedCompletedSet = Array.from(completedIds);
+    if (repairedCompletedSet.length !== completedSet.length || repairedCompletedSet.some((id, index) => id !== String(completedSet[index]))) {
+      localStorage.setItem("gd_completedSet", JSON.stringify(repairedCompletedSet));
+      completedSet = repairedCompletedSet;
+    }
+    const mainCompleted = MAIN_LEVEL_IDS.filter(id => completedIds.has(id)).length;
     const attempts = Number(localStorage.getItem("gd_totalAttempts") || 0);
     const jumps = Number(localStorage.getItem("gd_totalJumps") || 0);
     const deaths = Number(localStorage.getItem("gd_totalDeaths") || 0);
@@ -102,7 +118,7 @@
     if (completed >= 10) unlock("explorer");
     if (mainCompleted >= 5) unlock("main_levels_5");
     if (mainCompleted >= 10) unlock("main_levels_10");
-    if (mainCompleted === MAIN_LEVEL_IDS.length) unlock("main_levels_all");
+    if (mainCompleted >= MAIN_LEVEL_IDS.length) unlock("main_levels_all");
     if (sweptLevel) unlock("coin_sweep");
     if (totalCoins >= 25) unlock("coin_collector");
     if (userCoins >= 10) unlock("user_coin_hoard");
