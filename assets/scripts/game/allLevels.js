@@ -160,6 +160,13 @@ window.allLevels = [
 	    ["tails1154", "MDK"],
 	    "PressStart"
 	],
+	[
+	    "payload_main",
+	    "Payload",
+	    "level_28",
+	    ["tails1154", "Geometry Dash World"],
+	    "Payload"
+	],
 	/*
     [
         "every_end",
@@ -232,7 +239,6 @@ window.editorOnlySongs = [
     ["electro_frontlines", "Electro Frontlines", "editor_song_electro_frontlines", ["Geometry Dash World", "Geometry Dash World"], "ElectroFrontlines"],
     ["embers", "Embers", "editor_song_embers", ["Geometry Dash World", "Geometry Dash World"], "Embers"],
     ["monster_dance_off", "Monster Dance Off", "editor_song_monster_dance_off", ["Geometry Dash World", "Geometry Dash World"], "MonsterDanceOff"],
-    ["payload", "Payload", "editor_song_payload", ["Geometry Dash World", "Geometry Dash World"], "Payload"],
     ["round_1", "Round 1", "editor_song_round_1", ["Geometry Dash World", "Geometry Dash World"], "Round1"],
     ["space_pirates", "Space Pirates", "editor_song_space_pirates", ["Geometry Dash World", "Geometry Dash World"], "SpacePirates"],
     ["striker", "Striker", "editor_song_striker", ["Geometry Dash World", "Geometry Dash World"], "Striker"],

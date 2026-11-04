@@ -5996,6 +5996,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       "level_24":        "diffIcon_03_btn_001",
         "level_26":        "diffIcon_04_btn_001",
         "level_27":        "diffIcon_04_btn_001",
+        "level_28":        "diffIcon_01_btn_001",
         "level_99":        "diffIcon_10_btn_001",
         "level_100":       "diffIcon_10_btn_001",
         "level_137409445": "diffIcon_00_btn_001",
@@ -11870,7 +11871,7 @@ _applyMirrorEffect() {
       const isChallengeLevel = completedLevelId === "level_3001";
       const isLocalEditorLevel = completedLevelId.startsWith("local_");
       const challengeStarsClaimed = localStorage.getItem("challenge_30stars_claimed") === "1";
-      const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7 };
+      const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7, level_28: 2 };
       const starReward = isLocalEditorLevel
         ? 0
         : isChallengeLevel
