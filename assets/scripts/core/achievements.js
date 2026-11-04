@@ -1,12 +1,21 @@
 // Lightweight local achievements for Web Dashers.
 (function () {
   const KEY = "gd_achievements";
-  // Main levels through 1.9, excluding Hexagon Force. Nothing from 2.0+ counts.
-  const MAIN_LEVEL_IDS = [
+  // Fallback used only if the level catalog has not loaded yet. The runtime
+  // catalog below is authoritative so newly added main levels are included.
+  const FALLBACK_MAIN_LEVEL_IDS = [
     "level_1", "level_2", "level_3", "level_4", "level_5", "level_6",
     "level_7", "level_8", "level_9", "level_10", "level_11", "level_12",
     "level_13", "level_14", "level_15"
   ];
+
+  function getMainLevelIds() {
+    const catalog = Array.isArray(window.allLevels) ? window.allLevels : [];
+    const ids = catalog
+      .filter(level => Array.isArray(level) && /^level_\d+$/.test(String(level[2] || "")))
+      .map(level => String(level[2]));
+    return ids.length ? Array.from(new Set(ids.filter(id => id !== "level_3001"))) : FALLBACK_MAIN_LEVEL_IDS;
+  }
   const DEFINITIONS = [
     { id: "first_clear", title: "First Steps", description: "Complete your first level." },
     { id: "five_clear", title: "Getting the Hang of It", description: "Complete 5 levels." },
@@ -23,7 +32,7 @@
     { id: "explorer", title: "Explorer", description: "Play 10 different levels." },
     { id: "main_levels_5", title: "Road Trip", description: "Beat 5 main levels." },
     { id: "main_levels_10", title: "Main Character", description: "Beat 10 main levels." },
-    { id: "main_levels_all", title: "Main Event", description: "Beat every main level through 1.9, excluding Hexagon Force." },
+    { id: "main_levels_all", title: "Main Event", description: "beat all main levels" },
     { id: "coin_sweep", title: "Coin Sweep", description: "Collect all 3 coins in one level." },
     { id: "coin_collector", title: "Coin Collector", description: "Collect 25 level coins." },
     { id: "user_coin_hoard", title: "Pocket Change", description: "Collect 10 user coins." },
@@ -56,6 +65,7 @@
     // Never award achievements from a run that has been invalidated.
     if (window._gdAchievementsBlocked || window._runDisqualified) return;
     const completed = Number(window._completedLevels || 0);
+    const mainLevelIds = getMainLevelIds();
     let completedSet = [];
     try { completedSet = JSON.parse(localStorage.getItem("gd_completedSet") || "[]"); } catch (_) {}
     if (!Array.isArray(completedSet)) completedSet = [];
@@ -64,7 +74,7 @@
     // populate gd_completedSet. Treat a legitimate 100% record as completed
     // and repair the set so the achievement remains stable after this check.
     const completedIds = new Set(completedSet.map(id => String(id)));
-    for (const id of MAIN_LEVEL_IDS) {
+    for (const id of mainLevelIds) {
       if (Number(localStorage.getItem("bestPercent_" + id) || 0) >= 100) {
         completedIds.add(id);
       }
@@ -74,7 +84,7 @@
       localStorage.setItem("gd_completedSet", JSON.stringify(repairedCompletedSet));
       completedSet = repairedCompletedSet;
     }
-    const mainCompleted = MAIN_LEVEL_IDS.filter(id => completedIds.has(id)).length;
+    const mainCompleted = mainLevelIds.filter(id => completedIds.has(id)).length;
     const attempts = Number(localStorage.getItem("gd_totalAttempts") || 0);
     const jumps = Number(localStorage.getItem("gd_totalJumps") || 0);
     const deaths = Number(localStorage.getItem("gd_totalDeaths") || 0);
@@ -118,7 +128,14 @@
     if (completed >= 10) unlock("explorer");
     if (mainCompleted >= 5) unlock("main_levels_5");
     if (mainCompleted >= 10) unlock("main_levels_10");
-    if (mainCompleted >= MAIN_LEVEL_IDS.length) unlock("main_levels_all");
+    const allMainLevelsAchievement = "main_levels_all";
+    const achievements = read();
+    if (mainCompleted >= mainLevelIds.length) {
+      unlock(allMainLevelsAchievement);
+    } else if (achievements[allMainLevelsAchievement]) {
+      delete achievements[allMainLevelsAchievement];
+      write(achievements);
+    }
     if (sweptLevel) unlock("coin_sweep");
     if (totalCoins >= 25) unlock("coin_collector");
     if (userCoins >= 10) unlock("user_coin_hoard");
