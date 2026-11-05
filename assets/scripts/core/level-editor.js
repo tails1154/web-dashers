@@ -3614,7 +3614,10 @@ class LevelEditor {
     const currentGridY = Math.floor((worldY + 20) / gridSize) * gridSize;
 
     if (currentGridX === this._lastSwipeGridX && currentGridY === this._lastSwipeGridY) return;
-    if (this._hitObjects?.length) return;
+    // In build mode Phaser can report the toolbox/background as a hit even
+    // when the editor grid is empty. The grid-cell guard above already stops
+    // duplicate placement while dragging, so do not block placement here.
+    if (this._editorTab !== "build" && this._hitObjects?.length) return;
 
     this._editorAction();
     this._lastSwipeGridX = currentGridX;
