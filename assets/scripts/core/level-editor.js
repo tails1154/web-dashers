@@ -180,6 +180,10 @@ class LevelEditor {
         this._isDragging = false;
         if (this._editorTab === "edit" && this._isSwipeEnabled) {
             this._startEditorBoxSelect(pointer);
+        } else if (this._isSwipeEnabled && pointer.y < screenHeight - 205) {
+            this._lastSwipeGridX = -1;
+            this._lastSwipeGridY = -1;
+            this._processEditorSwipe(pointer, true);
         }
     });
     this.input.on('pointermove', (pointer) => {
@@ -190,6 +194,8 @@ class LevelEditor {
         }
         if (this._editorBoxSelectActive) {
             this._updateEditorBoxSelect(pointer);
+        } else if (this._isSwipeEnabled && pointer.isDown && pointer.y < screenHeight - 205) {
+            this._processEditorSwipe(pointer);
         }
     });
     this.input.on('pointerup', (pointer) => {
@@ -3602,9 +3608,9 @@ class LevelEditor {
   }
 
 
-  _processEditorSwipe(pointer) {
+  _processEditorSwipe(pointer, force = false) {
     if (!this._isSwipeEnabled || this._editorTab === "edit" || this._isDraggingSlider) return;
-    if (!pointer || !pointer.isDown || (this._editorPlaytestActive && !this._editorPlaytestPaused)) return;
+    if (!pointer || (!force && !pointer.isDown) || pointer.y >= screenHeight - 205 || (this._editorPlaytestActive && !this._editorPlaytestPaused)) return;
 
     const zoom = Math.max(0.1, Number(this._editorZoom || 1));
     const gridSize = Math.max(1, Number(this._editorGridSize || 60));
