@@ -3610,7 +3610,7 @@ class LevelEditor {
 
   _processEditorSwipe(pointer, force = false) {
     if (!this._isSwipeEnabled || this._editorTab === "edit" || this._isDraggingSlider) return;
-    if (!pointer || (!force && !pointer.isDown) || pointer.y >= screenHeight - 205 || (this._editorPlaytestActive && !this._editorPlaytestPaused)) return;
+    if (!pointer || (!force && !pointer.isDown) || this._isEditorSwipeBlockedByUi(pointer) || (this._editorPlaytestActive && !this._editorPlaytestPaused)) return;
 
     const zoom = Math.max(0.1, Number(this._editorZoom || 1));
     const gridSize = Math.max(1, Number(this._editorGridSize || 60));
@@ -3651,6 +3651,29 @@ class LevelEditor {
     }
     this._lastSwipeGridX = currentGridX;
     this._lastSwipeGridY = currentGridY;
+  }
+
+
+  _isEditorSwipeBlockedByUi(pointer) {
+    if (!pointer) return true;
+    if (pointer.y >= screenHeight - 205) return true;
+
+    const topButtonWidth = 72;
+    const topButtonY = 40;
+    const isTopButton = Math.abs(pointer.y - topButtonY) <= topButtonWidth / 2 && (
+        Math.abs(pointer.x - 50) <= topButtonWidth / 2 ||
+        Math.abs(pointer.x - (screenWidth - 127)) <= topButtonWidth / 2 ||
+        Math.abs(pointer.x - (screenWidth - 40)) <= topButtonWidth / 2
+    );
+    if (isTopButton) return true;
+
+    return !!(
+        this._editorLevelSettingsPopup ||
+        this._editorOverviewPopup ||
+        this._editorObjectOptionsPopup ||
+        this._editorHorizontalOptionPopup ||
+        this._editorColorPickerPopup
+    );
   }
 
 
@@ -11073,6 +11096,7 @@ LevelEditor.methodNames = [
   "_updateEditorGrid",
   "_editorAction",
   "_processEditorSwipe",
+  "_isEditorSwipeBlockedByUi",
   "_setTeleportExitYOffset",
   "_refreshTeleportExitVisualsForSaveObject",
   "_applyTeleportExitPlacement",
