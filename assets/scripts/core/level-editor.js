@@ -3595,11 +3595,11 @@ class LevelEditor {
   }
 
 
-  _editorAction() {
+  _editorAction(pointerOverride = null) {
   if (this._editorPlaytestActive && !this._editorPlaytestPaused) return;
 
   if (this._editorTab === "build") {
-    this._placeObject();
+    this._placeObject(pointerOverride);
   } else if (this._editorTab === "edit") {
     this._selectObjectAtPointer();
   } else if (this._editorTab === "delete") {
@@ -3621,7 +3621,34 @@ class LevelEditor {
 
     if (currentGridX === this._lastSwipeGridX && currentGridY === this._lastSwipeGridY) return;
 
-    this._editorAction();
+    const gridCells = [];
+    const previousGridX = this._lastSwipeGridX;
+    const previousGridY = this._lastSwipeGridY;
+    if (previousGridX < 0 || previousGridY < 0) {
+        gridCells.push({ x: currentGridX, y: currentGridY });
+    } else {
+        const startX = Math.round(previousGridX / gridSize);
+        const startY = Math.round(previousGridY / gridSize);
+        const endX = Math.round(currentGridX / gridSize);
+        const endY = Math.round(currentGridY / gridSize);
+        const steps = Math.max(Math.abs(endX - startX), Math.abs(endY - startY));
+        for (let step = 1; step <= steps; step++) {
+            const progress = step / steps;
+            gridCells.push({
+                x: Math.round(startX + (endX - startX) * progress) * gridSize,
+                y: Math.round(startY + (endY - startY) * progress) * gridSize
+            });
+        }
+    }
+
+    for (const cell of gridCells) {
+        const cellPointer = {
+            x: cell.x * zoom - this._cameraX + 1,
+            y: (cell.y - 20) * zoom - this._cameraY + 1,
+            isDown: true
+        };
+        this._editorAction(cellPointer);
+    }
     this._lastSwipeGridX = currentGridX;
     this._lastSwipeGridY = currentGridY;
   }
@@ -3727,11 +3754,11 @@ class LevelEditor {
     return true;
   }
 
-  _placeObject() {
-    const pointer = this.input.activePointer;
+  _placeObject(pointerOverride = null) {
+    const pointer = pointerOverride || this.input.activePointer;
 
-    const worldX = (this.input.activePointer.x + this._cameraX) / this._editorZoom;
-    const worldY = (this.input.activePointer.y + this._cameraY) / this._editorZoom;
+    const worldX = (pointer.x + this._cameraX) / this._editorZoom;
+    const worldY = (pointer.y + this._cameraY) / this._editorZoom;
 
     const useV3Snap = window.wdEditorSnapToGrid !== false;
     const gridSize = this._editorGridSize || 60;
