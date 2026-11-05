@@ -10447,17 +10447,7 @@ _buildSettingsPopup() {
         editorState._updateEditorGrid();
         if (pointer.isDown && !editorState._isDraggingSlider) {
             if (editorState._isSwipeEnabled) {
-              if (editorState._editorTab !== "edit") {
-                if (this._hitObjects.length !== 0) return;
-                const currentGridX = Math.floor((pointer.x + this._cameraX) / 60) * 60;
-                const currentGridY = Math.floor((pointer.y + this._cameraY + 20) / 60) * 60;
-
-                if (currentGridX !== editorState._lastSwipeGridX || currentGridY !== editorState._lastSwipeGridY) {
-                    editorState._editorAction();
-                    editorState._lastSwipeGridX = currentGridX;
-                    editorState._lastSwipeGridY = currentGridY;
-                }
-              }
+              editorState._processEditorSwipe(pointer);
             } else {
                 if (!editorState._isDragging && this._hitObjects.length !== 0) return;
                 const clickStart = editorState._clickStartPos || { x: pointer.x, y: pointer.y };

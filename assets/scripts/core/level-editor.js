@@ -99,8 +99,8 @@ class LevelEditor {
     this._editorPage = 0;
     this._maxPerPage = 12;
     this._isSwipeEnabled = false;
-    this._lastSwipeGridX;
-    this._lastSwipeGridY;
+    this._lastSwipeGridX = -1;
+    this._lastSwipeGridY = -1;
     this._clickStartPos = { x: 0, y: 0 };
     this._isDragging = false;
     this._isDraggingSlider = false;
@@ -383,7 +383,7 @@ class LevelEditor {
 
     this._toolbox.add([this._leftArrow, this._rightArrow]);
 
-    const swipeX = centerX + 450;
+    const swipeX = Math.min(screenWidth - 72, centerX + 450);
     const swipeY = screenHeight - 100;
 
     this._swipeContainer = this.add.container(swipeX, swipeY).setDepth(1001);
@@ -3599,6 +3599,26 @@ class LevelEditor {
   } else if (this._editorTab === "delete") {
     this._deleteObjectAtPointer();
   }
+  }
+
+
+  _processEditorSwipe(pointer) {
+    if (!this._isSwipeEnabled || this._editorTab === "edit" || this._isDraggingSlider) return;
+    if (!pointer || !pointer.isDown || (this._editorPlaytestActive && !this._editorPlaytestPaused)) return;
+
+    const zoom = Math.max(0.1, Number(this._editorZoom || 1));
+    const gridSize = Math.max(1, Number(this._editorGridSize || 60));
+    const worldX = (pointer.x + this._cameraX) / zoom;
+    const worldY = (pointer.y + this._cameraY) / zoom;
+    const currentGridX = Math.floor(worldX / gridSize) * gridSize;
+    const currentGridY = Math.floor((worldY + 20) / gridSize) * gridSize;
+
+    if (currentGridX === this._lastSwipeGridX && currentGridY === this._lastSwipeGridY) return;
+    if (this._hitObjects?.length) return;
+
+    this._editorAction();
+    this._lastSwipeGridX = currentGridX;
+    this._lastSwipeGridY = currentGridY;
   }
 
 
@@ -11020,6 +11040,7 @@ LevelEditor.methodNames = [
   "_updateEditorActionButtons",
   "_updateEditorGrid",
   "_editorAction",
+  "_processEditorSwipe",
   "_setTeleportExitYOffset",
   "_refreshTeleportExitVisualsForSaveObject",
   "_applyTeleportExitPlacement",
