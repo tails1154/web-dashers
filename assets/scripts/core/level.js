@@ -77,13 +77,6 @@ class Collider {
   isSlopeRectSolid(left, top, right, bottom) {
     if (this.type !== slopeType || !Array.isArray(this.slopeSolidVertices)) return false;
     const vertices = this.slopeSolidVertices;
-    if (this.slopeIsFilled) {
-      const slopeLeft = this.x - this.w / 2;
-      const slopeRight = this.x + this.w / 2;
-      const slopeTop = this.y - this.h / 2;
-      const slopeBottom = this.y + this.h / 2;
-      return right > slopeLeft && left < slopeRight && bottom > slopeTop && top < slopeBottom;
-    }
 
     const pointInRect = (point) => point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
     const pointInTriangle = (point) => {
