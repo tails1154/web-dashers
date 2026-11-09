@@ -4974,6 +4974,26 @@ if (this.p.isFlying || this.p.isUfo) {
     let bestSlopeCandidate = null;
     let bestSlopeGameObj = null;
     const _0x198534 = this._gameLayer.getNearbySectionObjects(pieceWidth);
+    // Native GD resolves a slope contact before the ordinary block pass. A
+    // neighboring block can otherwise kill the player first when the slope
+    // and block occupy the same broad-phase cell, even though the slope would
+    // place the player safely on its surface this frame.
+    let nativeSlopeCandidatePending = false;
+    if (this._usesNativeSlopePhysics() && !this.p.isWave) {
+      for (const nearbyObj of _0x198534) {
+        if (!nearbyObj || nearbyObj.type !== slopeType) continue;
+        const slopeResult = this._handleSlopeCollision(
+          nearbyObj, pieceWidth, previousWorldX, playersY, playersLastY,
+          nearbyObj.x - nearbyObj.w / 2, nearbyObj.x + nearbyObj.w / 2,
+          nearbyObj.y - nearbyObj.h / 2, nearbyObj.y + nearbyObj.h / 2,
+          playerSize, waveHitSize, gamemodeAddition
+        );
+        if (slopeResult.landed && slopeResult.candidate) {
+          nativeSlopeCandidatePending = true;
+          break;
+        }
+      }
+    }
     for (let gameObj of _0x198534) {
       let left = gameObj.x - gameObj.w / 2;
       let right = gameObj.x + gameObj.w / 2;
@@ -5701,6 +5721,9 @@ if (this.p.isFlying || this.p.isUfo) {
             }
             if (window.noClip) {
 
+              continue;
+            }
+            if (nativeSlopeCandidatePending) {
               continue;
             }
             if (this.breakabletheblock(gameObj)) {
