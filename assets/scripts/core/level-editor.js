@@ -1423,13 +1423,6 @@ class LevelEditor {
   _startEditorPlaytest() {
     if (this._editorPlaytestActive) return;
 
-    const { level: editorLevel } = this._getCurrentEditorLevelRecord();
-    const physicsProfile = editorLevel?.physicsProfile === "native-slopes"
-        ? "native-slopes"
-        : "legacy";
-    window.currentLevelPhysicsProfile = physicsProfile;
-    if (this._level) this._level.physicsProfile = physicsProfile;
-
     this._closeEditorLevelSettingsPopup();
     this._closeEditorHorizontalOptionPopup();
     this._closeEditorColorPickerPopup();
@@ -1697,7 +1690,7 @@ class LevelEditor {
             const primarySharedBefore = this._getDualSharedSignature?.(this._state);
             this._player.updateJump(verticalDelta);
             this._state.y += this._state.yVelocity * verticalDelta;
-            this._player.checkCollisions(this._playerWorldX - centerX, subStepDelta / 60);
+            this._player.checkCollisions(this._playerWorldX - centerX);
             const primaryGravityChanged = this._isDual && !!this._state.gravityFlipped !== primaryGravityBefore;
             let primaryGravitySynced = false;
             if (this._isDual && primarySharedBefore !== undefined && this._getDualSharedSignature?.(this._state) !== primarySharedBefore) {
@@ -1728,7 +1721,7 @@ class LevelEditor {
                 if (!this._state2.queuedHold) this._state.queuedHold = false;
                 if (this._state2._orbActivationConsumedForPress) this._state._orbActivationConsumedForPress = true;
                 this._state2.y += this._state2.yVelocity * verticalDelta;
-                this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta, subStepDelta / 60);
+                this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta);
                 if (this._isDual && !this._state2.isDead && secondarySharedBefore !== undefined && this._getDualSharedSignature?.(this._state2) !== secondarySharedBefore) {
                     this._syncDualGlobalsFromSecondary?.({
                         skipBallInputGravity: secondaryBallInputGravity,
@@ -9825,9 +9818,6 @@ class LevelEditor {
     const inner = this.add.container(centerX, centerY).setScale(1);
     this._editorLevelSettingsPopup.add(inner);
 
-    const { level: editorLevel } = this._getCurrentEditorLevelRecord();
-    let nativeSlopesEnabled = editorLevel?.physicsProfile === "native-slopes";
-
     const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
     const panel = this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1);
     inner.add(panel);
@@ -10107,32 +10097,6 @@ class LevelEditor {
     });
 
     const rightX = (panelW / 2) - 90;
-
-    const slopePhysicsRow = this.add.container(rightX - 12, 142);
-    const slopePhysicsCheck = this.add.image(0, 0, "GJ_GameSheet03", "GJ_checkOff_001.png")
-        .setScale(0.82)
-        .setInteractive();
-    const slopePhysicsText = this.add.bitmapText(38, -2, "bigFont", "Native Slopes", 20)
-        .setOrigin(0, 0.5)
-        .setInteractive();
-    const slopePhysicsInfo = this.add.bitmapText(38, 25, "goldFont", "Use newer GD-style slope physics", 14)
-        .setOrigin(0, 0.5);
-    slopePhysicsRow.add([slopePhysicsCheck, slopePhysicsText, slopePhysicsInfo]);
-    inner.add(slopePhysicsRow);
-
-    const refreshSlopePhysicsCheck = () => {
-        slopePhysicsCheck.setTexture(
-            "GJ_GameSheet03",
-            nativeSlopesEnabled ? "GJ_checkOn_001.png" : "GJ_checkOff_001.png"
-        );
-    };
-    const toggleSlopePhysics = () => {
-        nativeSlopesEnabled = !nativeSlopesEnabled;
-        refreshSlopePhysicsCheck();
-    };
-    this._makeBouncyButton(slopePhysicsCheck, 0.82, toggleSlopePhysics);
-    slopePhysicsText.on("pointerdown", toggleSlopePhysics);
-    refreshSlopePhysicsCheck();
 
     const bgArtLabel = this.add.bitmapText(rightX, -262, "goldFont", "BG:", 30).setOrigin(0.5);
     inner.add(bgArtLabel);
@@ -10560,15 +10524,6 @@ class LevelEditor {
     this._makeEditorOkButton(inner, 0, (panelH / 2) - 45, "OK", () => {
         if (songCategory === "custom") {
             commitCustomSongDraft();
-        }
-
-        const { levels, idx } = this._getCurrentEditorLevelRecord();
-        const physicsProfile = nativeSlopesEnabled ? "native-slopes" : "legacy";
-        window.currentLevelPhysicsProfile = physicsProfile;
-        if (this._level) this._level.physicsProfile = physicsProfile;
-        if (idx !== -1) {
-            levels[idx].physicsProfile = physicsProfile;
-            localStorage.setItem("created_levels", JSON.stringify(levels));
         }
 
         this._closeEditorLevelSettingsPopup();
@@ -11010,14 +10965,9 @@ _serializeObject(object) {
   }
 
   _saveEditorLevel() {
-    const { level: editorLevel } = this._getCurrentEditorLevelRecord();
-    const physicsProfile = editorLevel?.physicsProfile === "native-slopes"
-        ? "native-slopes"
-        : "legacy";
     const levelData = {
         objects: window.levelObjects,
-        settings: window.settingslist,
-        physicsProfile
+        settings: window.settingslist
     };
 
     const newLevelString = this._serializeLevel(levelData);
@@ -11033,7 +10983,6 @@ _serializeObject(object) {
         }
 
         createdLevels[levelIndex].levelString = newLevelString;
-        createdLevels[levelIndex].physicsProfile = levelData.physicsProfile;
         createdLevels[levelIndex].lastModified = Date.now();
 
         if (this._editorPendingSongId !== undefined) {

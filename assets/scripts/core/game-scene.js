@@ -2169,7 +2169,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         window._onlineLevelId    = "online_" + lvl.id;
         window._onlineLevelString = levelString;
         window._onlineLevelName   = lvl.name || "Online Level";
-        window.currentLevelPhysicsProfile = lvl.physics_profile === "native-slopes" ? "native-slopes" : "legacy";
         window._onlineSongOffset  = 0;
         window._onlineSongBuffer  = null;
         window._onlineSongKey     = null;
@@ -2308,7 +2307,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           description: lvl.description || "",
           version: 1,
           status: "Unverified",
-          physicsProfile: lvl.physics_profile === "native-slopes" ? "native-slopes" : "legacy",
           createdId: this._getNextLocalId()
         };
 
@@ -2531,7 +2529,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 description: "",
                 version: 1,
                 status: "Unverified",
-                physicsProfile: "native-slopes",
                 createdId: this._getNextLocalId()
             };
 
@@ -2639,7 +2636,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                         description: extracted.desc || "",
                         version: extracted.version,
                         status: "Unverified",
-                        physicsProfile: "legacy",
                         createdId: this._getNextLocalId()
                     };
 
@@ -3049,7 +3045,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                     client_id: level.createdId || "",
                     name: uploadDetails.name,
                     description: uploadDetails.description,
-                    physics_profile: level.physicsProfile === "native-slopes" ? "native-slopes" : "legacy",
                     song: level.song || "",
                     difficulty: 0,
                     length: parseInt(level.levelLength) || 0,
@@ -3136,7 +3131,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           onlineSongBuffer: window._onlineSongBuffer,
           onlineSongKey: window._onlineSongKey,
           onlineSongOffset: window._onlineSongOffset,
-          physicsProfile: window.currentLevelPhysicsProfile,
           isEditor: window.isEditor,
           createdLevelReturnToView: window._createdLevelReturnToView,
           autoStartGame: this.game.registry.get("autoStartGame")
@@ -3146,7 +3140,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         window._onlineLevelString = level.levelString;
         window._onlineLevelName = level.levelName;
         window._onlineLevelId = level.createdId;
-        window.currentLevelPhysicsProfile = level.physicsProfile === "native-slopes" ? "native-slopes" : "legacy";
         if (!isEditor) {
           window._createdLevelReturnToView = {
             createdId: level.createdId,
@@ -3249,7 +3242,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           window._onlineLevelString = previousLaunchState.onlineLevelString;
           window._onlineLevelName = previousLaunchState.onlineLevelName;
           window._onlineLevelId = previousLaunchState.onlineLevelId;
-          window.currentLevelPhysicsProfile = previousLaunchState.physicsProfile;
           window._onlineSongBuffer = previousLaunchState.onlineSongBuffer;
           window._onlineSongKey = previousLaunchState.onlineSongKey;
           window._onlineSongOffset = previousLaunchState.onlineSongOffset;
@@ -5199,7 +5191,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       if (!selected) return;
       this._versusToeStarted = true;
       window.currentlevel = [...selected];
-      window.currentLevelPhysicsProfile = "legacy";
       this._closeVersusMenu();
       this._levelSelectOverlay && this._closeLevelSelect?.(true);
       const levelNumber = String(selected[2]).split("_")[1];
@@ -5779,7 +5770,6 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._levelSelectIsComingSoonPage = isComingSoonPage();
       if (!isComingSoonPage() && visibleLevels[currentPageIndex]) {
         window.currentlevel = [...visibleLevels[currentPageIndex]];
-        window.currentLevelPhysicsProfile = "legacy";
       }
     };
     applyCurrentPage();
@@ -10979,7 +10969,7 @@ _buildSettingsPopup() {
       const _primarySharedBefore = this._getDualSharedSignature(this._state);
       this._player.updateJump(verticalDelta);
       this._state.y += this._state.yVelocity * verticalDelta;
-      this._player.checkCollisions(this._playerWorldX - centerX, subStepDelta / 60);
+      this._player.checkCollisions(this._playerWorldX - centerX);
       const _primaryGravityChanged = this._isDual && !!this._state.gravityFlipped !== _primaryGravityBefore;
       let _primaryGravitySynced = false;
       if (this._isDual && this._getDualSharedSignature(this._state) !== _primarySharedBefore) {
@@ -11007,7 +10997,7 @@ _buildSettingsPopup() {
         if (!this._state2.queuedHold) this._state.queuedHold = false;
         if (this._state2._orbActivationConsumedForPress) this._state._orbActivationConsumedForPress = true;
         this._state2.y += this._state2.yVelocity * verticalDelta;
-        this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta, subStepDelta / 60);
+        this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta);
         if (this._isDual && !this._state2.isDead && this._getDualSharedSignature(this._state2) !== _secondarySharedBefore) {
           this._syncDualGlobalsFromSecondary({
             skipBallInputGravity: _secondaryBallInputGravity,
@@ -13977,7 +13967,6 @@ _applyMirrorEffect() {
           "the_challenge_song", "The Challenge", "level_3001",
           ["Local", "DJRubRub"], "TheChallenge"
         ];
-        window.currentLevelPhysicsProfile = "legacy";
         this._closeCreatorMenu(true);
         this.load.text("level_3001", "assets/levels/3001.txt");
         this.load.audio("the_challenge_song", "assets/music/TheChallenge.mp3");
@@ -14358,7 +14347,6 @@ _applyMirrorEffect() {
         root.destroy(true);
         const levelNumber = String(level[2]).split("_")[1];
         window.currentlevel = [...level];
-        window.currentLevelPhysicsProfile = "legacy";
         this.load.text(level[2], `assets/levels/${levelNumber}.txt`);
         this.load.audio(level[0], `assets/music/${level[4] || level[1].replaceAll(" ", "")}.mp3`);
         this.load.once("complete", () => {
