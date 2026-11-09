@@ -5832,12 +5832,11 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.yVelocity = this.p.gravityFlipped
           ? Math.max(slopeIncomingYVelocity, 2)
           : Math.min(slopeIncomingYVelocity, -2);
-      } else if (this._usesNativeSlopePhysics()) {
-        // Keep the regular grounded/jump state while riding the slope, but
-        // retain the incoming vertical velocity. hitGround() normally clears
-        // that velocity, which turns each substep into a small bounce.
-        this.hitGround();
-        this.p.yVelocity = slopeIncomingYVelocity;
+      } else if (this._usesNativeSlopePhysics() && this.p.isFlying) {
+        // Preserve the flight velocity while tracking contact with a slope.
+        this.p.onGround = false;
+        this.p.canJump = false;
+        this.p.isJumping = false;
       } else {
         this.hitGround();
       }
