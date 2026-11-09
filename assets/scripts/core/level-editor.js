@@ -1423,13 +1423,6 @@ class LevelEditor {
   _startEditorPlaytest() {
     if (this._editorPlaytestActive) return;
 
-    const { level: editorLevel } = this._getCurrentEditorLevelRecord();
-    const physicsProfile = editorLevel?.physicsProfile === "native-slopes"
-        ? "native-slopes"
-        : "legacy";
-    window.currentLevelPhysicsProfile = physicsProfile;
-    if (this._level) this._level.physicsProfile = physicsProfile;
-
     this._closeEditorLevelSettingsPopup();
     this._closeEditorHorizontalOptionPopup();
     this._closeEditorColorPickerPopup();

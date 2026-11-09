@@ -12,7 +12,6 @@ class Collider {
     this.slopeIsFilled = false;
     this.slopeFlipY = false;
     this.slopeSolidVertices = null;
-    this.slopeLocalVertices = null;
   }
   getSlopeSurfaceY(worldX) {
     if (this.type !== slopeType) return null;
@@ -74,55 +73,6 @@ class Collider {
     }
     return inside;
   }
-  isSlopeRectSolid(left, top, right, bottom) {
-    if (this.type !== slopeType || !Array.isArray(this.slopeSolidVertices)) return false;
-    const vertices = this.slopeSolidVertices;
-
-    const pointInRect = (point) => point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
-    const pointInTriangle = (point) => {
-      let inside = false;
-      for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
-        const a = vertices[i];
-        const b = vertices[j];
-        if ((a.y > point.y) !== (b.y > point.y)) {
-          const edgeX = (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x;
-          if (point.x < edgeX) inside = !inside;
-        }
-      }
-      return inside;
-    };
-    const orientation = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-    const onSegment = (a, b, point) => point.x >= Math.min(a.x, b.x) - 0.001 &&
-      point.x <= Math.max(a.x, b.x) + 0.001 &&
-      point.y >= Math.min(a.y, b.y) - 0.001 &&
-      point.y <= Math.max(a.y, b.y) + 0.001;
-    const segmentsIntersect = (a, b, c, d) => {
-      const abC = orientation(a, b, c);
-      const abD = orientation(a, b, d);
-      const cdA = orientation(c, d, a);
-      const cdB = orientation(c, d, b);
-      if (((abC > 0 && abD < 0) || (abC < 0 && abD > 0)) &&
-          ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0))) return true;
-      return (Math.abs(abC) <= 0.001 && onSegment(a, b, c)) ||
-        (Math.abs(abD) <= 0.001 && onSegment(a, b, d)) ||
-        (Math.abs(cdA) <= 0.001 && onSegment(c, d, a)) ||
-        (Math.abs(cdB) <= 0.001 && onSegment(c, d, b));
-    };
-
-    const corners = [
-      { x: left, y: top }, { x: right, y: top },
-      { x: right, y: bottom }, { x: left, y: bottom }
-    ];
-    if (corners.some(pointInTriangle) || vertices.some(pointInRect)) return true;
-    for (let i = 0; i < corners.length; i++) {
-      const next = corners[(i + 1) % corners.length];
-      for (let j = 0; j < vertices.length; j++) {
-        const nextVertex = vertices[(j + 1) % vertices.length];
-        if (segmentsIntersect(corners[i], next, vertices[j], nextVertex)) return true;
-      }
-    }
-    return false;
-  }
   getSlopeBackWallSide() {
     // Native slopeWallLeft() is derived from the slope orientation only;
     // gravity changes which side the player lands on, not the slope's flat
@@ -142,46 +92,21 @@ class Collider {
     const t = (worldX - a.x) / dx;
     return a.y + (b.y - a.y) * t;
   }
-  getNativeSlopeRiseRun() {
-    const edge = this.slopeSurfaceVertices;
-    if (!Array.isArray(edge) || edge.length < 2) return null;
-    const dx = edge[1].x - edge[0].x;
-    if (Math.abs(dx) < 0.001) return null;
-    return (edge[1].y - edge[0].y) / dx;
-  }
-  getNativeSlopeAngleRad() {
-    const edge = this.slopeSurfaceVertices;
-    if (!Array.isArray(edge) || edge.length < 2) return null;
-    const dx = edge[1].x - edge[0].x;
-    const dy = edge[1].y - edge[0].y;
-    if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return null;
-    let angle = Math.atan2(dy, dx);
-    // A line has no direction: reversing the two edge vertices must not turn
-    // a flat slope into a 180-degree slope. Keep the native line angle in the
-    // range used by the player physics.
-    if (angle > Math.PI / 2) angle -= Math.PI;
-    if (angle < -Math.PI / 2) angle += Math.PI;
-    return angle;
-  }
   getNativeSlopeContactY(worldX, hitSize) {
     const edge = this.slopeSurfaceVertices;
     const solidVertex = this.slopeSolidVertex;
     if (!Array.isArray(edge) || edge.length < 2 || !solidVertex) return null;
     const [a, b] = edge;
     const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.hypot(dx, dy) || 1;
     if (Math.abs(dx) < 0.001) return null;
     const surfaceY = this.getNativeSlopeSurfaceY(worldX);
     if (surfaceY === null) return null;
-    // Collider coordinates use screen-style Y ordering, while player physics
-    // treats the floor as the increasing-Y side. GD's slopeFloorTop flag is
-    // the authoritative side classification; use it to avoid reversing the
-    // landing offset on ordinary (non-inverted) slopes. The native
-    // slopeYPos(CCRect) path uses the player's vertical rectangle edge, so
-    // the center offset is the hitbox half-height rather than a projection
-    // along the slope normal.
-    const contactRadius = Math.max(0, Number(hitSize) || 0);
-    const expectedOffsetSign = this.slopeFlipY ? -1 : 1;
-    return surfaceY + expectedOffsetSign * contactRadius;
+    const normalX = -dy / length;
+    const normalY = dx / length;
+    const side = ((solidVertex.x - a.x) * normalX + (solidVertex.y - a.y) * normalY) >= 0 ? 1 : -1;
+    return surfaceY + normalY * side * Math.max(0, Number(hitSize) || 0);
   }
 }
 const ldm_object = new Set([
@@ -460,11 +385,6 @@ function _resolveSlopeOrientation(levelObj, slopeData) {
   const edgeA = transform({ x: halfW, y: halfH });
   const edgeB = transform({ x: -halfW, y: -halfH });
   const solidVertex = transform({ x: halfW, y: -halfH });
-  return _resolveSlopeOrientationFromVertices([edgeA, edgeB, solidVertex]);
-}
-
-function _resolveSlopeOrientationFromVertices(vertices) {
-  const [edgeA, edgeB, solidVertex] = vertices;
   const leftEdge = edgeA.x <= edgeB.x ? edgeA : edgeB;
   const rightEdge = edgeA.x <= edgeB.x ? edgeB : edgeA;
   const lineDir = rightEdge.y >= leftEdge.y ? 1 : -1;
@@ -480,74 +400,53 @@ function _resolveSlopeOrientationFromVertices(vertices) {
     flipY: solidAbove
   };
 }
-
-function _refreshSlopeColliderGeometry(collider) {
-  if (!collider?.slopeLocalVertices) return;
-  const radians = -((Number(collider.rotationDegrees) || 0) * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const vertices = collider.slopeLocalVertices.map(point => ({
-    x: collider.x + point.x * cos - point.y * sin,
-    y: collider.y + point.x * sin + point.y * cos
-  }));
-  collider.slopeSolidVertices = vertices;
-  const xs = vertices.map(point => point.x);
-  const ys = vertices.map(point => point.y);
-  collider.w = Math.max(1, Math.max(...xs) - Math.min(...xs));
-  collider.h = Math.max(1, Math.max(...ys) - Math.min(...ys));
-  const orientationVertices = collider.slopeOrientationLocalVertices?.map(point => ({
-    x: collider.x + point.x * cos - point.y * sin,
-    y: collider.y + point.x * sin + point.y * cos
-  })) || vertices;
-  const orientation = _resolveSlopeOrientationFromVertices(orientationVertices);
-  if (!collider.slopeIsFilled) {
-    collider.slopeSurfaceVertices = [vertices[0], vertices[1]];
-    collider.slopeSolidVertex = vertices[2];
-    collider.slopeDir = orientation.dir;
-    collider.slopeFlipY = orientation.flipY;
-  } else {
-    collider.slopeDir = orientation.dir;
-    collider.slopeFlipY = orientation.flipY;
-  }
-  collider.slopeAngleDeg = Math.atan2(collider.h, collider.w) * 180 / Math.PI;
-}
  
 function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const slopeData = _SLOPE_DATA[levelObj.id];
   if (!slopeData) return null;
+  const rot90 = Math.round((((levelObj.rot || 0) % 360) + 360) % 360 / 90) % 4;
+  const steep = rot90 === 1 || rot90 === 3;
   const rawScale = Number(levelObj.scale);
   const scale = Math.max(0.01, Math.abs(Number.isFinite(rawScale) ? rawScale : 1));
   const localW = slopeData.gw * a * scale;
   const localH = slopeData.gh * a * scale;
   const rotationDegrees = Number(levelObj.rot) || 0;
+  const normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
+  const angle = -normalizedRotation * Math.PI / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
   const sx = levelObj.flipX ? -1 : 1;
   const sy = levelObj.flipY ? -1 : 1;
+  const transform = ({ x, y }) => ({
+    x: x * sx * cos - y * sy * sin + worldX,
+    y: x * sx * sin + y * sy * cos + worldY
+  });
   const halfW = localW / 2;
   const halfH = localH / 2;
   const localVertices = slopeData.sq
     ? [{ x: -halfW, y: -halfH }, { x: halfW, y: -halfH },
       { x: halfW, y: halfH }, { x: -halfW, y: halfH }]
     : [{ x: halfW, y: halfH }, { x: -halfW, y: -halfH }, { x: halfW, y: -halfH }];
-  const localVerticesWithFlip = localVertices.map(point => ({
-    x: point.x * sx,
-    y: point.y * sy
-  }));
-  const orientationLocalVertices = [
-    { x: halfW * sx, y: halfH * sy },
-    { x: -halfW * sx, y: -halfH * sy },
-    { x: halfW * sx, y: -halfH * sy }
-  ];
-  const collider = new Collider(slopeType, worldX, worldY, localW, localH, rotationDegrees);
+  const vertices = localVertices.map(transform);
+  const xs = vertices.map(point => point.x);
+  const ys = vertices.map(point => point.y);
+  const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
+  const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
+  const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
-  collider.slopeLocalVertices = localVerticesWithFlip;
-  collider.slopeOrientationLocalVertices = orientationLocalVertices;
-  collider.slopeIsFilled = slopeData.sq;
-  _refreshSlopeColliderGeometry(collider);
+  collider.slopeSolidVertices = vertices;
+  collider.slopeSurfaceVertices = slopeData.sq ? null : [vertices[0], vertices[1]];
+  collider.slopeSolidVertex = slopeData.sq ? null : vertices[2];
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
   // has to use atan(1 / 2) (and atan(2 / 1) when quarter-turned), otherwise
   // surface snapping and the velocity inherited at the end of the slope do
   // not agree.
+  collider.slopeAngleDeg = Math.atan2(h, w) * 180 / Math.PI;
+  const { dir, flipY } = _resolveSlopeOrientation(levelObj, slopeData);
+  collider.slopeDir = dir;
+  collider.slopeFlipY = flipY;
+  collider.slopeIsFilled = slopeData.sq;
   return collider;
 }
 
@@ -3941,7 +3840,6 @@ window.LevelObject = class LevelObject {
     col.y = col._eeMoveBaseY - off.y;
     col._baseX = col.x;
     col._baseY = col.y;
-    _refreshSlopeColliderGeometry(col);
     this._refreshCollisionSection(col);
   }
 
@@ -4094,7 +3992,6 @@ window.LevelObject = class LevelObject {
         col.y = baseY;
         col._baseX = baseX;
         col._baseY = baseY;
-        _refreshSlopeColliderGeometry(col);
         this._refreshCollisionSection(col);
       }
     }
@@ -4150,7 +4047,6 @@ window.LevelObject = class LevelObject {
       col._baseRotationDegrees = col.rotationDegrees;
       if (col._origRotationDegrees !== undefined) col._origRotationDegrees = col.rotationDegrees;
     }
-    _refreshSlopeColliderGeometry(col);
     this._refreshCollisionSection(col);
   }
 
@@ -4664,7 +4560,6 @@ window.LevelObject = class LevelObject {
           col._baseRotationDegrees = col._eeInitialRotationDegrees;
           col._origRotationDegrees = col._eeInitialRotationDegrees;
         }
-        _refreshSlopeColliderGeometry(col);
         this._refreshCollisionSection(col);
       }
     }
