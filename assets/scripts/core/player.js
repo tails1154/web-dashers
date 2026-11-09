@@ -3348,6 +3348,45 @@ if (this.p.isFlying || this.p.isUfo) {
   }
 
   _handleNativeSlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition) {
+    if (gameObj.slopeIsFilled) {
+      const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
+      const contactPadding = 1;
+      const overlapsFilledSlope = gameObj.isSlopeRectSolid?.(
+        pieceWidth - hitSize - contactPadding,
+        playersY - hitSize - contactPadding,
+        pieceWidth + hitSize + contactPadding,
+        playersY + hitSize + contactPadding
+      );
+      if (!overlapsFilledSlope) return { landed: false, died: false };
+      if (this.p.isWave) return { landed: false, died: true };
+
+      const landingOnFloor = !this.p.gravityFlipped &&
+        (playersY - hitSize >= bottom || playersLastY - hitSize >= bottom) &&
+        (this.p.yVelocity <= 0 || this.p.onGround);
+      const landingOnCeiling = this.p.gravityFlipped &&
+        (playersY + hitSize <= top || playersLastY + hitSize <= top) &&
+        (this.p.yVelocity >= 0 || this.p.onGround);
+      if (landingOnFloor || landingOnCeiling) {
+        return {
+          landed: true,
+          died: false,
+          candidate: {
+            gameObj,
+            y: landingOnFloor ? bottom + hitSize : top - hitSize,
+            onCeiling: landingOnCeiling,
+            collideBottom: landingOnFloor ? bottom : null,
+            collideTop: landingOnCeiling ? top : null,
+            slopeAngle: 0,
+            slopeRotation: 0,
+            slopeSlidingDown: false,
+            landedCorrectSide: true,
+            skipGroundUpdate: false
+          }
+        };
+      }
+      if (window.noClip) this.p.diedThisFrame = true;
+      return { landed: false, died: !window.noClip };
+    }
     const contactX = Phaser.Math.Clamp(pieceWidth, left, right);
     const nativeSurfaceY = gameObj.getNativeSlopeSurfaceY?.(contactX);
     const surfaceY = nativeSurfaceY ?? gameObj.getSlopeSurfaceY(contactX);
