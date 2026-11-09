@@ -12,6 +12,7 @@ class Collider {
     this.slopeIsFilled = false;
     this.slopeFlipY = false;
     this.slopeSolidVertices = null;
+    this.slopeLocalVertices = null;
   }
   getSlopeSurfaceY(worldX) {
     if (this.type !== slopeType) return null;
@@ -466,6 +467,11 @@ function _resolveSlopeOrientation(levelObj, slopeData) {
   const edgeA = transform({ x: halfW, y: halfH });
   const edgeB = transform({ x: -halfW, y: -halfH });
   const solidVertex = transform({ x: halfW, y: -halfH });
+  return _resolveSlopeOrientationFromVertices([edgeA, edgeB, solidVertex]);
+}
+
+function _resolveSlopeOrientationFromVertices(vertices) {
+  const [edgeA, edgeB, solidVertex] = vertices;
   const leftEdge = edgeA.x <= edgeB.x ? edgeA : edgeB;
   const rightEdge = edgeA.x <= edgeB.x ? edgeB : edgeA;
   const lineDir = rightEdge.y >= leftEdge.y ? 1 : -1;
@@ -481,53 +487,74 @@ function _resolveSlopeOrientation(levelObj, slopeData) {
     flipY: solidAbove
   };
 }
+
+function _refreshSlopeColliderGeometry(collider) {
+  if (!collider?.slopeLocalVertices) return;
+  const radians = -((Number(collider.rotationDegrees) || 0) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const vertices = collider.slopeLocalVertices.map(point => ({
+    x: collider.x + point.x * cos - point.y * sin,
+    y: collider.y + point.x * sin + point.y * cos
+  }));
+  collider.slopeSolidVertices = vertices;
+  const xs = vertices.map(point => point.x);
+  const ys = vertices.map(point => point.y);
+  collider.w = Math.max(1, Math.max(...xs) - Math.min(...xs));
+  collider.h = Math.max(1, Math.max(...ys) - Math.min(...ys));
+  const orientationVertices = collider.slopeOrientationLocalVertices?.map(point => ({
+    x: collider.x + point.x * cos - point.y * sin,
+    y: collider.y + point.x * sin + point.y * cos
+  })) || vertices;
+  const orientation = _resolveSlopeOrientationFromVertices(orientationVertices);
+  if (!collider.slopeIsFilled) {
+    collider.slopeSurfaceVertices = [vertices[0], vertices[1]];
+    collider.slopeSolidVertex = vertices[2];
+    collider.slopeDir = orientation.dir;
+    collider.slopeFlipY = orientation.flipY;
+  } else {
+    collider.slopeDir = orientation.dir;
+    collider.slopeFlipY = orientation.flipY;
+  }
+  collider.slopeAngleDeg = Math.atan2(collider.h, collider.w) * 180 / Math.PI;
+}
  
 function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const slopeData = _SLOPE_DATA[levelObj.id];
   if (!slopeData) return null;
-  const rot90 = Math.round((((levelObj.rot || 0) % 360) + 360) % 360 / 90) % 4;
-  const steep = rot90 === 1 || rot90 === 3;
   const rawScale = Number(levelObj.scale);
   const scale = Math.max(0.01, Math.abs(Number.isFinite(rawScale) ? rawScale : 1));
   const localW = slopeData.gw * a * scale;
   const localH = slopeData.gh * a * scale;
   const rotationDegrees = Number(levelObj.rot) || 0;
-  const normalizedRotation = ((rotationDegrees % 360) + 360) % 360;
-  const angle = -normalizedRotation * Math.PI / 180;
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
   const sx = levelObj.flipX ? -1 : 1;
   const sy = levelObj.flipY ? -1 : 1;
-  const transform = ({ x, y }) => ({
-    x: x * sx * cos - y * sy * sin + worldX,
-    y: x * sx * sin + y * sy * cos + worldY
-  });
   const halfW = localW / 2;
   const halfH = localH / 2;
   const localVertices = slopeData.sq
     ? [{ x: -halfW, y: -halfH }, { x: halfW, y: -halfH },
       { x: halfW, y: halfH }, { x: -halfW, y: halfH }]
     : [{ x: halfW, y: halfH }, { x: -halfW, y: -halfH }, { x: halfW, y: -halfH }];
-  const vertices = localVertices.map(transform);
-  const xs = vertices.map(point => point.x);
-  const ys = vertices.map(point => point.y);
-  const w = Math.max(1, Math.max(...xs) - Math.min(...xs));
-  const h = Math.max(1, Math.max(...ys) - Math.min(...ys));
-  const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
+  const localVerticesWithFlip = localVertices.map(point => ({
+    x: point.x * sx,
+    y: point.y * sy
+  }));
+  const orientationLocalVertices = [
+    { x: halfW * sx, y: halfH * sy },
+    { x: -halfW * sx, y: -halfH * sy },
+    { x: halfW * sx, y: -halfH * sy }
+  ];
+  const collider = new Collider(slopeType, worldX, worldY, localW, localH, rotationDegrees);
   collider.objid = levelObj.id;
-  collider.slopeSolidVertices = vertices;
-  collider.slopeSurfaceVertices = slopeData.sq ? null : [vertices[0], vertices[1]];
-  collider.slopeSolidVertex = slopeData.sq ? null : vertices[2];
+  collider.slopeLocalVertices = localVerticesWithFlip;
+  collider.slopeOrientationLocalVertices = orientationLocalVertices;
+  collider.slopeIsFilled = slopeData.sq;
+  _refreshSlopeColliderGeometry(collider);
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
   // has to use atan(1 / 2) (and atan(2 / 1) when quarter-turned), otherwise
   // surface snapping and the velocity inherited at the end of the slope do
   // not agree.
-  collider.slopeAngleDeg = Math.atan2(h, w) * 180 / Math.PI;
-  const { dir, flipY } = _resolveSlopeOrientation(levelObj, slopeData);
-  collider.slopeDir = dir;
-  collider.slopeFlipY = flipY;
-  collider.slopeIsFilled = slopeData.sq;
   return collider;
 }
 
@@ -3921,6 +3948,7 @@ window.LevelObject = class LevelObject {
     col.y = col._eeMoveBaseY - off.y;
     col._baseX = col.x;
     col._baseY = col.y;
+    _refreshSlopeColliderGeometry(col);
     this._refreshCollisionSection(col);
   }
 
@@ -4073,6 +4101,7 @@ window.LevelObject = class LevelObject {
         col.y = baseY;
         col._baseX = baseX;
         col._baseY = baseY;
+        _refreshSlopeColliderGeometry(col);
         this._refreshCollisionSection(col);
       }
     }
@@ -4128,6 +4157,7 @@ window.LevelObject = class LevelObject {
       col._baseRotationDegrees = col.rotationDegrees;
       if (col._origRotationDegrees !== undefined) col._origRotationDegrees = col.rotationDegrees;
     }
+    _refreshSlopeColliderGeometry(col);
     this._refreshCollisionSection(col);
   }
 
@@ -4641,6 +4671,7 @@ window.LevelObject = class LevelObject {
           col._baseRotationDegrees = col._eeInitialRotationDegrees;
           col._origRotationDegrees = col._eeInitialRotationDegrees;
         }
+        _refreshSlopeColliderGeometry(col);
         this._refreshCollisionSection(col);
       }
     }
