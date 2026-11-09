@@ -2131,7 +2131,9 @@ window.LevelObject = class LevelObject {
             const animateGif = async () => {
               try {
                 decoder = new ImageDecoder({ data: bytes, type: "image/gif" });
-                const track = await decoder.tracks.ready;
+                await decoder.tracks.ready;
+                const track = decoder.tracks.selected;
+                if (!track) throw new Error("GIF has no selected animation track");
                 const frameCount = Math.max(1, Number(track.frameCount) || 1);
                 let frameIndex = 0;
                 while (!stopped && sprite.active) {
