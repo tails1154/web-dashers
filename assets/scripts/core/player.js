@@ -3351,6 +3351,7 @@ if (this.p.isFlying || this.p.isUfo) {
     if (gameObj.slopeIsFilled) {
       const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
       const contactPadding = 1;
+      const contactEpsilon = 1;
       const overlapsFilledSlope = gameObj.isSlopeRectSolid?.(
         pieceWidth - hitSize - contactPadding,
         playersY - hitSize - contactPadding,
@@ -3361,10 +3362,10 @@ if (this.p.isFlying || this.p.isUfo) {
       if (this.p.isWave) return { landed: false, died: true };
 
       const landingOnFloor = !this.p.gravityFlipped &&
-        (playersY - hitSize >= bottom || playersLastY - hitSize >= bottom) &&
+        (playersY - hitSize >= bottom - contactEpsilon || playersLastY - hitSize >= bottom - contactEpsilon) &&
         (this.p.yVelocity <= 0 || this.p.onGround);
       const landingOnCeiling = this.p.gravityFlipped &&
-        (playersY + hitSize <= top || playersLastY + hitSize <= top) &&
+        (playersY + hitSize <= top + contactEpsilon || playersLastY + hitSize <= top + contactEpsilon) &&
         (this.p.yVelocity >= 0 || this.p.onGround);
       if (landingOnFloor || landingOnCeiling) {
         return {
@@ -3387,18 +3388,26 @@ if (this.p.isFlying || this.p.isUfo) {
       if (window.noClip) this.p.diedThisFrame = true;
       return { landed: false, died: !window.noClip };
     }
-    const contactX = Phaser.Math.Clamp(pieceWidth, left, right);
+    const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
+    // GD's slopeYPos(CCRect) samples the player's leading horizontal edge,
+    // not its center: floor-top slopes use maxX and the other orientation uses
+    // minX. Using the center shifts the contact height by half the hitbox and
+    // can classify a valid edge contact as an interior collision.
+    const slopeRectContactX = gameObj.slopeFlipY ? pieceWidth + hitSize : pieceWidth - hitSize;
+    const contactX = Phaser.Math.Clamp(slopeRectContactX, left, right);
     const nativeSurfaceY = gameObj.getNativeSlopeSurfaceY?.(contactX);
     const surfaceY = nativeSurfaceY ?? gameObj.getSlopeSurfaceY(contactX);
     if (surfaceY === null) return { landed: false, died: false };
 
-    const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
     const gravityFlipped = !!this.p.gravityFlipped;
     const floorSide = !!gameObj.slopeFlipY;
     const correctGravity = gravityFlipped === floorSide;
     const getNativeContactY = (x) => gameObj.getNativeSlopeContactY?.(x, hitSize);
     const targetY = getNativeContactY(contactX) ?? this._getSlopeContactY(gameObj, surfaceY, hitSize, correctGravity);
-    const previousContactX = Phaser.Math.Clamp(previousWorldX, left, right);
+    const previousSlopeRectContactX = gameObj.slopeFlipY
+      ? previousWorldX + hitSize
+      : previousWorldX - hitSize;
+    const previousContactX = Phaser.Math.Clamp(previousSlopeRectContactX, left, right);
     const previousSurface = gameObj.getNativeSlopeSurfaceY?.(previousContactX) ?? gameObj.getSlopeSurfaceY(previousContactX);
     const previousNativeTargetY = getNativeContactY(previousContactX);
     const previousTargetY = previousNativeTargetY ?? (previousSurface === null
@@ -3417,7 +3426,6 @@ if (this.p.isFlying || this.p.isUfo) {
     const approachingSurface = movingTowardSurface && Math.abs(currentDistance) <= hitSize;
     const wasOnSlope = this._prevSlopeObj === gameObj;
     const continuedContact = wasOnSlope && Math.abs(currentDistance) <= Math.max(8, hitSize * 0.8);
-    const centerWithinSlope = pieceWidth >= left && pieceWidth <= right;
     const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
     if (this.p.isWave) {
       if (gameObj.isSlopeRectSolid) {
@@ -3439,7 +3447,7 @@ if (this.p.isFlying || this.p.isUfo) {
       return { landed: false, died: touchesSolid };
     }
 
-    if (centerWithinSlope && horizontalOverlap && (onSurface || crossedSurface || continuedContact || approachingSurface)) {
+    if (horizontalOverlap && (onSurface || crossedSurface || continuedContact || approachingSurface)) {
       const movingLeft = previousWorldX > pieceWidth + 0.001;
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
       const slidingDown = movingLeft ? uphill : !uphill;
