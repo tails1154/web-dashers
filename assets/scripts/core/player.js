@@ -5856,7 +5856,9 @@ if (this.p.isFlying || this.p.isUfo) {
       this._lastSlopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
       _0x30410f = true;
     }
-    if (this.p.collideTop !== 0 && this.p.collideBottom !== 0) {
+    const nativeSlopeOwnsContact = this._usesNativeSlopePhysics() &&
+      bestSlopeCandidate && bestSlopeCandidate.landedCorrectSide !== false;
+    if (!nativeSlopeOwnsContact && this.p.collideTop !== 0 && this.p.collideBottom !== 0) {
       if (Math.abs(this.p.collideTop - this.p.collideBottom) < 48) {
         if (window.noClip) this.p.diedThisFrame = true;
         if (!window.noClip) {
