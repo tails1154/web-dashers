@@ -183,7 +183,16 @@ class Collider {
     const normalX = -dy / length;
     const normalY = dx / length;
     const side = ((solidVertex.x - a.x) * normalX + (solidVertex.y - a.y) * normalY) >= 0 ? 1 : -1;
-    return surfaceY + normalY * side * Math.max(0, Number(hitSize) || 0);
+    const contactRadius = Math.max(0, Number(hitSize) || 0);
+    const normalOffsetY = normalY * side * contactRadius;
+    // Collider coordinates use screen-style Y ordering, while player physics
+    // treats the floor as the increasing-Y side. GD's slopeFloorTop flag is
+    // the authoritative side classification; use it to avoid reversing the
+    // landing offset on ordinary (non-inverted) slopes.
+    const expectedOffsetSign = this.slopeFlipY ? -1 : 1;
+    return surfaceY + (Math.abs(normalOffsetY) > 0.001
+      ? expectedOffsetSign * Math.abs(normalOffsetY)
+      : expectedOffsetSign * contactRadius);
   }
 }
 const ldm_object = new Set([
