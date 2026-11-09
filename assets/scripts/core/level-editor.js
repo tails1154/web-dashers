@@ -178,6 +178,12 @@ class LevelEditor {
         this._cameraStartX = this._cameraX;
         this._cameraStartY = this._cameraY;
         this._isDragging = false;
+        this._swipeBlockedForGesture = this._isEditorSwipeBlockedByUi(pointer);
+        if (this._swipeBlockedForGesture) {
+            this._lastSwipeGridX = -1;
+            this._lastSwipeGridY = -1;
+            return;
+        }
         if (this._editorTab === "edit" && this._isSwipeEnabled) {
             this._startEditorBoxSelect(pointer);
         } else if (this._isSwipeEnabled && pointer.y < screenHeight - 205) {
@@ -188,6 +194,7 @@ class LevelEditor {
     });
     this.input.on('pointermove', (pointer) => {
         if (this._editorPlaytestActive && !this._editorPlaytestPaused) return;
+        if (this._swipeBlockedForGesture) return;
         if (this._editorMeasureStart) {
             this._updateEditorMeasure(pointer);
             return;
@@ -200,6 +207,14 @@ class LevelEditor {
     });
     this.input.on('pointerup', (pointer) => {
         if (this._editorPlaytestActive && !this._editorPlaytestPaused) {
+            this._lastSwipeGridX = -1;
+            this._lastSwipeGridY = -1;
+            this._isDragging = false;
+            this._isDraggingSlider = false;
+            return;
+        }
+        if (this._swipeBlockedForGesture) {
+            this._swipeBlockedForGesture = false;
             this._lastSwipeGridX = -1;
             this._lastSwipeGridY = -1;
             this._isDragging = false;
@@ -3666,6 +3681,20 @@ class LevelEditor {
         Math.abs(pointer.x - (screenWidth - 40)) <= topButtonWidth / 2
     );
     if (isTopButton) return true;
+
+    // A swipe that starts on a Phaser interactive control must stay a UI
+    // gesture. Otherwise the global editor pointer handler also paints the
+    // first grid cell underneath the button and continues placing on move.
+    const hitObjects = this.input?.hitTestPointer?.(pointer) || [];
+    if (hitObjects.some(object => {
+        if (!object?.input || object.input.enabled === false) return false;
+        let current = object;
+        while (current) {
+            if (Number(current.depth || 0) >= 900) return true;
+            current = current.parentContainer;
+        }
+        return object.scrollFactorX === 0 && object.scrollFactorY === 0 && Number(object.depth || 0) > 10;
+    })) return true;
 
     return !!(
         this._editorLevelSettingsPopup ||
