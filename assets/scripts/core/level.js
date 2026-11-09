@@ -2099,6 +2099,11 @@ window.LevelObject = class LevelObject {
           const context = canvas.getContext("2d");
           if (!context) return;
 
+          // The GIF branch renders into a live canvas texture. Attach it to
+          // the sprite before refreshing it; otherwise the sprite stays on
+          // the image-block placeholder forever.
+          sprite.setTexture(baseTextureKey);
+
           const drawFrame = () => {
             if (!sprite.active || !image.complete) return;
             context.clearRect(0, 0, canvas.width, canvas.height);
