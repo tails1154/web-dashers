@@ -2104,16 +2104,59 @@ window.LevelObject = class LevelObject {
           // the image-block placeholder forever.
           sprite.setTexture(baseTextureKey);
 
-          const drawFrame = () => {
+          const drawImageFallback = () => {
             if (!sprite.active || !image.complete) return;
             context.clearRect(0, 0, canvas.width, canvas.height);
             context.drawImage(image, 0, 0, canvas.width, canvas.height);
             canvasTexture.refresh();
           };
-          drawFrame();
-          const animationTimer = scene.time.addEvent({ delay: 33, loop: true, callback: drawFrame });
-          sprite.once("destroy", () => animationTimer.remove());
-          sprite._eeCustomImageAnimation = animationTimer;
+
+          let stopped = false;
+          let animationTimer = null;
+          let decoder = null;
+          const stopAnimation = () => {
+            stopped = true;
+            animationTimer?.remove?.();
+            animationTimer = null;
+            decoder?.close?.();
+            decoder = null;
+          };
+          sprite.once("destroy", stopAnimation);
+
+          if (typeof ImageDecoder === "function") {
+            const binary = atob(sourceBase64);
+            const bytes = new Uint8Array(binary.length);
+            for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+
+            const animateGif = async () => {
+              try {
+                decoder = new ImageDecoder({ data: bytes, type: "image/gif" });
+                const track = await decoder.tracks.ready;
+                const frameCount = Math.max(1, Number(track.frameCount) || 1);
+                let frameIndex = 0;
+                while (!stopped && sprite.active) {
+                  const decoded = await decoder.decode({ frameIndex, completeFramesOnly: true });
+                  const frame = decoded.image;
+                  const durationMs = Math.max(16, (Number(frame.duration) || 100000) / 1000);
+                  context.clearRect(0, 0, canvas.width, canvas.height);
+                  context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+                  frame.close?.();
+                  canvasTexture.refresh();
+                  frameIndex = (frameIndex + 1) % frameCount;
+                  await new Promise(resolve => {
+                    animationTimer = scene.time.delayedCall(durationMs, resolve);
+                  });
+                }
+              } catch (error) {
+                console.warn("Animated image block decoding failed; using static image fallback", error);
+                if (!stopped) drawImageFallback();
+              }
+            };
+            animateGif();
+          } else {
+            drawImageFallback();
+          }
+          sprite._eeCustomImageAnimation = { remove: stopAnimation };
         } else {
           if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
           sprite.setTexture(baseTextureKey);
