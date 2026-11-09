@@ -5832,11 +5832,11 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.yVelocity = this.p.gravityFlipped
           ? Math.max(slopeIncomingYVelocity, 2)
           : Math.min(slopeIncomingYVelocity, -2);
-      } else if (this._usesNativeSlopePhysics() && this.p.isFlying) {
-        // GD's flying slope path updates the slope state/rotation without
-        // calling the ordinary grounded-player landing routine. In
-        // particular, it must not zero ship vertical velocity or make the
-        // ship jumpable like a cube.
+      } else if (this._usesNativeSlopePhysics()) {
+        // Native slope contact tracks support and slope velocity separately
+        // from the player's vertical motion. Calling hitGround() here zeroes
+        // velocity on every substep, causing repeated mini-bounces and
+        // consuming jump input before the next collision pass.
         this.p.onGround = false;
         this.p.canJump = false;
         this.p.isJumping = false;
