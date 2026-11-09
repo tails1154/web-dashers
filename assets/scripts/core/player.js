@@ -3254,11 +3254,11 @@ if (this.p.isFlying || this.p.isUfo) {
     if (this._usesNativeSlopePhysics()) {
       const slopeVelocity = Number(this._slopeVelocity) || 0;
       const slopeTime = Number(this._slopeTime) || 0;
-      // GD uses the stored slope rotation velocity for this adjustment. The
-      // long-duration branch is only reached after the native slope timer has
-      // exceeded its ten-second threshold.
-      if (slopeTime >= 10) return slopeVelocity * Math.max(slopeTime * 10, 0.4);
-      return slopeVelocity;
+      // GD stores the time at which the current slope contact began and scales
+      // the stored slope velocity by the elapsed contact time. The minimum
+      // factor is 0.4, so the first jump from a slope gets a reduced boost and
+      // the boost ramps up during continued contact.
+      return slopeVelocity * Math.max(slopeTime * 10, 0.4);
     }
     const slopeYVelocity = Number(this._slopeYVelocity) || 0;
     const slopeTime = Number(this._slopeTime) || 0;
@@ -3427,6 +3427,13 @@ if (this.p.isFlying || this.p.isUfo) {
     const wasOnSlope = this._prevSlopeObj === gameObj;
     const continuedContact = wasOnSlope && Math.abs(currentDistance) <= Math.max(8, hitSize * 0.8);
     const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
+    const solidAtPlayer = gameObj.isSlopeRectSolid
+      ? gameObj.isSlopeRectSolid(pieceWidth - hitSize, playersY - hitSize, pieceWidth + hitSize, playersY + hitSize)
+      : gameObj.isSlopeSolidAtExact
+        ? gameObj.isSlopeSolidAtExact(pieceWidth, playersY)
+        : gameObj.isSlopeSolidAt(pieceWidth, playersY, gravityFlipped);
+    const recoveringCorrectSideContact = correctGravity && solidAtPlayer &&
+      (gravityFlipped ? this.p.yVelocity >= 0 : this.p.yVelocity <= 0 || this.p.onGround);
     if (this.p.isWave) {
       if (gameObj.isSlopeRectSolid) {
         const waveTouchesSlope = (x, y) => gameObj.isSlopeRectSolid(
@@ -3447,7 +3454,7 @@ if (this.p.isFlying || this.p.isUfo) {
       return { landed: false, died: touchesSolid };
     }
 
-    if (horizontalOverlap && (onSurface || crossedSurface || continuedContact || approachingSurface)) {
+    if (horizontalOverlap && (onSurface || crossedSurface || continuedContact || approachingSurface || recoveringCorrectSideContact)) {
       const movingLeft = previousWorldX > pieceWidth + 0.001;
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
       const slidingDown = movingLeft ? uphill : !uphill;
@@ -3484,11 +3491,6 @@ if (this.p.isFlying || this.p.isUfo) {
       };
     }
 
-    const solidAtPlayer = gameObj.isSlopeRectSolid
-      ? gameObj.isSlopeRectSolid(pieceWidth - hitSize, playersY - hitSize, pieceWidth + hitSize, playersY + hitSize)
-      : gameObj.isSlopeSolidAtExact
-        ? gameObj.isSlopeSolidAtExact(pieceWidth, playersY)
-        : gameObj.isSlopeSolidAt(pieceWidth, playersY, gravityFlipped);
     if (horizontalOverlap && solidAtPlayer) {
       if (window.noClip) this.p.diedThisFrame = true;
       else return { landed: false, died: true };
