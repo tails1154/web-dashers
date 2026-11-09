@@ -3365,6 +3365,7 @@ if (this.p.isFlying || this.p.isUfo) {
       : (gravityFlipped ? previousDistance >= 0 && currentDistance <= tolerance : previousDistance <= 0 && currentDistance >= -tolerance);
     const onSurface = Math.abs(currentDistance) <= tolerance;
     const wasOnSlope = this._prevSlopeObj === gameObj;
+    const continuedContact = wasOnSlope && Math.abs(currentDistance) <= Math.max(8, hitSize * 0.8);
     const centerWithinSlope = pieceWidth >= left && pieceWidth <= right;
     const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
     if (this.p.isWave) {
@@ -3375,7 +3376,7 @@ if (this.p.isFlying || this.p.isUfo) {
       return { landed: false, died: touchesSolid };
     }
 
-    if (centerWithinSlope && horizontalOverlap && (onSurface || crossedSurface || (wasOnSlope && movingTowardSurface))) {
+    if (centerWithinSlope && horizontalOverlap && (onSurface || crossedSurface || continuedContact || (wasOnSlope && movingTowardSurface))) {
       const movingLeft = previousWorldX > pieceWidth + 0.001;
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
       const slidingDown = movingLeft ? uphill : !uphill;
