@@ -3806,7 +3806,11 @@ if (this.p.isFlying || this.p.isUfo) {
       // second time; t=60 on a normal frame causes the cube to overshoot and
       // visibly seize on the slope.
       const nativeFrameDt = Number(_0x5c24f7) || 0;
-      const nativeRotationRate = this._getNativeSlopeSpeed() * 0.175;
+      // updateRotationEff in GD clamps slope rotation interpolation to
+      // min(frameDelta, frameDelta * 0.5). Keep the old legacy rate intact.
+      const nativeRotationRate = this._usesNativeSlopePhysics()
+        ? 0.5
+        : this._getNativeSlopeSpeed() * 0.175;
       _0x17a9a6 = Math.min(nativeFrameDt, nativeFrameDt * nativeRotationRate);
     } else {
       _0x17a9a6 = Math.min(_0x5c24f7 * 1, _0x108955 * _0x5c24f7);
