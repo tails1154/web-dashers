@@ -62,3 +62,23 @@ Trace slope contact flags into hitGround, updateJump, and postCollision;
 confirm field identities and units before implementing changes. Reproduce
 connected ascending/descending slopes and jumping in both gravity directions.
 Static disassembly does not establish observed gameplay behavior.
+
+## Local regression simulator
+
+`tests/slope-simulator.cjs` executes the production `PlayerObject` collision
+and jump methods in a Node VM, at the same four physics substeps used by the
+game loop. It writes an SVG/JSON trace and can be rendered to a PNG for visual
+inspection:
+
+```sh
+node tests/slope-simulator.cjs /tmp/webdashers-slope-simulation
+convert -background '#101827' /tmp/webdashers-slope-simulation.svg \
+  /tmp/webdashers-slope-simulation.png
+```
+
+The trace covers connected ascending and descending ramps, with and without a
+cube jump. The native profile now preserves the jump's separating motion while
+the player is still inside the slope contact tolerance; the simulator asserts
+that both native jump traces leave their starting slope without dying. This is
+a regression check for the reconstructed behavior, not proof that a browser
+implementation is identical to GD without an in-game comparison.

@@ -417,6 +417,7 @@ class PlayerObject {
     this._onSlopeAngle = null;
     this._activeSlopeObj = null;
     this._prevSlopeObj = null;
+    this._slopeJumpObj = null;
     this._slopeVelocity = 0;
     this._slopeYVelocity = 0;
     this._lastSlopeYVelocity = 0;
@@ -3375,6 +3376,9 @@ if (this.p.isFlying || this.p.isUfo) {
       : (gravityFlipped ? previousDistance >= 0 && currentDistance <= tolerance : previousDistance <= 0 && currentDistance >= -tolerance);
     const onSurface = Math.abs(currentDistance) <= tolerance;
     const wasOnSlope = this._prevSlopeObj === gameObj;
+    const separatingJump = correctGravity && this.p.isJumping && !this.p.onGround &&
+      Number(this.p.yVelocity) * this.flipMod() > 0 &&
+      (wasOnSlope || this._slopeJumpObj === gameObj);
     const continuedContact = wasOnSlope && Math.abs(currentDistance) <= Math.max(8, hitSize * 0.8);
     const centerWithinSlope = pieceWidth >= left && pieceWidth <= right;
     const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
@@ -3386,6 +3390,13 @@ if (this.p.isFlying || this.p.isUfo) {
       return { landed: false, died: touchesSolid };
     }
 
+    if (separatingJump && (onSurface || crossedSurface || continuedContact)) {
+      // A native slope must not re-ground a cube that has just jumped from
+      // that slope. Keep this state across substeps because the first jump
+      // frames can still overlap the slope's contact tolerance.
+      this._slopeJumpObj = gameObj;
+      return { landed: false, died: false };
+    }
     if (centerWithinSlope && horizontalOverlap && (onSurface || crossedSurface || continuedContact || (wasOnSlope && movingTowardSurface))) {
       const movingLeft = previousWorldX > pieceWidth + 0.001;
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
@@ -6181,6 +6192,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this._lastXOffset = 0;
     this._prevSlopeObj = null;
     this._activeSlopeObj = null;
+    this._slopeJumpObj = null;
     this._onSlopeAngle = null;
     this._slopeVelocity = 0;
     this._slopeYVelocity = 0;
