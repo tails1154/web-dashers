@@ -2065,10 +2065,18 @@ window.LevelObject = class LevelObject {
     const baseTextureKey = `custom-image-block-${linkedObjectId}-${sourceBase64.length}-${imageKeyPart}`;
     const mime = String(raw[701] ?? raw["701"] ?? "image/png").replace(/[^a-zA-Z0-9.+\/-]/g, "") || "image/png";
     const isAnimatedGif = mime.toLowerCase() === "image/gif" || /^R0lGOD/i.test(sourceBase64);
+    const displayWidth = width * scale;
+    const displayHeight = height * scale;
+    const applyDisplaySize = () => {
+      if (!sprite.active) return;
+      sprite.setDisplaySize(displayWidth, displayHeight);
+      sprite.scaleX = Math.abs(sprite.scaleX) * (sprite.flipX ? -1 : 1);
+      sprite.scaleY = Math.abs(sprite.scaleY) * (sprite.flipY ? -1 : 1);
+    };
 
     const sprite = scene.add.image(worldX, b(worldY), "image-block-placeholder.svg")
       .setOrigin(0.5)
-      .setDisplaySize(width * scale, height * scale)
+      .setDisplaySize(displayWidth, displayHeight)
       .setAngle(rotation)
       .setFlipX(!!levelObj.flipX)
       .setFlipY(!!levelObj.flipY);
@@ -2090,77 +2098,57 @@ window.LevelObject = class LevelObject {
       image.onload = () => {
         if (!sprite.active) return;
         if (isAnimatedGif) {
-          const canvasTexture = scene.textures.exists(baseTextureKey)
-            ? scene.textures.get(baseTextureKey)
-            : scene.textures.addCanvas(baseTextureKey, document.createElement("canvas"));
-          const canvas = canvasTexture.getSourceImage();
-          canvas.width = image.naturalWidth || image.width || width;
-          canvas.height = image.naturalHeight || image.height || height;
-          const context = canvas.getContext("2d");
-          if (!context) return;
-
-          // The GIF branch renders into a live canvas texture. Attach it to
-          // the sprite before refreshing it; otherwise the sprite stays on
-          // the image-block placeholder forever.
-          sprite.setTexture(baseTextureKey);
-
-          const drawImageFallback = () => {
-            if (!sprite.active || !image.complete) return;
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.drawImage(image, 0, 0, canvas.width, canvas.height);
-            canvasTexture.refresh();
-          };
-
           let stopped = false;
           let animationTimer = null;
-          let decoder = null;
           const frameTextureKeys = [];
           const stopAnimation = () => {
             stopped = true;
             if (animationTimer !== null) window.clearTimeout(animationTimer);
             animationTimer = null;
-            decoder?.close?.();
-            decoder = null;
             for (const frameKey of frameTextureKeys) {
               if (scene.textures.exists(frameKey)) scene.textures.remove(frameKey);
             }
           };
           sprite.once("destroy", stopAnimation);
 
-          const animateDecodedFrames = async () => {
+          const animateDecodedFrames = () => {
             try {
-              if (typeof ImageDecoder !== "function") throw new Error("ImageDecoder is unavailable");
               const binary = atob(sourceBase64.replace(/\s/g, ""));
               const bytes = new Uint8Array(binary.length);
               for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-              decoder = new ImageDecoder({ data: bytes.buffer, type: "image/gif" });
-              await decoder.tracks.ready;
-              const track = decoder.tracks.selected;
-              if (!track) throw new Error("GIF has no selected animation track");
-
-              const frameCount = Math.max(1, Number(track.frameCount) || 1);
+              if (!window.Gifuct?.parseGIF || !window.Gifuct?.decompressFrames) {
+                throw new Error("GIF decoder library is unavailable");
+              }
+              const decodedGif = window.Gifuct.parseGIF(bytes.buffer);
+              const decodedFrames = window.Gifuct.decompressFrames(decodedGif, true);
+              const canvasWidth = Math.max(1, Number(decodedGif.lsd?.width) || image.naturalWidth || width);
+              const canvasHeight = Math.max(1, Number(decodedGif.lsd?.height) || image.naturalHeight || height);
+              const frameCanvas = document.createElement("canvas");
+              frameCanvas.width = canvasWidth;
+              frameCanvas.height = canvasHeight;
+              const frameContext = frameCanvas.getContext("2d");
+              if (!frameContext) throw new Error("Could not create GIF frame canvas");
+              const patchCanvas = document.createElement("canvas");
+              const patchContext = patchCanvas.getContext("2d");
+              if (!patchContext) throw new Error("Could not create GIF patch canvas");
               const frames = [];
-              for (let frameIndex = 0; frameIndex < frameCount && !stopped; frameIndex++) {
-                const decoded = await decoder.decode({ frameIndex, completeFramesOnly: true });
-                const frame = decoded.image;
-                const frameCanvas = document.createElement("canvas");
-                frameCanvas.width = canvas.width;
-                frameCanvas.height = canvas.height;
-                const frameContext = frameCanvas.getContext("2d");
-                if (!frameContext) {
-                  frame.close?.();
-                  throw new Error("Could not create GIF frame canvas");
-                }
-                frameContext.drawImage(frame, 0, 0, frameCanvas.width, frameCanvas.height);
+              for (let frameIndex = 0; frameIndex < decodedFrames.length && !stopped; frameIndex++) {
+                const decodedFrame = decodedFrames[frameIndex];
+                const dims = decodedFrame.dims;
+                patchCanvas.width = dims.width;
+                patchCanvas.height = dims.height;
+                patchContext.putImageData(new ImageData(decodedFrame.patch, dims.width, dims.height), 0, 0);
+                frameContext.drawImage(patchCanvas, dims.left, dims.top);
+                const frameSnapshot = document.createElement("canvas");
+                frameSnapshot.width = canvasWidth;
+                frameSnapshot.height = canvasHeight;
+                frameSnapshot.getContext("2d").drawImage(frameCanvas, 0, 0);
                 const frameKey = `${baseTextureKey}-frame-${frameIndex}`;
                 if (scene.textures.exists(frameKey)) scene.textures.remove(frameKey);
-                scene.textures.addCanvas(frameKey, frameCanvas).refresh();
+                scene.textures.addCanvas(frameKey, frameSnapshot).refresh();
                 frameTextureKeys.push(frameKey);
-                frames.push({
-                  key: frameKey,
-                  duration: Math.max(16, (Number(frame.duration) || 100000) / 1000)
-                });
-                frame.close?.();
+                frames.push({ key: frameKey, duration: Math.max(16, Number(decodedFrame.delay) || 100) });
+                if (decodedFrame.disposalType === 2) frameContext.clearRect(0, 0, canvasWidth, canvasHeight);
               }
               if (!frames.length || stopped) return;
 
@@ -2168,14 +2156,17 @@ window.LevelObject = class LevelObject {
               const showNextFrame = () => {
                 if (stopped || !sprite.active) return;
                 const frame = frames[frameIndex];
-                sprite.setTexture(frame.key).setDisplaySize(width * scale, height * scale);
+                sprite.setTexture(frame.key);
+                applyDisplaySize();
                 frameIndex = (frameIndex + 1) % frames.length;
                 animationTimer = window.setTimeout(showNextFrame, frame.duration);
               };
               showNextFrame();
             } catch (error) {
-              console.warn("Animated image block decoding failed; using static image", error);
-              drawImageFallback();
+              console.warn("Animated image block decoding failed", error);
+              if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
+              sprite.setTexture(baseTextureKey);
+              applyDisplaySize();
             }
           };
           animateDecodedFrames();
@@ -2184,7 +2175,7 @@ window.LevelObject = class LevelObject {
           if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
           sprite.setTexture(baseTextureKey);
         }
-        sprite.setDisplaySize(width * scale, height * scale);
+        applyDisplaySize();
       };
       image.src = `data:${mime};base64,${sourceBase64}`;
     }
