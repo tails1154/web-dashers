@@ -4189,10 +4189,11 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.queuedHold = false;
         this.p.yVelocity = _0x47d739 * 22.360064 * (this.p.isMini ? 0.8 : 1);
         if (Number(this._slopeVelocity) * this.flipMod() > 0) {
-          // Native GD and legacy mode both apply their selected slope state;
-          // the native path supplies the binary-matched stored velocity.
+          const slopeVelocity = this._usesNativeSlopePhysics()
+            ? this._getModifiedSlopeYVelocity()
+            : Number(this._slopeVelocity);
           const slopeJumpCap = this.p.yVelocity * 1.4;
-          this.p.yVelocity += Number(this._slopeVelocity) * 0.25;
+          this.p.yVelocity += slopeVelocity * 0.25;
           this.p.yVelocity = this.p.gravityFlipped
             ? Math.max(this.p.yVelocity, slopeJumpCap)
             : Math.min(this.p.yVelocity, slopeJumpCap);
