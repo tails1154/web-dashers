@@ -2064,7 +2064,7 @@ window.LevelObject = class LevelObject {
     const imageKeyPart = sourceBase64.slice(0, 10).replace(/[^a-zA-Z0-9]/g, "_");
     const baseTextureKey = `custom-image-block-${linkedObjectId}-${sourceBase64.length}-${imageKeyPart}`;
     const mime = String(raw[701] ?? raw["701"] ?? "image/png").replace(/[^a-zA-Z0-9.+\/-]/g, "") || "image/png";
-    const isAnimatedGif = mime.toLowerCase() === "image/gif";
+    const isAnimatedGif = mime.toLowerCase() === "image/gif" || /^R0lGOD/i.test(sourceBase64);
 
     const sprite = scene.add.image(worldX, b(worldY), "image-block-placeholder.svg")
       .setOrigin(0.5)
@@ -2117,7 +2117,7 @@ window.LevelObject = class LevelObject {
           let decoder = null;
           const stopAnimation = () => {
             stopped = true;
-            animationTimer?.remove?.();
+            if (animationTimer !== null) window.clearTimeout(animationTimer);
             animationTimer = null;
             fallbackTimer?.remove?.();
             fallbackTimer = null;
@@ -2140,13 +2140,13 @@ window.LevelObject = class LevelObject {
           };
 
           if (typeof ImageDecoder === "function") {
-            const binary = atob(sourceBase64);
+            const binary = atob(sourceBase64.replace(/\s/g, ""));
             const bytes = new Uint8Array(binary.length);
             for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
 
             const animateGif = async () => {
               try {
-                decoder = new ImageDecoder({ data: bytes, type: "image/gif" });
+                decoder = new ImageDecoder({ data: bytes.buffer, type: "image/gif" });
                 await decoder.tracks.ready;
                 const track = decoder.tracks.selected;
                 if (!track) throw new Error("GIF has no selected animation track");
@@ -2162,7 +2162,7 @@ window.LevelObject = class LevelObject {
                   canvasTexture.refresh();
                   frameIndex = (frameIndex + 1) % frameCount;
                   await new Promise(resolve => {
-                    animationTimer = scene.time.delayedCall(durationMs, resolve);
+                    animationTimer = window.setTimeout(resolve, durationMs);
                   });
                 }
               } catch (error) {
