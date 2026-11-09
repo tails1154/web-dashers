@@ -2113,15 +2113,31 @@ window.LevelObject = class LevelObject {
 
           let stopped = false;
           let animationTimer = null;
+          let fallbackTimer = null;
           let decoder = null;
           const stopAnimation = () => {
             stopped = true;
             animationTimer?.remove?.();
             animationTimer = null;
+            fallbackTimer?.remove?.();
+            fallbackTimer = null;
             decoder?.close?.();
             decoder = null;
+            image.remove?.();
           };
           sprite.once("destroy", stopAnimation);
+
+          const startImageFallback = () => {
+            image.style.position = "fixed";
+            image.style.width = "1px";
+            image.style.height = "1px";
+            image.style.opacity = "0";
+            image.style.pointerEvents = "none";
+            image.setAttribute("aria-hidden", "true");
+            if (!image.parentNode) document.body.appendChild(image);
+            drawImageFallback();
+            fallbackTimer = scene.time.addEvent({ delay: 33, loop: true, callback: drawImageFallback });
+          };
 
           if (typeof ImageDecoder === "function") {
             const binary = atob(sourceBase64);
@@ -2151,12 +2167,12 @@ window.LevelObject = class LevelObject {
                 }
               } catch (error) {
                 console.warn("Animated image block decoding failed; using static image fallback", error);
-                if (!stopped) drawImageFallback();
+                if (!stopped) startImageFallback();
               }
             };
             animateGif();
           } else {
-            drawImageFallback();
+            startImageFallback();
           }
           sprite._eeCustomImageAnimation = { remove: stopAnimation };
         } else {
