@@ -3249,6 +3249,15 @@ if (this.p.isFlying || this.p.isUfo) {
     return Math.max(minY - contactRadius, Math.min(surfaceY - contactRadius, maxY));
   }
   _getModifiedSlopeYVelocity() {
+    if (this._usesNativeSlopePhysics()) {
+      const slopeVelocity = Number(this._slopeVelocity) || 0;
+      const slopeTime = Number(this._slopeTime) || 0;
+      // GD uses the stored slope rotation velocity for this adjustment. The
+      // long-duration branch is only reached after the native slope timer has
+      // exceeded its ten-second threshold.
+      if (slopeTime >= 10) return slopeVelocity * Math.max(slopeTime * 10, 0.4);
+      return slopeVelocity;
+    }
     const slopeYVelocity = Number(this._slopeYVelocity) || 0;
     const slopeTime = Number(this._slopeTime) || 0;
     if (slopeTime < 0.1) {
@@ -3902,7 +3911,7 @@ if (this.p.isFlying || this.p.isUfo) {
       this.p.upKeyPressed = false;
       this.p.queuedHold = false;
       this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
-      if (!this._usesNativeSlopePhysics() && Number(this._slopeVelocity) * this.flipMod() > 0) {
+      if (Number(this._slopeVelocity) * this.flipMod() > 0) {
         const slopeBoost = this._getModifiedSlopeYVelocity() * 0.25;
         const slopeJumpCap = this.p.yVelocity * 1.4;
         this.p.yVelocity += slopeBoost;
@@ -4169,9 +4178,9 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.upKeyPressed = false;
         this.p.queuedHold = false;
         this.p.yVelocity = _0x47d739 * 22.360064 * (this.p.isMini ? 0.8 : 1);
-        if (!this._usesNativeSlopePhysics() && Number(this._slopeVelocity) * this.flipMod() > 0) {
-          // Legacy slope mode uses the signed slope velocity for this boost;
-          // native-profile levels follow the game's ordinary ball jump path.
+        if (Number(this._slopeVelocity) * this.flipMod() > 0) {
+          // Native GD and legacy mode both apply their selected slope state;
+          // the native path supplies the binary-matched stored velocity.
           const slopeJumpCap = this.p.yVelocity * 1.4;
           this.p.yVelocity += Number(this._slopeVelocity) * 0.25;
           this.p.yVelocity = this.p.gravityFlipped
