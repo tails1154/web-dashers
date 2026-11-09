@@ -4973,6 +4973,7 @@ if (this.p.isFlying || this.p.isUfo) {
     let nativeSlopeDetachedThisFrame = false;
     let bestSlopeCandidate = null;
     let bestSlopeGameObj = null;
+    let nativeSlopeCollisionDeathPending = false;
     const _0x198534 = this._gameLayer.getNearbySectionObjects(pieceWidth);
     // Native GD resolves a slope contact before the ordinary block pass. A
     // neighboring block can otherwise kill the player first when the slope
@@ -5639,8 +5640,16 @@ if (this.p.isFlying || this.p.isUfo) {
             gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition
           );
           if (slopeResult.died) {
-            this.killPlayer();
-            return;
+            if (this._usesNativeSlopePhysics()) {
+              // A seam can expose the solid side of the previous slope before
+              // the next slope in the section is visited. Native resolves the
+              // complete slope set before deciding whether the contact is a
+              // death, so defer this until all candidates are examined.
+              nativeSlopeCollisionDeathPending = true;
+            } else {
+              this.killPlayer();
+              return;
+            }
           }
           if (slopeResult.landed && slopeResult.candidate) {
             const cand = slopeResult.candidate;
@@ -5799,6 +5808,13 @@ if (this.p.isFlying || this.p.isUfo) {
             }
           }
         }
+      }
+    }
+    if (!bestSlopeCandidate && nativeSlopeCollisionDeathPending) {
+      if (window.noClip) this.p.diedThisFrame = true;
+      else {
+        this.killPlayer();
+        return;
       }
     }
     if (bestSlopeCandidate) {
