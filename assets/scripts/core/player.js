@@ -5744,6 +5744,14 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.yVelocity = this.p.gravityFlipped
           ? Math.max(slopeIncomingYVelocity, 2)
           : Math.min(slopeIncomingYVelocity, -2);
+      } else if (this._usesNativeSlopePhysics() && this.p.isFlying) {
+        // GD's flying slope path updates the slope state/rotation without
+        // calling the ordinary grounded-player landing routine. In
+        // particular, it must not zero ship vertical velocity or make the
+        // ship jumpable like a cube.
+        this.p.onGround = false;
+        this.p.canJump = false;
+        this.p.isJumping = false;
       } else {
         this.hitGround();
       }
