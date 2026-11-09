@@ -5833,13 +5833,11 @@ if (this.p.isFlying || this.p.isUfo) {
           ? Math.max(slopeIncomingYVelocity, 2)
           : Math.min(slopeIncomingYVelocity, -2);
       } else if (this._usesNativeSlopePhysics()) {
-        // Native slope contact tracks support and slope velocity separately
-        // from the player's vertical motion. Calling hitGround() here zeroes
-        // velocity on every substep, causing repeated mini-bounces and
-        // consuming jump input before the next collision pass.
-        this.p.onGround = false;
-        this.p.canJump = false;
-        this.p.isJumping = false;
+        // Keep the regular grounded/jump state while riding the slope, but
+        // retain the incoming vertical velocity. hitGround() normally clears
+        // that velocity, which turns each substep into a small bounce.
+        this.hitGround();
+        this.p.yVelocity = slopeIncomingYVelocity;
       } else {
         this.hitGround();
       }
