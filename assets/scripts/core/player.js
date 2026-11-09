@@ -3326,8 +3326,7 @@ if (this.p.isFlying || this.p.isUfo) {
     return this._landOnSlopeCeiling(gameObj, surfaceY, hitSize, headProbe, lastHeadProbe, playersY);
   }
   _usesNativeSlopePhysics() {
-    return this._gameLayer?.physicsProfile === "native-slopes" ||
-      (this._gameLayer?.physicsProfile === "legacy" && window.nativeSlopePhysicsForLegacy === true);
+    return this._gameLayer?.physicsProfile === "native-slopes";
   }
 
   _handleSlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition) {
