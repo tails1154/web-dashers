@@ -3325,7 +3325,86 @@ if (this.p.isFlying || this.p.isUfo) {
     }
     return this._landOnSlopeCeiling(gameObj, surfaceY, hitSize, headProbe, lastHeadProbe, playersY);
   }
+  _usesNativeSlopePhysics() {
+    return this._gameLayer?.physicsProfile === "native-slopes";
+  }
+
   _handleSlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition) {
+    if (this._usesNativeSlopePhysics()) {
+      return this._handleNativeSlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition);
+    }
+    return this._handleLegacySlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition);
+  }
+
+  _handleNativeSlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition) {
+    const contactX = Phaser.Math.Clamp(pieceWidth, left, right);
+    const surfaceY = gameObj.getSlopeSurfaceY(contactX);
+    if (surfaceY === null) return { landed: false, died: false };
+
+    const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
+    const gravityFlipped = !!this.p.gravityFlipped;
+    const floorSide = !!gameObj.slopeFlipY;
+    const correctGravity = gravityFlipped === floorSide;
+    const targetY = this._getSlopeContactY(gameObj, surfaceY, hitSize, correctGravity);
+    const previousSurface = gameObj.getSlopeSurfaceY(Phaser.Math.Clamp(previousWorldX, left, right));
+    const previousTargetY = previousSurface === null
+      ? targetY
+      : this._getSlopeContactY(gameObj, previousSurface, hitSize, correctGravity);
+    const tolerance = Math.max(6, Math.min(14, hitSize * 0.45));
+    const currentDistance = playersY - targetY;
+    const previousDistance = playersLastY - previousTargetY;
+    const movingTowardSurface = correctGravity
+      ? (gravityFlipped ? currentDistance > 0 : currentDistance < 0)
+      : (gravityFlipped ? currentDistance < 0 : currentDistance > 0);
+    const crossedSurface = correctGravity
+      ? (gravityFlipped ? previousDistance <= 0 && currentDistance >= -tolerance : previousDistance >= 0 && currentDistance <= tolerance)
+      : (gravityFlipped ? previousDistance >= 0 && currentDistance <= tolerance : previousDistance <= 0 && currentDistance >= -tolerance);
+    const onSurface = Math.abs(currentDistance) <= tolerance;
+    const wasOnSlope = this._prevSlopeObj === gameObj;
+    const centerWithinSlope = pieceWidth >= left && pieceWidth <= right;
+    const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
+    if (this.p.isWave) {
+      const points = [[0, 0], [hitSize, 0], [-hitSize, 0], [0, hitSize], [0, -hitSize]];
+      const touchesSolid = points.some(([offsetX, offsetY]) => gameObj.isSlopeSolidAtExact
+        ? gameObj.isSlopeSolidAtExact(pieceWidth + offsetX, playersY + offsetY)
+        : gameObj.isSlopeSolidAt(pieceWidth + offsetX, playersY + offsetY, gravityFlipped));
+      return { landed: false, died: touchesSolid };
+    }
+
+    if (centerWithinSlope && horizontalOverlap && (onSurface || crossedSurface || (wasOnSlope && movingTowardSurface))) {
+      const movingLeft = previousWorldX > pieceWidth + 0.001;
+      const uphill = (gameObj.slopeDir > 0) !== floorSide;
+      const slidingDown = movingLeft ? uphill : !uphill;
+      const slopeAngle = gameObj.getSlopeAngleRad();
+      return {
+        landed: true,
+        died: false,
+        candidate: {
+          gameObj,
+          y: targetY,
+          onCeiling: !correctGravity,
+          collideBottom: correctGravity ? surfaceY : null,
+          collideTop: correctGravity ? null : surfaceY,
+          slopeAngle: Math.abs(slopeAngle),
+          slopeRotation: (slidingDown ? this.flipMod() : -this.flipMod()) * (movingLeft ? -1 : 1) * Math.abs(slopeAngle),
+          slopeSlidingDown: slidingDown,
+          landedCorrectSide: correctGravity,
+          skipGroundUpdate: false
+        }
+      };
+    }
+
+    const solidAtPlayer = gameObj.isSlopeSolidAtExact
+      ? gameObj.isSlopeSolidAtExact(pieceWidth, playersY)
+      : gameObj.isSlopeSolidAt(pieceWidth, playersY, gravityFlipped);
+    if (horizontalOverlap && solidAtPlayer) {
+      if (window.noClip) this.p.diedThisFrame = true;
+      else return { landed: false, died: true };
+    }
+    return { landed: false, died: false };
+  }
+
+  _handleLegacySlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition) {
     // The slope line only exists across the collider bounds, but the player's
     // hitbox can still contact either end while its center is just outside.
     // Evaluate the endpoint surface there instead of dropping the collision.

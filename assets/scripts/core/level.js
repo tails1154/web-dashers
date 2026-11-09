@@ -1096,6 +1096,9 @@ window.LevelObject = class LevelObject {
     this._setUpSettings(settingslist);
     window.levelObjects = levelObjects;
     window.settingslist = settingslist;
+    this.physicsProfile = window.currentLevelPhysicsProfile === "native-slopes"
+      ? "native-slopes"
+      : "legacy";
   }
   _setUpSettings(settingsStr) {
     this._initialColors = {};

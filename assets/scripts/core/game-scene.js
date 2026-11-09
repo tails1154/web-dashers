@@ -2169,6 +2169,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         window._onlineLevelId    = "online_" + lvl.id;
         window._onlineLevelString = levelString;
         window._onlineLevelName   = lvl.name || "Online Level";
+        window.currentLevelPhysicsProfile = lvl.physics_profile === "native-slopes" ? "native-slopes" : "legacy";
         window._onlineSongOffset  = 0;
         window._onlineSongBuffer  = null;
         window._onlineSongKey     = null;
@@ -2307,6 +2308,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           description: lvl.description || "",
           version: 1,
           status: "Unverified",
+          physicsProfile: lvl.physics_profile === "native-slopes" ? "native-slopes" : "legacy",
           createdId: this._getNextLocalId()
         };
 
@@ -2529,6 +2531,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                 description: "",
                 version: 1,
                 status: "Unverified",
+                physicsProfile: "native-slopes",
                 createdId: this._getNextLocalId()
             };
 
@@ -2636,6 +2639,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                         description: extracted.desc || "",
                         version: extracted.version,
                         status: "Unverified",
+                        physicsProfile: "legacy",
                         createdId: this._getNextLocalId()
                     };
 
@@ -3045,6 +3049,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
                     client_id: level.createdId || "",
                     name: uploadDetails.name,
                     description: uploadDetails.description,
+                    physics_profile: level.physicsProfile === "native-slopes" ? "native-slopes" : "legacy",
                     song: level.song || "",
                     difficulty: 0,
                     length: parseInt(level.levelLength) || 0,
@@ -3131,6 +3136,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           onlineSongBuffer: window._onlineSongBuffer,
           onlineSongKey: window._onlineSongKey,
           onlineSongOffset: window._onlineSongOffset,
+          physicsProfile: window.currentLevelPhysicsProfile,
           isEditor: window.isEditor,
           createdLevelReturnToView: window._createdLevelReturnToView,
           autoStartGame: this.game.registry.get("autoStartGame")
@@ -3140,6 +3146,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         window._onlineLevelString = level.levelString;
         window._onlineLevelName = level.levelName;
         window._onlineLevelId = level.createdId;
+        window.currentLevelPhysicsProfile = level.physicsProfile === "native-slopes" ? "native-slopes" : "legacy";
         if (!isEditor) {
           window._createdLevelReturnToView = {
             createdId: level.createdId,
@@ -3242,6 +3249,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
           window._onlineLevelString = previousLaunchState.onlineLevelString;
           window._onlineLevelName = previousLaunchState.onlineLevelName;
           window._onlineLevelId = previousLaunchState.onlineLevelId;
+          window.currentLevelPhysicsProfile = previousLaunchState.physicsProfile;
           window._onlineSongBuffer = previousLaunchState.onlineSongBuffer;
           window._onlineSongKey = previousLaunchState.onlineSongKey;
           window._onlineSongOffset = previousLaunchState.onlineSongOffset;

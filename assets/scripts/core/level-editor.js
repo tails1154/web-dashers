@@ -10967,7 +10967,8 @@ _serializeObject(object) {
   _saveEditorLevel() {
     const levelData = {
         objects: window.levelObjects,
-        settings: window.settingslist
+        settings: window.settingslist,
+        physicsProfile: window.currentLevelPhysicsProfile === "native-slopes" ? "native-slopes" : "legacy"
     };
 
     const newLevelString = this._serializeLevel(levelData);
@@ -10983,6 +10984,7 @@ _serializeObject(object) {
         }
 
         createdLevels[levelIndex].levelString = newLevelString;
+        createdLevels[levelIndex].physicsProfile = levelData.physicsProfile;
         createdLevels[levelIndex].lastModified = Date.now();
 
         if (this._editorPendingSongId !== undefined) {
