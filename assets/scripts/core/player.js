@@ -421,6 +421,7 @@ class PlayerObject {
     this._slopeYVelocity = 0;
     this._lastSlopeYVelocity = 0;
     this._slopeTime = 0;
+    this._nativeSlopeDetachedFrames = 0;
     this._slopeBallRotationMultiplier = 1;
     this.rotateActionActive = false;
     this.rotateActionTime = 0;
@@ -4918,6 +4919,7 @@ if (this.p.isFlying || this.p.isUfo) {
     let _teleportedThisStep = false;
     let _orbInputConsumedThisStep = false;
     let _touchingTeleportDuringRespawnIgnore = false;
+    let nativeSlopeDetachedThisFrame = false;
     let bestSlopeCandidate = null;
     let bestSlopeGameObj = null;
     const _0x198534 = this._gameLayer.getNearbySectionObjects(pieceWidth);
@@ -5750,6 +5752,7 @@ if (this.p.isFlying || this.p.isUfo) {
         ? bestSlopeCandidate.slopeRotation
         : bestSlopeCandidate.slopeAngle;
       this._activeSlopeObj = bestSlopeGameObj;
+      this._nativeSlopeDetachedFrames = 0;
       if (this.p.isBall) {
         let rotationMultiplier = 1 / Math.max(0.01, Math.abs(Math.cos(this._onSlopeAngle)));
         if (rotationMultiplier > 2) rotationMultiplier = (rotationMultiplier - 1) * 0.7 + 1;
@@ -5849,13 +5852,17 @@ if (this.p.isFlying || this.p.isUfo) {
       this._ignoreTeleportUntilClear = false;
     }
     if (this._prevSlopeObj && !this._activeSlopeObj) {
-      // Native slope collision does not inject a new vertical launch when
-      // the player leaves the ramp. The existing gravity/launch velocity is
-      // carried out of the slope; slope velocity is only used by jump boosts.
-      this._slopeVelocity = 0;
-      this._slopeYVelocity = 0;
-      this._lastSlopeYVelocity = 0;
-      this._slopeTime = 0;
+      if (this._usesNativeSlopePhysics()) {
+        // Native postCollision can preserve a valid slope boost into the
+        // following jump frame. Keep it for exactly that frame, then clear it.
+        this._nativeSlopeDetachedFrames = 1;
+        nativeSlopeDetachedThisFrame = true;
+      } else {
+        this._slopeVelocity = 0;
+        this._slopeYVelocity = 0;
+        this._lastSlopeYVelocity = 0;
+        this._slopeTime = 0;
+      }
     }
     if (this.p.isFlying || this.p.isWave || this.p.isUfo || this.p.isSpider) {
       const _0x354b7c = this.p.y <= _0x3020c8 + _effectiveSize;
@@ -5865,6 +5872,14 @@ if (this.p.isFlying || this.p.isUfo) {
       }
     }
     this._prevSlopeObj = this._activeSlopeObj;
+    if (this._usesNativeSlopePhysics() && this._nativeSlopeDetachedFrames > 0 &&
+        !nativeSlopeDetachedThisFrame && !this._activeSlopeObj) {
+      this._nativeSlopeDetachedFrames = 0;
+      this._slopeVelocity = 0;
+      this._slopeYVelocity = 0;
+      this._lastSlopeYVelocity = 0;
+      this._slopeTime = 0;
+    }
     this._lastCollisionWorldX = pieceWidth;
     this._lastCollisionWorldY = this.p.y;
     this.p.wasUpKeyDown = this.p.upKeyDown;
@@ -6218,6 +6233,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this._slopeYVelocity = 0;
     this._lastSlopeYVelocity = 0;
     this._slopeTime = 0;
+    this._nativeSlopeDetachedFrames = 0;
     this._slopeBallRotationMultiplier = 1;
     this.stopRotation();
     this.rotateActionTime = 0;
