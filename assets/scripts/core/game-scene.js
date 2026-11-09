@@ -5778,6 +5778,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       this._levelSelectIsComingSoonPage = isComingSoonPage();
       if (!isComingSoonPage() && visibleLevels[currentPageIndex]) {
         window.currentlevel = [...visibleLevels[currentPageIndex]];
+        window.currentLevelPhysicsProfile = "legacy";
       }
     };
     applyCurrentPage();
@@ -14355,6 +14356,7 @@ _applyMirrorEffect() {
         root.destroy(true);
         const levelNumber = String(level[2]).split("_")[1];
         window.currentlevel = [...level];
+        window.currentLevelPhysicsProfile = "legacy";
         this.load.text(level[2], `assets/levels/${levelNumber}.txt`);
         this.load.audio(level[0], `assets/music/${level[4] || level[1].replaceAll(" ", "")}.mp3`);
         this.load.once("complete", () => {

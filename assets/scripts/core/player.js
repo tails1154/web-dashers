@@ -3338,18 +3338,22 @@ if (this.p.isFlying || this.p.isUfo) {
 
   _handleNativeSlopeCollision(gameObj, pieceWidth, previousWorldX, playersY, playersLastY, left, right, top, bottom, playerSize, waveHitSize, gamemodeAddition) {
     const contactX = Phaser.Math.Clamp(pieceWidth, left, right);
-    const surfaceY = gameObj.getSlopeSurfaceY(contactX);
+    const nativeSurfaceY = gameObj.getNativeSlopeSurfaceY?.(contactX);
+    const surfaceY = nativeSurfaceY ?? gameObj.getSlopeSurfaceY(contactX);
     if (surfaceY === null) return { landed: false, died: false };
 
     const hitSize = this._getSlopeHitSize(playerSize, waveHitSize);
     const gravityFlipped = !!this.p.gravityFlipped;
     const floorSide = !!gameObj.slopeFlipY;
     const correctGravity = gravityFlipped === floorSide;
-    const targetY = this._getSlopeContactY(gameObj, surfaceY, hitSize, correctGravity);
-    const previousSurface = gameObj.getSlopeSurfaceY(Phaser.Math.Clamp(previousWorldX, left, right));
-    const previousTargetY = previousSurface === null
+    const getNativeContactY = (x) => gameObj.getNativeSlopeContactY?.(x, hitSize);
+    const targetY = getNativeContactY(contactX) ?? this._getSlopeContactY(gameObj, surfaceY, hitSize, correctGravity);
+    const previousContactX = Phaser.Math.Clamp(previousWorldX, left, right);
+    const previousSurface = gameObj.getNativeSlopeSurfaceY?.(previousContactX) ?? gameObj.getSlopeSurfaceY(previousContactX);
+    const previousNativeTargetY = getNativeContactY(previousContactX);
+    const previousTargetY = previousNativeTargetY ?? (previousSurface === null
       ? targetY
-      : this._getSlopeContactY(gameObj, previousSurface, hitSize, correctGravity);
+      : this._getSlopeContactY(gameObj, previousSurface, hitSize, correctGravity));
     const tolerance = Math.max(6, Math.min(14, hitSize * 0.45));
     const currentDistance = playersY - targetY;
     const previousDistance = playersLastY - previousTargetY;

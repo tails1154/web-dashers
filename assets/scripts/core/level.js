@@ -80,6 +80,34 @@ class Collider {
     const wallIsRight = (this.slopeDir > 0) !== this.slopeFlipY;
     return wallIsRight ? "right" : "left";
   }
+  getNativeSlopeSurfaceY(worldX) {
+    const edge = this.slopeSurfaceVertices;
+    if (!Array.isArray(edge) || edge.length < 2) return null;
+    const [a, b] = edge;
+    const dx = b.x - a.x;
+    if (Math.abs(dx) < 0.001) return null;
+    const minX = Math.min(a.x, b.x);
+    const maxX = Math.max(a.x, b.x);
+    if (worldX < minX || worldX > maxX) return null;
+    const t = (worldX - a.x) / dx;
+    return a.y + (b.y - a.y) * t;
+  }
+  getNativeSlopeContactY(worldX, hitSize) {
+    const edge = this.slopeSurfaceVertices;
+    const solidVertex = this.slopeSolidVertex;
+    if (!Array.isArray(edge) || edge.length < 2 || !solidVertex) return null;
+    const [a, b] = edge;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const length = Math.hypot(dx, dy) || 1;
+    if (Math.abs(dx) < 0.001) return null;
+    const surfaceY = this.getNativeSlopeSurfaceY(worldX);
+    if (surfaceY === null) return null;
+    const normalX = -dy / length;
+    const normalY = dx / length;
+    const side = ((solidVertex.x - a.x) * normalX + (solidVertex.y - a.y) * normalY) >= 0 ? 1 : -1;
+    return surfaceY + normalY * side * Math.max(0, Number(hitSize) || 0);
+  }
 }
 const ldm_object = new Set([
   503,505,504,1888,1887,1012,1013,1011,1886,1762,1763,1761,1269,1760,1270,1271,1274,1272,1273,1764,1765,1766,1767,1769,1292,1758,1291,1293,1759,1051,1058,1060,1752,1050,1052,1059,1061
@@ -407,6 +435,8 @@ function _createSlopeCollider(levelObj, objectDef, worldX, worldY) {
   const collider = new Collider(slopeType, worldX, worldY, w, h, 0);
   collider.objid = levelObj.id;
   collider.slopeSolidVertices = vertices;
+  collider.slopeSurfaceVertices = slopeData.sq ? null : [vertices[0], vertices[1]];
+  collider.slopeSolidVertex = slopeData.sq ? null : vertices[2];
   // GD's long slope is commonly called 22.5 degrees, but its collision line
   // spans two grid cells horizontally and one vertically.  Physics therefore
   // has to use atan(1 / 2) (and atan(2 / 1) when quarter-turned), otherwise
@@ -799,6 +829,7 @@ window.LevelObject = class LevelObject {
   constructor(scene, cameraXRef) {
     this._scene = scene;
     this._cameraXRef = cameraXRef;
+    this.physicsProfile = "legacy";
     this.additiveContainer = scene.add.container(0, 0).setDepth(-1);
     this.container = scene.add.container(0, 0);
     this.topContainer = scene.add.container(0, 0).setDepth(13);
