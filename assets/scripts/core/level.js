@@ -73,6 +73,62 @@ class Collider {
     }
     return inside;
   }
+  isSlopeRectSolid(left, top, right, bottom) {
+    if (this.type !== slopeType || !Array.isArray(this.slopeSolidVertices)) return false;
+    const vertices = this.slopeSolidVertices;
+    if (this.slopeIsFilled) {
+      const slopeLeft = this.x - this.w / 2;
+      const slopeRight = this.x + this.w / 2;
+      const slopeTop = this.y - this.h / 2;
+      const slopeBottom = this.y + this.h / 2;
+      return right > slopeLeft && left < slopeRight && bottom > slopeTop && top < slopeBottom;
+    }
+
+    const pointInRect = (point) => point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+    const pointInTriangle = (point) => {
+      let inside = false;
+      for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i++) {
+        const a = vertices[i];
+        const b = vertices[j];
+        if ((a.y > point.y) !== (b.y > point.y)) {
+          const edgeX = (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x;
+          if (point.x < edgeX) inside = !inside;
+        }
+      }
+      return inside;
+    };
+    const orientation = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    const onSegment = (a, b, point) => point.x >= Math.min(a.x, b.x) - 0.001 &&
+      point.x <= Math.max(a.x, b.x) + 0.001 &&
+      point.y >= Math.min(a.y, b.y) - 0.001 &&
+      point.y <= Math.max(a.y, b.y) + 0.001;
+    const segmentsIntersect = (a, b, c, d) => {
+      const abC = orientation(a, b, c);
+      const abD = orientation(a, b, d);
+      const cdA = orientation(c, d, a);
+      const cdB = orientation(c, d, b);
+      if (((abC > 0 && abD < 0) || (abC < 0 && abD > 0)) &&
+          ((cdA > 0 && cdB < 0) || (cdA < 0 && cdB > 0))) return true;
+      return (Math.abs(abC) <= 0.001 && onSegment(a, b, c)) ||
+        (Math.abs(abD) <= 0.001 && onSegment(a, b, d)) ||
+        (Math.abs(cdA) <= 0.001 && onSegment(c, d, a)) ||
+        (Math.abs(cdB) <= 0.001 && onSegment(c, d, b));
+    };
+
+    const corners = [
+      { x: left, y: top }, { x: right, y: top },
+      { x: right, y: bottom }, { x: left, y: bottom }
+    ];
+    if (corners.some(pointInTriangle) || vertices.some(pointInRect)) return true;
+    for (let i = 0; i < corners.length; i++) {
+      const next = corners[(i + 1) % corners.length];
+      for (let j = 0; j < vertices.length; j++) {
+        const nextVertex = vertices[(j + 1) % vertices.length];
+        if (segmentsIntersect(corners[i], next, vertices[j], nextVertex)) return true;
+      }
+    }
+    return false;
+  }
   getSlopeBackWallSide() {
     // Native slopeWallLeft() is derived from the slope orientation only;
     // gravity changes which side the player lands on, not the slope's flat

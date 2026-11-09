@@ -3369,6 +3369,18 @@ if (this.p.isFlying || this.p.isUfo) {
     const centerWithinSlope = pieceWidth >= left && pieceWidth <= right;
     const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
     if (this.p.isWave) {
+      if (gameObj.isSlopeRectSolid) {
+        const waveTouchesSlope = (x, y) => gameObj.isSlopeRectSolid(
+          x - hitSize,
+          y - hitSize,
+          x + hitSize,
+          y + hitSize
+        );
+        return {
+          landed: false,
+          died: waveTouchesSlope(pieceWidth, playersY) || waveTouchesSlope(previousWorldX, playersLastY)
+        };
+      }
       const points = [[0, 0], [hitSize, 0], [-hitSize, 0], [0, hitSize], [0, -hitSize]];
       const touchesSolid = points.some(([offsetX, offsetY]) => gameObj.isSlopeSolidAtExact
         ? gameObj.isSlopeSolidAtExact(pieceWidth + offsetX, playersY + offsetY)
@@ -3399,9 +3411,11 @@ if (this.p.isFlying || this.p.isUfo) {
       };
     }
 
-    const solidAtPlayer = gameObj.isSlopeSolidAtExact
-      ? gameObj.isSlopeSolidAtExact(pieceWidth, playersY)
-      : gameObj.isSlopeSolidAt(pieceWidth, playersY, gravityFlipped);
+    const solidAtPlayer = gameObj.isSlopeRectSolid
+      ? gameObj.isSlopeRectSolid(pieceWidth - hitSize, playersY - hitSize, pieceWidth + hitSize, playersY + hitSize)
+      : gameObj.isSlopeSolidAtExact
+        ? gameObj.isSlopeSolidAtExact(pieceWidth, playersY)
+        : gameObj.isSlopeSolidAt(pieceWidth, playersY, gravityFlipped);
     if (horizontalOverlap && solidAtPlayer) {
       if (window.noClip) this.p.diedThisFrame = true;
       else return { landed: false, died: true };
@@ -3877,7 +3891,7 @@ if (this.p.isFlying || this.p.isUfo) {
       this.p.upKeyPressed = false;
       this.p.queuedHold = false;
       this.p.yVelocity = this.flipMod() * 22.360064 * (this.p.isMini ? 0.8 : 1);
-      if (Number(this._slopeVelocity) * this.flipMod() > 0) {
+      if (!this._usesNativeSlopePhysics() && Number(this._slopeVelocity) * this.flipMod() > 0) {
         const slopeBoost = this._getModifiedSlopeYVelocity() * 0.25;
         const slopeJumpCap = this.p.yVelocity * 1.4;
         this.p.yVelocity += slopeBoost;
@@ -4144,9 +4158,9 @@ if (this.p.isFlying || this.p.isUfo) {
         this.p.upKeyPressed = false;
         this.p.queuedHold = false;
         this.p.yVelocity = _0x47d739 * 22.360064 * (this.p.isMini ? 0.8 : 1);
-        if (Number(this._slopeVelocity) * this.flipMod() > 0) {
-          // Native ball mode uses the signed slope velocity for this boost,
-          // then flips gravity and applies the normal ball 0.6 multiplier.
+        if (!this._usesNativeSlopePhysics() && Number(this._slopeVelocity) * this.flipMod() > 0) {
+          // Legacy slope mode uses the signed slope velocity for this boost;
+          // native-profile levels follow the game's ordinary ball jump path.
           const slopeJumpCap = this.p.yVelocity * 1.4;
           this.p.yVelocity += Number(this._slopeVelocity) * 0.25;
           this.p.yVelocity = this.p.gravityFlipped
