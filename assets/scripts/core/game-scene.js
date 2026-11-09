@@ -7419,6 +7419,7 @@ _buildSettingsPopup() {
         "Show CPS": "Shows when you click in a level in the top left of your screen.",
         "Show Glow": "Shows glow for basic object sets.",
         "Crash Reporting": "Automatically sends a small diagnostic report when Web Dashers crashes.",
+        "Native Slopes for Legacy Levels": "Uses the newer slope collision path on older levels without changing their saved physics profile.",
         "LDM": "Removes many effects, objects, and other things to improve performance.",
         "No Particles": "Stops gameplay, portal, trigger, and celebration particle effects.",
         "No Death Effect": "Removes the player death burst and flash while keeping the death state and respawn behavior.",
@@ -7878,6 +7879,14 @@ _buildSettingsPopup() {
             true,
             "Death Cause Hints"
         );
+        createToggle(container, column1X, startY + (spacingY * 3), "Native Slopes for Legacy",
+            () => window.nativeSlopePhysicsForLegacy === true,
+            (v) => window.nativeSlopePhysicsForLegacy = !!v,
+            undefined,
+            20,
+            true,
+            "Native Slopes for Legacy Levels"
+        );
         createToggle(container, column2X, startY, "Input History",
             () => !!window.inputHistory,
             (v) => {
@@ -8027,6 +8036,7 @@ _buildSettingsPopup() {
         showEditorGlow: window.showEditorGlow,
         useDirectInternet: !!window.useDirectInternet,
         crashReportingEnabled: window.crashReportingEnabled !== false,
+        nativeSlopePhysicsForLegacy: window.nativeSlopePhysicsForLegacy === true,
         enablePortalGuide: window.enablePortalGuide,
         enableOrbGuide: window.enableOrbGuide,
         cullDistance: window.cullDistance,
@@ -8073,6 +8083,7 @@ _buildSettingsPopup() {
         showEditorGlow: false,
         useDirectInternet: true,
         crashReportingEnabled: true,
+        nativeSlopePhysicsForLegacy: false,
         enablePortalGuide: true,
         enableOrbGuide: false,
         noParticles: false,
@@ -8122,6 +8133,7 @@ _buildSettingsPopup() {
     window.useDirectInternet = !!data.useDirectInternet;
     localStorage.setItem("gd_useDirectInternet", String(!!window.useDirectInternet));
     window.crashReportingEnabled = data.crashReportingEnabled !== false && localStorage.getItem("wd_crash_reporting") !== "false";
+    window.nativeSlopePhysicsForLegacy = data.nativeSlopePhysicsForLegacy === true;
     localStorage.setItem("wd_crash_reporting", String(window.crashReportingEnabled));
     window.enableLDM = !!data.enableLDM;
   }
