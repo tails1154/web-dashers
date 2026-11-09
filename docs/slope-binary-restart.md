@@ -39,6 +39,15 @@ No contact geometry or grounded-state changes are included in this pass.
 
 ## Remaining investigation
 
+The new profile's boost modifier now reads `_slopeVelocity`, corresponding to
+the signed float at 0x5f8 read at 0x287e81. The geometric speed is separately
+stored at 0x5b8 (write at 0x29b2b4); the baseline used that geometric field in
+the modifier. The multiplier uses the decoded threshold, floor, and constant
+upper branch. An isolated execution of the actual method passed 42 cases
+covering positive/negative/zero boost, threshold boundaries, long contact,
+and legacy outputs. This verifies the modifier only; the values assigned to
+the fields and their integration with collision and jump code remain open.
+
 Trace slope contact flags into hitGround, updateJump, and postCollision;
 confirm field identities and units before implementing changes. Reproduce
 connected ascending/descending slopes and jumping in both gravity directions.

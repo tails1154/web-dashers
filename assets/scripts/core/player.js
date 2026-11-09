@@ -3249,6 +3249,16 @@ if (this.p.isFlying || this.p.isUfo) {
     return Math.max(minY - contactRadius, Math.min(surfaceY - contactRadius, maxY));
   }
   _getModifiedSlopeYVelocity() {
+    if (this._usesNativeSlopePhysics()) {
+      // getModifiedSlopeYVel reads the signed boost field (0x5f8), not
+      // the geometric slope-speed field (0x5b8). Its ramp ends at 0.1s.
+      const velocity = Number(this._slopeVelocity) || 0;
+      const elapsed = Math.max(0, Number(this._slopeTime) || 0);
+      const factor = elapsed < 0.10000000149011612
+        ? Math.max(0.4000000059604645, elapsed * 10)
+        : 1;
+      return velocity * factor;
+    }
     const slopeYVelocity = Number(this._slopeYVelocity) || 0;
     const slopeTime = Number(this._slopeTime) || 0;
     if (slopeTime < 0.1) {
