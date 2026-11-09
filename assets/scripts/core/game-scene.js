@@ -5199,6 +5199,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       if (!selected) return;
       this._versusToeStarted = true;
       window.currentlevel = [...selected];
+      window.currentLevelPhysicsProfile = "legacy";
       this._closeVersusMenu();
       this._levelSelectOverlay && this._closeLevelSelect?.(true);
       const levelNumber = String(selected[2]).split("_")[1];
@@ -13976,6 +13977,7 @@ _applyMirrorEffect() {
           "the_challenge_song", "The Challenge", "level_3001",
           ["Local", "DJRubRub"], "TheChallenge"
         ];
+        window.currentLevelPhysicsProfile = "legacy";
         this._closeCreatorMenu(true);
         this.load.text("level_3001", "assets/levels/3001.txt");
         this.load.audio("the_challenge_song", "assets/music/TheChallenge.mp3");
