@@ -3232,7 +3232,8 @@ if (this.p.isFlying || this.p.isUfo) {
   _getSlopeContactRadius(gameObj, hitSize) {
     // Native slope collision measures the player's radius along the slope
     // normal, not along the world-Y axis.
-    const angle = Math.abs(gameObj.getSlopeAngleRad());
+    const nativeAngle = this._usesNativeSlopePhysics() ? gameObj.getNativeSlopeAngleRad?.() : null;
+    const angle = Math.abs(Number.isFinite(nativeAngle) ? nativeAngle : gameObj.getSlopeAngleRad());
     const normalCos = Math.max(0.2, Math.cos(angle));
     return hitSize / normalCos;
   }
@@ -3401,7 +3402,10 @@ if (this.p.isFlying || this.p.isUfo) {
       const movingLeft = previousWorldX > pieceWidth + 0.001;
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
       const slidingDown = movingLeft ? uphill : !uphill;
-      const slopeAngle = gameObj.getSlopeAngleRad();
+      const nativeSlopeAngle = gameObj.getNativeSlopeAngleRad?.();
+      const slopeAngle = Number.isFinite(nativeSlopeAngle)
+        ? nativeSlopeAngle
+        : gameObj.getSlopeAngleRad();
       const geometricRotation = (slidingDown ? this.flipMod() : -this.flipMod()) *
         (movingLeft ? -1 : 1) * Math.abs(slopeAngle);
       let slopeRotation = geometricRotation;
@@ -5754,7 +5758,10 @@ if (this.p.isFlying || this.p.isUfo) {
       const slopeContinued = this._prevSlopeObj === bestSlopeGameObj;
       const frameDt = Math.max(0, Math.min(0.1, (Number(this._scene?.game?.loop?.delta) || 16.6667) / 1000));
       this._slopeTime = slopeContinued ? this._slopeTime + frameDt : 0;
-      const slopeRatio = bestSlopeGameObj.h / Math.max(1, bestSlopeGameObj.w);
+      const nativeRiseRun = bestSlopeGameObj.getNativeSlopeRiseRun?.();
+      const slopeRatio = Number.isFinite(nativeRiseRun)
+        ? Math.abs(nativeRiseRun)
+        : bestSlopeGameObj.h / Math.max(1, bestSlopeGameObj.w);
       this._slopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
       const slopeAngle = Math.max(0.05, Math.abs(bestSlopeCandidate.slopeAngle));
       const slopeVelocityMagnitude = Math.min(1.1, 0.8 / slopeAngle) * this._slopeYVelocity * 1.4;

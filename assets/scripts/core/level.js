@@ -155,6 +155,20 @@ class Collider {
     if (Math.abs(dx) < 0.001) return null;
     return (edge[1].y - edge[0].y) / dx;
   }
+  getNativeSlopeAngleRad() {
+    const edge = this.slopeSurfaceVertices;
+    if (!Array.isArray(edge) || edge.length < 2) return null;
+    const dx = edge[1].x - edge[0].x;
+    const dy = edge[1].y - edge[0].y;
+    if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return null;
+    let angle = Math.atan2(dy, dx);
+    // A line has no direction: reversing the two edge vertices must not turn
+    // a flat slope into a 180-degree slope. Keep the native line angle in the
+    // range used by the player physics.
+    if (angle > Math.PI / 2) angle -= Math.PI;
+    if (angle < -Math.PI / 2) angle += Math.PI;
+    return angle;
+  }
   getNativeSlopeContactY(worldX, hitSize) {
     const edge = this.slopeSurfaceVertices;
     const solidVertex = this.slopeSolidVertex;
