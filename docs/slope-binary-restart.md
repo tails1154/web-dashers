@@ -77,9 +77,12 @@ convert -background '#101827' /tmp/webdashers-slope-simulation.svg \
 ```
 
 The trace covers connected ascending and descending ramps, with and without a
-cube jump, an inverted-slope head bonk, and a deliberately large-step narrow
-ramp tunnel test. Native assertions require jump separation, prompt underside
-separation, and swept-triangle collision; the legacy tunnel trace is retained
-as a control so its behavior is not silently changed. The rendered image is a
-regression aid for the reconstructed behavior, not proof that a browser
-implementation is identical to GD without an in-game comparison.
+cube jump, an inverted-slope head bonk, a ship falling into a ramp, a long-to-
+short slope transition, and a deliberately large-step narrow-ramp tunnel test.
+Each run records its death tick and position. Native assertions require jump
+separation, prompt underside separation, ship survival on the non-colliding
+uphill contact, smooth adjacent-slope transfer, and swept-triangle collision;
+the legacy traces remain controls so their behavior is not silently changed.
+The rendered image is a regression aid for the reconstructed behavior, not
+proof that a browser implementation is identical to GD without an in-game
+comparison.

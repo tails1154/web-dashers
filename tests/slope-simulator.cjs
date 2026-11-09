@@ -17,8 +17,8 @@ vm.runInContext(levelSource.slice(0, levelSource.indexOf('const ldm_object')), c
 vm.runInContext(fs.readFileSync(path.join(root, 'assets/scripts/core/player.js'), 'utf8'), context);
 const { Collider, PlayerObject, PlayerState } = vm.runInContext('({Collider, PlayerObject, PlayerState})', context);
 
-function ramp(x, y, descending, inverted = false) {
-    const c = new Collider('slope', x, y, 120, 60);
+function ramp(x, y, descending, inverted = false, width = 120, height = 60) {
+    const c = new Collider('slope', x, y, width, height);
     c.slopeDir = descending ? -1 : 1;
     c.slopeFlipY = inverted;
     c.slopeAngleDeg = Math.atan(0.5) * 180 / Math.PI;
@@ -33,18 +33,23 @@ function ramp(x, y, descending, inverted = false) {
     return c;
 }
 
-function simulate(profile, descending, jump, headBonk = false, tunnel = false) {
+function simulate(profile, descending, jump, headBonk = false, tunnel = false, ship = false, transition = false) {
     const slopes = headBonk
         ? [ramp(220, 150, descending, true)]
         : tunnel
             ? [ramp(120, 120, false)]
-            : [ramp(180, descending ? 150 : 30, descending), ramp(300, 90, descending)];
+            : ship
+                ? [ramp(180, 30, false)]
+                : transition
+                    ? [ramp(180, 30, false, false, 240, 60), ramp(330, 75, false, false, 60, 30)]
+                : [ramp(180, descending ? 150 : 30, descending), ramp(300, 90, descending)];
     const state = new PlayerState();
-    state.y = headBonk ? 85 : (tunnel ? 110 : (descending ? 210 : 30));
+    state.y = headBonk ? 85 : (tunnel ? 110 : (ship ? 20 : (descending ? 210 : 30)));
     state.lastY = state.y;
-    state.yVelocity = headBonk ? 18 : 0;
+    state.yVelocity = headBonk ? 18 : (ship ? -15 : 0);
     state.isJumping = headBonk;
     state.canJump = false;
+    state.isFlying = ship;
     const layer = { physicsProfile: profile, getNearbySectionObjects: () => slopes,
         getFloorY: () => 0, getCeilingY: () => null };
     const player = Object.create(PlayerObject.prototype);
@@ -57,7 +62,7 @@ function simulate(profile, descending, jump, headBonk = false, tunnel = false) {
         stopRotation() {}, runRotateAction() {}, killPlayer() { state.isDead = true; },
         _tryVectorLedgeTurn() {} });
     const trace = [];
-    let x = headBonk ? 120 : (tunnel ? 0 : 90);
+    let x = headBonk ? 120 : (tunnel ? 0 : (ship ? 150 : 90));
     const horizontalSpeed = tunnel ? 600 : 11.540004;
     for (let tick = 0; tick < 160 && !state.isDead; tick++) {
         state.lastY = state.y;
@@ -71,7 +76,9 @@ function simulate(profile, descending, jump, headBonk = false, tunnel = false) {
             input: state.upKeyDown });
         x += horizontalSpeed * 0.25 * 0.9;
     }
-    return { profile, descending, jump, headBonk, tunnel, slopes, trace };
+    const death = trace.find(sample => sample.dead) || null;
+    return { profile, descending, jump, headBonk, tunnel, ship, transition, slopes, trace,
+        deathTick: death ? death.tick : null, deathPosition: death ? { x: death.x, y: death.y } : null };
 }
 
 const runs = [];
@@ -81,6 +88,8 @@ for (const profile of ['legacy', 'native-slopes']) {
     }
     runs.push(simulate(profile, false, false, true));
     runs.push(simulate(profile, false, false, false, true));
+    runs.push(simulate(profile, false, false, false, false, true));
+    runs.push(simulate(profile, false, false, false, false, false, true));
 }
 const colors = { legacy: '#e6ad4c', 'native-slopes': '#55dbe1' };
 const panels = [
@@ -89,17 +98,19 @@ const panels = [
     { descending: true, jump: false, headBonk: false, label: 'Descending connected ramps' },
     { descending: true, jump: true, headBonk: false, label: 'Descending ramps + jump input' },
     { descending: false, jump: false, headBonk: true, label: 'Inverted ramp: head-bonk test' },
-    { descending: false, jump: false, headBonk: false, tunnel: true, label: 'Narrow ramp: tunneling test' }
+    { descending: false, jump: false, headBonk: false, tunnel: true, label: 'Narrow ramp: tunneling test' },
+    { descending: false, jump: false, headBonk: false, ship: true, label: 'Ship falling into ramp' },
+    { descending: false, jump: false, headBonk: false, transition: true, label: 'Long ramp into short ramp' }
 ];
 const svgHeight = 65 + Math.ceil(panels.length / 2) * 515;
 let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="${svgHeight}" viewBox="0 0 1100 ${svgHeight}"><rect width="1100" height="${svgHeight}" fill="#101827"/><g font-family="DejaVu Sans" fill="white"><text x="24" y="28" font-size="18">Production slope physics — orange: legacy, cyan: new; red X: death</text>`;
 for (let panel = 0; panel < panels.length; panel++) {
-    const { descending, jump, headBonk, tunnel = false, label } = panels[panel];
+    const { descending, jump, headBonk, tunnel = false, ship = false, transition = false, label } = panels[panel];
     const ox = 30 + (panel % 2) * 540, oy = 65 + Math.floor(panel / 2) * 515;
     const sx = x => ox + x - 60, sy = y => oy + 420 - y;
     svg += `<text x="${ox}" y="${oy}" font-size="16">${label}</text>`;
     const selected = runs.filter(r => r.descending === descending && r.jump === jump &&
-        r.headBonk === headBonk && r.tunnel === tunnel);
+        r.headBonk === headBonk && r.tunnel === tunnel && r.ship === ship && r.transition === transition);
     for (const c of selected[0].slopes) {
         svg += `<polygon points="${c.slopeSolidVertices.map(v => `${sx(v.x)},${sy(v.y)}`).join(' ')}" fill="#37465e" stroke="#93a4bc"/>`;
     }
@@ -115,9 +126,9 @@ for (let panel = 0; panel < panels.length; panel++) {
 }
 svg += '</g></svg>';
 
-const findRun = (profile, descending, jump, headBonk = false, tunnel = false) => runs.find(run =>
+const findRun = (profile, descending, jump, headBonk = false, tunnel = false, ship = false, transition = false) => runs.find(run =>
     run.profile === profile && run.descending === descending && run.jump === jump &&
-    run.headBonk === headBonk && run.tunnel === tunnel
+    run.headBonk === headBonk && run.tunnel === tunnel && run.ship === ship && run.transition === transition
 );
 const nativeAscendingJump = findRun('native-slopes', false, true);
 const nativeDescendingJump = findRun('native-slopes', true, true);
@@ -125,9 +136,9 @@ const assert = (condition, message) => {
     if (!condition) throw new Error(`Slope simulator assertion failed: ${message}`);
 };
 for (const run of runs) {
-    const label = run.headBonk ? 'head bonk' : `${run.descending ? 'descending' : 'ascending'} ${run.jump ? 'jump' : 'run'}`;
-    assert(run.headBonk || run.tunnel || run.trace.length === 160, `${run.profile} ${label} ended early`);
-    assert(run.headBonk || run.tunnel || !run.trace.some(sample => sample.dead), `${run.profile} ${label} died`);
+    const label = run.headBonk ? 'head bonk' : run.ship ? 'ship' : run.transition ? 'slope transition' : `${run.descending ? 'descending' : 'ascending'} ${run.jump ? 'jump' : 'run'}`;
+    assert(run.tunnel || run.trace.length === 160, `${run.profile} ${label} ended early at tick ${run.deathTick}`);
+    assert(run.tunnel || !run.trace.some(sample => sample.dead), `${run.profile} ${label} died at tick ${run.deathTick}`);
 }
 assert(nativeAscendingJump.trace.some(sample => sample.tick >= 50 && sample.contact === -1),
     'an ascending native slope jump was re-grounded');
@@ -143,10 +154,19 @@ const nativeTunnel = findRun('native-slopes', false, false, false, true);
 const legacyTunnel = findRun('legacy', false, false, false, true);
 assert(nativeTunnel.trace.some(sample => sample.dead), 'native tunneling test passed through the narrow slope');
 assert(!legacyTunnel.trace.some(sample => sample.dead), 'legacy tunneling behavior changed unexpectedly');
+const nativeShip = findRun('native-slopes', false, false, false, false, true);
+assert(nativeShip.trace.length === 160, `the native ship trace died at tick ${nativeShip.deathTick}`);
+const nativeTransition = findRun('native-slopes', false, false, false, false, false, true);
+const legacyTransition = findRun('legacy', false, false, false, false, false, true);
+assert(nativeTransition.trace.length === 160 && !nativeTransition.trace.some(sample => sample.dead),
+    `the native long-to-short slope transition died at tick ${nativeTransition.deathTick}`);
+assert(legacyTransition.trace.length === 160 && !legacyTransition.trace.some(sample => sample.dead),
+    `the legacy long-to-short slope transition changed at tick ${legacyTransition.deathTick}`);
 const output = path.resolve(process.argv[2] || '/tmp/webdashers-slope-simulation');
 fs.writeFileSync(output + '.svg', svg);
 fs.writeFileSync(output + '.json', JSON.stringify(runs, null, 2));
 for (const r of runs) console.log(JSON.stringify({ profile: r.profile, descending: r.descending,
-    jump: r.jump, headBonk: r.headBonk, tunnel: r.tunnel, samples: r.trace.length, died: r.trace.at(-1).dead,
+    jump: r.jump, headBonk: r.headBonk, tunnel: r.tunnel, ship: r.ship, transition: r.transition,
+    samples: r.trace.length, died: !!r.deathTick, deathTick: r.deathTick,
     contacts: [...new Set(r.trace.map(t => t.contact))] }));
 console.log(output + '.svg');
