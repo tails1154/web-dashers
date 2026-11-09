@@ -4835,7 +4835,7 @@ if (this.p.isFlying || this.p.isUfo) {
     }) || null;
   }
 
-  checkCollisions(_0x2f5078) {
+  checkCollisions(_0x2f5078, physicsDeltaSeconds) {
     this.noclipStats.totalFrames++;
     this.p.diedThisFrame = false;
     if (this.p._spiderTeleportNoclipDeathPending) {
@@ -5715,7 +5715,10 @@ if (this.p.isFlying || this.p.isUfo) {
       }
       const slopeContinued = this._prevSlopeObj === bestSlopeGameObj;
       const frameDt = Math.max(0, Math.min(0.1, (Number(this._scene?.game?.loop?.delta) || 16.6667) / 1000));
-      this._slopeTime = slopeContinued ? this._slopeTime + frameDt : 0;
+      const contactDt = this._usesNativeSlopePhysics() && Number.isFinite(physicsDeltaSeconds)
+        ? Math.max(0, physicsDeltaSeconds)
+        : frameDt;
+      this._slopeTime = slopeContinued ? this._slopeTime + contactDt : 0;
       const slopeRatio = bestSlopeGameObj.h / Math.max(1, bestSlopeGameObj.w);
       this._slopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
       const slopeAngle = Math.max(0.05, Math.abs(bestSlopeCandidate.slopeAngle));

@@ -10979,7 +10979,7 @@ _buildSettingsPopup() {
       const _primarySharedBefore = this._getDualSharedSignature(this._state);
       this._player.updateJump(verticalDelta);
       this._state.y += this._state.yVelocity * verticalDelta;
-      this._player.checkCollisions(this._playerWorldX - centerX);
+      this._player.checkCollisions(this._playerWorldX - centerX, subStepDelta / 60);
       const _primaryGravityChanged = this._isDual && !!this._state.gravityFlipped !== _primaryGravityBefore;
       let _primaryGravitySynced = false;
       if (this._isDual && this._getDualSharedSignature(this._state) !== _primarySharedBefore) {
@@ -11007,7 +11007,7 @@ _buildSettingsPopup() {
         if (!this._state2.queuedHold) this._state.queuedHold = false;
         if (this._state2._orbActivationConsumedForPress) this._state._orbActivationConsumedForPress = true;
         this._state2.y += this._state2.yVelocity * verticalDelta;
-        this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta);
+        this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta, subStepDelta / 60);
         if (this._isDual && !this._state2.isDead && this._getDualSharedSignature(this._state2) !== _secondarySharedBefore) {
           this._syncDualGlobalsFromSecondary({
             skipBallInputGravity: _secondaryBallInputGravity,

@@ -27,6 +27,18 @@ Field meanings and time units still need caller/write-site confirmation.
 
 ## Next investigation
 
+## First implementation pass
+
+The new profile now accumulates contact time using each physics substep's
+duration (`subStepDelta / 60`), supplied by both gameplay and editor loops,
+including dual players. The baseline used render-frame duration on every
+substep, advancing the timer roughly four times too fast at 60 FPS. Legacy
+retains the historical timer. Editor playtest also applies the level's stored
+profile before starting, so the per-level choice is actually exercised.
+No contact geometry or grounded-state changes are included in this pass.
+
+## Remaining investigation
+
 Trace slope contact flags into hitGround, updateJump, and postCollision;
 confirm field identities and units before implementing changes. Reproduce
 connected ascending/descending slopes and jumping in both gravity directions.

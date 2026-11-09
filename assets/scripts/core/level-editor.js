@@ -1423,6 +1423,13 @@ class LevelEditor {
   _startEditorPlaytest() {
     if (this._editorPlaytestActive) return;
 
+    const { level: editorLevel } = this._getCurrentEditorLevelRecord();
+    const physicsProfile = editorLevel?.physicsProfile === "native-slopes"
+        ? "native-slopes"
+        : "legacy";
+    window.currentLevelPhysicsProfile = physicsProfile;
+    if (this._level) this._level.physicsProfile = physicsProfile;
+
     this._closeEditorLevelSettingsPopup();
     this._closeEditorHorizontalOptionPopup();
     this._closeEditorColorPickerPopup();
@@ -1690,7 +1697,7 @@ class LevelEditor {
             const primarySharedBefore = this._getDualSharedSignature?.(this._state);
             this._player.updateJump(verticalDelta);
             this._state.y += this._state.yVelocity * verticalDelta;
-            this._player.checkCollisions(this._playerWorldX - centerX);
+            this._player.checkCollisions(this._playerWorldX - centerX, subStepDelta / 60);
             const primaryGravityChanged = this._isDual && !!this._state.gravityFlipped !== primaryGravityBefore;
             let primaryGravitySynced = false;
             if (this._isDual && primarySharedBefore !== undefined && this._getDualSharedSignature?.(this._state) !== primarySharedBefore) {
@@ -1721,7 +1728,7 @@ class LevelEditor {
                 if (!this._state2.queuedHold) this._state.queuedHold = false;
                 if (this._state2._orbActivationConsumedForPress) this._state._orbActivationConsumedForPress = true;
                 this._state2.y += this._state2.yVelocity * verticalDelta;
-                this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta);
+                this._player2.checkCollisions(this._playerWorldX - centerX - horizontalDelta, subStepDelta / 60);
                 if (this._isDual && !this._state2.isDead && secondarySharedBefore !== undefined && this._getDualSharedSignature?.(this._state2) !== secondarySharedBefore) {
                     this._syncDualGlobalsFromSecondary?.({
                         skipBallInputGravity: secondaryBallInputGravity,
