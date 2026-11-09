@@ -418,6 +418,7 @@ class PlayerObject {
     this._activeSlopeObj = null;
     this._prevSlopeObj = null;
     this._slopeJumpObj = null;
+    this._slopeBonkObj = null;
     this._slopeVelocity = 0;
     this._slopeYVelocity = 0;
     this._lastSlopeYVelocity = 0;
@@ -3380,14 +3381,20 @@ if (this.p.isFlying || this.p.isUfo) {
       Number(this.p.yVelocity) * this.flipMod() > 0 &&
       (wasOnSlope || this._slopeJumpObj === gameObj);
     const continuedContact = wasOnSlope && Math.abs(currentDistance) <= Math.max(8, hitSize * 0.8);
-    const centerWithinSlope = pieceWidth >= left && pieceWidth <= right;
     const horizontalOverlap = pieceWidth + hitSize > left && pieceWidth - hitSize < right;
+    const approachingContact = movingTowardSurface || (!wasOnSlope && crossedSurface);
     if (this.p.isWave) {
       const points = [[0, 0], [hitSize, 0], [-hitSize, 0], [0, hitSize], [0, -hitSize]];
       const touchesSolid = points.some(([offsetX, offsetY]) => gameObj.isSlopeSolidAtExact
         ? gameObj.isSlopeSolidAtExact(pieceWidth + offsetX, playersY + offsetY)
         : gameObj.isSlopeSolidAt(pieceWidth + offsetX, playersY + offsetY, gravityFlipped));
       return { landed: false, died: touchesSolid };
+    }
+
+    if (this._slopeBonkObj === gameObj) {
+      const verticalOverlap = playersY + hitSize > top && playersY - hitSize < bottom;
+      if (horizontalOverlap && verticalOverlap) return { landed: false, died: false };
+      this._slopeBonkObj = null;
     }
 
     if (separatingJump && (onSurface || crossedSurface || continuedContact)) {
@@ -3397,11 +3404,16 @@ if (this.p.isFlying || this.p.isUfo) {
       this._slopeJumpObj = gameObj;
       return { landed: false, died: false };
     }
-    if (centerWithinSlope && horizontalOverlap && (onSurface || crossedSurface || continuedContact || (wasOnSlope && movingTowardSurface))) {
+    const canRideSlope = horizontalOverlap &&
+      (correctGravity
+        ? (onSurface || crossedSurface || continuedContact || (wasOnSlope && movingTowardSurface))
+        : (approachingContact || (onSurface && !wasOnSlope)));
+    if (canRideSlope) {
       const movingLeft = previousWorldX > pieceWidth + 0.001;
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
       const slidingDown = movingLeft ? uphill : !uphill;
       const slopeAngle = gameObj.getSlopeAngleRad();
+      if (!correctGravity) this._slopeBonkObj = gameObj;
       return {
         landed: true,
         died: false,
@@ -3423,7 +3435,24 @@ if (this.p.isFlying || this.p.isUfo) {
     const solidAtPlayer = gameObj.isSlopeSolidAtExact
       ? gameObj.isSlopeSolidAtExact(pieceWidth, playersY)
       : gameObj.isSlopeSolidAt(pieceWidth, playersY, gravityFlipped);
-    if (horizontalOverlap && solidAtPlayer) {
+    let sweptSolid = false;
+    if (gameObj.isSlopeSolidAtExact) {
+      const sweepDistance = Math.hypot(pieceWidth - previousWorldX, playersY - playersLastY);
+      const sweepSamples = Math.min(128, Math.max(7, Math.ceil(sweepDistance / Math.max(4, hitSize * 0.5)) + 1));
+      const contactPoints = [
+        [0, 0], [hitSize, 0], [-hitSize, 0], [0, hitSize], [0, -hitSize],
+        [hitSize, hitSize], [hitSize, -hitSize], [-hitSize, hitSize], [-hitSize, -hitSize]
+      ];
+      for (let sample = 0; sample < sweepSamples && !sweptSolid; sample++) {
+        const progress = sample / (sweepSamples - 1);
+        const sampleX = previousWorldX + (pieceWidth - previousWorldX) * progress;
+        const sampleY = playersLastY + (playersY - playersLastY) * progress;
+        sweptSolid = contactPoints.some(([offsetX, offsetY]) =>
+          gameObj.isSlopeSolidAtExact(sampleX + offsetX, sampleY + offsetY));
+      }
+    }
+    const movingAwayFromUnderside = !correctGravity && wasOnSlope && !approachingContact;
+    if ((horizontalOverlap && solidAtPlayer) || (sweptSolid && !movingAwayFromUnderside)) {
       if (window.noClip) this.p.diedThisFrame = true;
       else return { landed: false, died: true };
     }
@@ -3616,14 +3645,16 @@ if (this.p.isFlying || this.p.isUfo) {
     // slope's vertical/horizontal ratio, then applies the native angle cap.
     // Using only tan(angle) under-launches 45-degree slopes and is especially
     // noticeable when leaving a steep or quarter-turned slope.
-    const slopeYVelocity = (slopeObj.h / Math.max(1, slopeObj.w)) * playerSpeed;
+    const edge = slopeObj.slopeSurfaceVertices;
+    const slopeRatio = Array.isArray(edge) && edge.length >= 2 &&
+      Math.abs(edge[1].x - edge[0].x) > 0.001
+      ? Math.abs((edge[1].y - edge[0].y) / (edge[1].x - edge[0].x))
+      : slopeObj.h / Math.max(1, slopeObj.w);
+    const slopeYVelocity = slopeRatio * Math.abs(Number(playerSpeed) || 0);
     const nativeSlopeMultiplier = Math.min(1.12 / angleRad, 1.54);
     let tangentVelocity = slopeYVelocity * nativeSlopeMultiplier * this.flipMod();
     if (this.p.isFlying || this.p.isBall) tangentVelocity *= 0.75;
     if (slopeObj.slopeFlipY) tangentVelocity = -tangentVelocity;
-    if (Number.isFinite(this._slopeVelocity) && this._slopeVelocity !== 0) {
-      tangentVelocity = this._slopeVelocity;
-    }
     this.p.yVelocity = tangentVelocity;
     this.p.onGround = false;
     this.p.canJump = false;
@@ -5740,14 +5771,23 @@ if (this.p.isFlying || this.p.isUfo) {
         ? Math.max(0, physicsDeltaSeconds)
         : frameDt;
       this._slopeTime = slopeContinued ? this._slopeTime + contactDt : 0;
-      const slopeRatio = bestSlopeGameObj.h / Math.max(1, bestSlopeGameObj.w);
-      this._slopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
+      const slopeEdge = bestSlopeGameObj.slopeSurfaceVertices;
+      const slopeRatio = Array.isArray(slopeEdge) && slopeEdge.length >= 2 &&
+        Math.abs(slopeEdge[1].x - slopeEdge[0].x) > 0.001
+        ? Math.abs((slopeEdge[1].y - slopeEdge[0].y) / (slopeEdge[1].x - slopeEdge[0].x))
+        : bestSlopeGameObj.h / Math.max(1, bestSlopeGameObj.w);
+      const nativeSlopeSpeed = this._getNativeSlopeSpeed();
+      this._slopeYVelocity = this._usesNativeSlopePhysics()
+        ? slopeRatio * nativeSlopeSpeed
+        : slopeRatio / nativeSlopeSpeed;
       const slopeAngle = Math.max(0.05, Math.abs(bestSlopeCandidate.slopeAngle));
       const slopeVelocityMagnitude = Math.min(1.1, 0.8 / slopeAngle) * this._slopeYVelocity * 1.4;
       this._slopeVelocity = slopeVelocityMagnitude * this.flipMod();
       if (bestSlopeCandidate.slopeSlidingDown) this._slopeVelocity *= -1;
       if (this.p.isFlying || this.p.isBall) this._slopeVelocity *= 0.75;
-      this._lastSlopeYVelocity = slopeRatio / this._getNativeSlopeSpeed();
+      this._lastSlopeYVelocity = this._usesNativeSlopePhysics()
+        ? slopeRatio * nativeSlopeSpeed
+        : slopeRatio / nativeSlopeSpeed;
       _0x30410f = true;
     }
     if (this.p.collideTop !== 0 && this.p.collideBottom !== 0) {
@@ -5828,9 +5868,12 @@ if (this.p.isFlying || this.p.isUfo) {
       this._ignoreTeleportUntilClear = false;
     }
     if (this._prevSlopeObj && !this._activeSlopeObj) {
-      // Native slope collision does not inject a new vertical launch when
-      // the player leaves the ramp. The existing gravity/launch velocity is
-      // carried out of the slope; slope velocity is only used by jump boosts.
+      // Native slope exits carry a world-space tangent velocity into the
+      // first airborne step. Keep this separate from _slopeVelocity, which is
+      // the normalized modifier used by jump/ball slope boosts.
+      if (this._usesNativeSlopePhysics()) {
+        this._applySlopeExitMomentum(this._prevSlopeObj, pieceWidth);
+      }
       this._slopeVelocity = 0;
       this._slopeYVelocity = 0;
       this._lastSlopeYVelocity = 0;
@@ -6193,6 +6236,7 @@ if (this.p.isFlying || this.p.isUfo) {
     this._prevSlopeObj = null;
     this._activeSlopeObj = null;
     this._slopeJumpObj = null;
+    this._slopeBonkObj = null;
     this._onSlopeAngle = null;
     this._slopeVelocity = 0;
     this._slopeYVelocity = 0;

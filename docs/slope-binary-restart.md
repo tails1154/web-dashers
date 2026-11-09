@@ -77,8 +77,9 @@ convert -background '#101827' /tmp/webdashers-slope-simulation.svg \
 ```
 
 The trace covers connected ascending and descending ramps, with and without a
-cube jump. The native profile now preserves the jump's separating motion while
-the player is still inside the slope contact tolerance; the simulator asserts
-that both native jump traces leave their starting slope without dying. This is
-a regression check for the reconstructed behavior, not proof that a browser
+cube jump, an inverted-slope head bonk, and a deliberately large-step narrow
+ramp tunnel test. Native assertions require jump separation, prompt underside
+separation, and swept-triangle collision; the legacy tunnel trace is retained
+as a control so its behavior is not silently changed. The rendered image is a
+regression aid for the reconstructed behavior, not proof that a browser
 implementation is identical to GD without an in-game comparison.
