@@ -39,6 +39,16 @@ No contact geometry or grounded-state changes are included in this pass.
 
 ## Remaining investigation
 
+Contact clearance correction: the baseline helper used `normalY * side * r`,
+where `side` is the solid vertex's normal side. That placed the player inward.
+It now uses `-side * r / normalY` as the vertical offset, so the signed
+perpendicular distance is one radius outside the triangle. The binary's
+collidedWithSlope path at 0x29ab25–0x29ab64 divides a player rectangle extent
+by cosine; mapping the precise extent and endpoint clamps remains necessary.
+64 geometric cases (quarter turns, both mirrors, mini/full radius, two slope
+ratios) passed outside-side and perpendicular-clearance assertions against
+transformed triangles. These are geometry checks, not native runtime parity.
+
 The new profile's boost modifier now reads `_slopeVelocity`, corresponding to
 the signed float at 0x5f8 read at 0x287e81. The geometric speed is separately
 stored at 0x5b8 (write at 0x29b2b4); the baseline used that geometric field in

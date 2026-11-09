@@ -106,7 +106,11 @@ class Collider {
     const normalX = -dy / length;
     const normalY = dx / length;
     const side = ((solidVertex.x - a.x) * normalX + (solidVertex.y - a.y) * normalY) >= 0 ? 1 : -1;
-    return surfaceY + normalY * side * Math.max(0, Number(hitSize) || 0);
+    // The solid vertex identifies the inward normal. Place the player's
+    // center on the opposite side, with enough vertical clearance for its
+    // radius measured perpendicular to the slope (radius / cos(angle)).
+    if (Math.abs(normalY) < 0.001) return null;
+    return surfaceY - side * Math.max(0, Number(hitSize) || 0) / normalY;
   }
 }
 const ldm_object = new Set([
