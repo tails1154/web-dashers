@@ -7575,7 +7575,7 @@ class LevelEditor {
     const sw = screenWidth;
     const sh = screenHeight;
     const panelW = Math.min(620, sw - 50);
-    const panelH = Math.min(390, sh - 50);
+    const panelH = Math.min(450, sh - 50);
     const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
     this._editorObjectOptionsPopup = root;
     root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.55).setOrigin(0).setInteractive());
@@ -7603,7 +7603,66 @@ class LevelEditor {
     const checkLabel = this.add.bitmapText(-88, 30, "bigFont", "Collidable", 24).setOrigin(0, 0.5);
     inner.add([check, checkMark, checkLabel]);
 
-    const status = this.add.bitmapText(0, 100, "bigFont", raw[700] ? "Image loaded" : "No image imported", 20)
+    let gifSpeed = Phaser.Math.Clamp(parseFloat(raw[705] ?? raw["705"] ?? 1) || 1, 0.05, 10);
+    let speedValue = String(gifSpeed);
+    let speedFocused = false;
+    const speedBg = this.add.rectangle(155, 30, 170, 42, 0x000000, 0.42)
+      .setStrokeStyle(2, 0xffffff, 0.7).setInteractive();
+    const speedLabel = this.add.bitmapText(155, -4, "goldFont", "GIF Speed (1 = normal)", 18).setOrigin(0.5);
+    const speedText = this.add.bitmapText(155, 30, "bigFont", "", 24).setOrigin(0.5);
+    inner.add([speedBg, speedLabel, speedText]);
+    const renderSpeed = () => speedText.setText(`${speedValue}${speedFocused ? "|" : ""}`);
+    const commitSpeed = () => {
+      const parsed = parseFloat(speedValue);
+      gifSpeed = Phaser.Math.Clamp(Number.isFinite(parsed) ? parsed : 1, 0.05, 10);
+      speedValue = String(Number(gifSpeed.toFixed(2)));
+      raw[705] = speedValue;
+      raw["705"] = speedValue;
+      refresh();
+      renderSpeed();
+    };
+    const blurSpeed = (save) => {
+      if (!speedFocused) return;
+      if (save) commitSpeed();
+      speedFocused = false;
+      this._editorTextInputFocused = false;
+      renderSpeed();
+    };
+    speedBg.on("pointerdown", (pointer) => {
+      speedFocused = true;
+      this._editorTextInputFocused = true;
+      speedValue = String(raw[705] ?? 1);
+      renderSpeed();
+      pointer?.event?.preventDefault?.();
+      pointer?.event?.stopPropagation?.();
+    });
+    this._editorGroupInputPointerDownHandler = (pointer) => {
+      if (speedFocused && (Math.abs(pointer.x - (sw / 2 + 155)) > 85 || Math.abs(pointer.y - (sh / 2 + 30)) > 28)) {
+        blurSpeed(true);
+      }
+    };
+    this.input.on("pointerdown", this._editorGroupInputPointerDownHandler);
+    this._editorObjectOptionsKeyHandler = (event) => {
+      if (event.key === "Escape") {
+        if (speedFocused) blurSpeed(false);
+        else this._closeEditorObjectOptionsPopup();
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (!speedFocused) return;
+      if (event.key === "Enter") blurSpeed(true);
+      else if (event.key === "Backspace") speedValue = speedValue.slice(0, -1);
+      else if (/^[0-9.]$/.test(event.key) && speedValue.length < 6 && (event.key !== "." || !speedValue.includes("."))) speedValue += event.key;
+      else if (event.key.length !== 1) return;
+      event.preventDefault();
+      event.stopPropagation();
+      renderSpeed();
+    };
+    window.addEventListener("keydown", this._editorObjectOptionsKeyHandler);
+    renderSpeed();
+
+    const status = this.add.bitmapText(0, 110, "bigFont", raw[700] ? "Image loaded" : "No image imported", 20)
       .setOrigin(0.5).setTint(0xd7e8ff);
     inner.add(status);
 
@@ -7662,7 +7721,10 @@ class LevelEditor {
       reader.readAsDataURL(file);
     });
 
-    this._makeEditorOkButton(inner, 0, panelH / 2 - 45, "OK", () => this._closeEditorObjectOptionsPopup());
+    this._makeEditorOkButton(inner, 0, panelH / 2 - 45, "OK", () => {
+      blurSpeed(true);
+      this._closeEditorObjectOptionsPopup();
+    });
   }
 
 

@@ -2060,6 +2060,7 @@ window.LevelObject = class LevelObject {
     const scale = Phaser.Math.Clamp(parseFloat(levelObj.scale ?? 1) || 1, 0.01, 20);
     const rotation = parseFloat(levelObj.rot || 0) || 0;
     const collidable = String(raw[704] ?? raw["704"] ?? "0") === "1";
+    const gifSpeed = Phaser.Math.Clamp(parseFloat(raw[705] ?? raw["705"] ?? 1) || 1, 0.05, 10);
     const sourceBase64 = String(raw[700] ?? raw["700"] ?? "");
     const imageKeyPart = sourceBase64.slice(0, 10).replace(/[^a-zA-Z0-9]/g, "_");
     const baseTextureKey = `custom-image-block-${linkedObjectId}-${sourceBase64.length}-${imageKeyPart}`;
@@ -2147,7 +2148,10 @@ window.LevelObject = class LevelObject {
                 if (scene.textures.exists(frameKey)) scene.textures.remove(frameKey);
                 scene.textures.addCanvas(frameKey, frameSnapshot).refresh();
                 frameTextureKeys.push(frameKey);
-                frames.push({ key: frameKey, duration: Math.max(16, Number(decodedFrame.delay) || 100) });
+                frames.push({
+                  key: frameKey,
+                  duration: Math.max(16, (Number(decodedFrame.delay) || 100) / gifSpeed)
+                });
                 if (decodedFrame.disposalType === 2) frameContext.clearRect(0, 0, canvasWidth, canvasHeight);
               }
               if (!frames.length || stopped) return;
