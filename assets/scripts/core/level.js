@@ -2113,67 +2113,72 @@ window.LevelObject = class LevelObject {
 
           let stopped = false;
           let animationTimer = null;
-          let fallbackTimer = null;
           let decoder = null;
+          const frameTextureKeys = [];
           const stopAnimation = () => {
             stopped = true;
             if (animationTimer !== null) window.clearTimeout(animationTimer);
             animationTimer = null;
-            fallbackTimer?.remove?.();
-            fallbackTimer = null;
             decoder?.close?.();
             decoder = null;
-            image.remove?.();
+            for (const frameKey of frameTextureKeys) {
+              if (scene.textures.exists(frameKey)) scene.textures.remove(frameKey);
+            }
           };
           sprite.once("destroy", stopAnimation);
 
-          const startImageFallback = () => {
-            image.style.position = "fixed";
-            image.style.width = "1px";
-            image.style.height = "1px";
-            image.style.opacity = "0";
-            image.style.pointerEvents = "none";
-            image.setAttribute("aria-hidden", "true");
-            if (!image.parentNode) document.body.appendChild(image);
-            drawImageFallback();
-            fallbackTimer = scene.time.addEvent({ delay: 33, loop: true, callback: drawImageFallback });
-          };
+          const animateDecodedFrames = async () => {
+            try {
+              if (typeof ImageDecoder !== "function") throw new Error("ImageDecoder is unavailable");
+              const binary = atob(sourceBase64.replace(/\s/g, ""));
+              const bytes = new Uint8Array(binary.length);
+              for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+              decoder = new ImageDecoder({ data: bytes.buffer, type: "image/gif" });
+              await decoder.tracks.ready;
+              const track = decoder.tracks.selected;
+              if (!track) throw new Error("GIF has no selected animation track");
 
-          if (typeof ImageDecoder === "function") {
-            const binary = atob(sourceBase64.replace(/\s/g, ""));
-            const bytes = new Uint8Array(binary.length);
-            for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
-
-            const animateGif = async () => {
-              try {
-                decoder = new ImageDecoder({ data: bytes.buffer, type: "image/gif" });
-                await decoder.tracks.ready;
-                const track = decoder.tracks.selected;
-                if (!track) throw new Error("GIF has no selected animation track");
-                const frameCount = Math.max(1, Number(track.frameCount) || 1);
-                let frameIndex = 0;
-                while (!stopped && sprite.active) {
-                  const decoded = await decoder.decode({ frameIndex, completeFramesOnly: true });
-                  const frame = decoded.image;
-                  const durationMs = Math.max(16, (Number(frame.duration) || 100000) / 1000);
-                  context.clearRect(0, 0, canvas.width, canvas.height);
-                  context.drawImage(frame, 0, 0, canvas.width, canvas.height);
+              const frameCount = Math.max(1, Number(track.frameCount) || 1);
+              const frames = [];
+              for (let frameIndex = 0; frameIndex < frameCount && !stopped; frameIndex++) {
+                const decoded = await decoder.decode({ frameIndex, completeFramesOnly: true });
+                const frame = decoded.image;
+                const frameCanvas = document.createElement("canvas");
+                frameCanvas.width = canvas.width;
+                frameCanvas.height = canvas.height;
+                const frameContext = frameCanvas.getContext("2d");
+                if (!frameContext) {
                   frame.close?.();
-                  canvasTexture.refresh();
-                  frameIndex = (frameIndex + 1) % frameCount;
-                  await new Promise(resolve => {
-                    animationTimer = window.setTimeout(resolve, durationMs);
-                  });
+                  throw new Error("Could not create GIF frame canvas");
                 }
-              } catch (error) {
-                console.warn("Animated image block decoding failed; using static image fallback", error);
-                if (!stopped) startImageFallback();
+                frameContext.drawImage(frame, 0, 0, frameCanvas.width, frameCanvas.height);
+                const frameKey = `${baseTextureKey}-frame-${frameIndex}`;
+                if (scene.textures.exists(frameKey)) scene.textures.remove(frameKey);
+                scene.textures.addCanvas(frameKey, frameCanvas).refresh();
+                frameTextureKeys.push(frameKey);
+                frames.push({
+                  key: frameKey,
+                  duration: Math.max(16, (Number(frame.duration) || 100000) / 1000)
+                });
+                frame.close?.();
               }
-            };
-            animateGif();
-          } else {
-            startImageFallback();
-          }
+              if (!frames.length || stopped) return;
+
+              let frameIndex = 0;
+              const showNextFrame = () => {
+                if (stopped || !sprite.active) return;
+                const frame = frames[frameIndex];
+                sprite.setTexture(frame.key).setDisplaySize(width * scale, height * scale);
+                frameIndex = (frameIndex + 1) % frames.length;
+                animationTimer = window.setTimeout(showNextFrame, frame.duration);
+              };
+              showNextFrame();
+            } catch (error) {
+              console.warn("Animated image block decoding failed; using static image", error);
+              drawImageFallback();
+            }
+          };
+          animateDecodedFrames();
           sprite._eeCustomImageAnimation = { remove: stopAnimation };
         } else {
           if (!scene.textures.exists(baseTextureKey)) scene.textures.addImage(baseTextureKey, image);
