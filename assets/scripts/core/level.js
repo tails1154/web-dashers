@@ -148,6 +148,13 @@ class Collider {
     const t = (worldX - a.x) / dx;
     return a.y + (b.y - a.y) * t;
   }
+  getNativeSlopeRiseRun() {
+    const edge = this.slopeSurfaceVertices;
+    if (!Array.isArray(edge) || edge.length < 2) return null;
+    const dx = edge[1].x - edge[0].x;
+    if (Math.abs(dx) < 0.001) return null;
+    return (edge[1].y - edge[0].y) / dx;
+  }
   getNativeSlopeContactY(worldX, hitSize) {
     const edge = this.slopeSurfaceVertices;
     const solidVertex = this.slopeSolidVertex;

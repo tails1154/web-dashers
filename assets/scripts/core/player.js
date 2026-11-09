@@ -3393,6 +3393,17 @@ if (this.p.isFlying || this.p.isUfo) {
       const uphill = (gameObj.slopeDir > 0) !== floorSide;
       const slidingDown = movingLeft ? uphill : !uphill;
       const slopeAngle = gameObj.getSlopeAngleRad();
+      const geometricRotation = (slidingDown ? this.flipMod() : -this.flipMod()) *
+        (movingLeft ? -1 : 1) * Math.abs(slopeAngle);
+      let slopeRotation = geometricRotation;
+      if (this.p.isFlying) {
+        const riseRun = gameObj.getNativeSlopeRiseRun?.();
+        const slopeRatio = Number.isFinite(riseRun)
+          ? Math.abs(riseRun)
+          : Math.abs(gameObj.h / Math.max(1, gameObj.w));
+        const velocityAngle = slopeRatio / this._getNativeSlopeSpeed() * (180 / Math.PI);
+        slopeRotation = Math.sign(geometricRotation || 1) * velocityAngle * (Math.PI / 180);
+      }
       return {
         landed: true,
         died: false,
@@ -3403,7 +3414,7 @@ if (this.p.isFlying || this.p.isUfo) {
           collideBottom: correctGravity ? surfaceY : null,
           collideTop: correctGravity ? null : surfaceY,
           slopeAngle: Math.abs(slopeAngle),
-          slopeRotation: (slidingDown ? this.flipMod() : -this.flipMod()) * (movingLeft ? -1 : 1) * Math.abs(slopeAngle),
+          slopeRotation,
           slopeSlidingDown: slidingDown,
           landedCorrectSide: correctGravity,
           skipGroundUpdate: false
