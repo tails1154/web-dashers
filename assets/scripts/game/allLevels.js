@@ -167,6 +167,14 @@ window.allLevels = [
 	    ["tails1154", "Geometry Dash World"],
 	    "Payload"
 	],
+	[
+	    "dj_rub_rub",
+	    "DJ RubRub",
+	    "level_29",
+	    ["Geometry Dash World", "Geometry Dash World"],
+	    "DJRubRub",
+	    { hidden: true, vaultCode: "rubrub" }
+	],
 	/*
     [
         "every_end",

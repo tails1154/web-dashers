@@ -1112,12 +1112,9 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const cornerBL = this.add.image(0,  sh, "GJ_GameSheet03", "GJ_sideArt_001.png")
         .setScrollFactor(0).setDepth(152).setOrigin(0, 1)
       const diamondEntryCost = 25;
-      this._syncDemonKeysFromOrbs();
-      const treasureroom = this.add.image(sw - 55, 40, "GJ_GameSheet03", "GJ_lock_001.png")
+      const diamondVaultButton = this.add.image(sw - 55, 40, "GJ_GameSheet03", "GJ_lock_001.png")
         .setScrollFactor(0).setDepth(104).setInteractive();
-      const demonKeyLabel = this.add.bitmapText(sw - 55, 78, "goldFont", `KEYS: ${this._getDemonKeys()}`, 16)
-        .setOrigin(0.5).setScrollFactor(0).setDepth(104).setTint(0x8de8ff);
-      this._makeBouncyButton(treasureroom, 1, () => {
+      this._makeBouncyButton(diamondVaultButton, 1, () => {
         const diamonds = Number(window.WDCoinEconomy?.getDiamonds?.() || localStorage.getItem("wd_diamonds") || 0);
         this._showDiamondGuard(diamonds >= diamondEntryCost, diamonds, diamondEntryCost);
       }, () => true);
@@ -1158,29 +1155,12 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         });
       };
       this._refreshDailyChestButtons();
-      const vaultX = sw - 55;
-      const vaultY = sh - 78;
-      const vaultsecret = this.add.image(vaultX, vaultY, "GJ_GameSheet03", "secretDoorBtn_closed_001.png")
-        .setScrollFactor(0).setDepth(104).setScale(1).setInteractive();
-      this._expandHitArea(vaultsecret, 1.25);
-      this._makeBouncyButton(vaultsecret, 1, () => {
-        const keys = this._getDemonKeys();
-        if (keys >= 5) {
-          this._openTreasureRoom();
-        } else {
-          showNativePhaserDialog(this, {
-            title: "KEYMASTER",
-            message: `You need ${5 - keys} more Demon Key${5 - keys === 1 ? "" : "s"} to enter the Chest Room.`
-          });
-        }
-      }, () => true);
-
       const backBtn = this.add.image(50, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png")
         .setScrollFactor(0).setDepth(104).setFlipY(true).setFlipX(true)
         .setRotation(Math.PI).setInteractive();
       this._makeBouncyButton(backBtn, 1, () => this._closeCreatorMenu());
 
-      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, treasureroom, demonKeyLabel, shopButton, shopLabel, dailyChestLabel, dailyChestSmall, dailyChestLarge, vaultsecret];
+      this._creatorOverlayObjects = [overlay, blocker, cornerTL, cornerBL, backBtn, diamondVaultButton, shopButton, shopLabel, dailyChestLabel, dailyChestSmall, dailyChestLarge];
 
       const menuButtons = [
         "GJ_createBtn_001.png",
@@ -5075,7 +5055,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       const status = this.add.text(cx, 565, "Connecting to TailsConnect...", { fontFamily: "Arial", fontSize: "22px", color: "#ffffff" }).setOrigin(0.5).setScrollFactor(0).setDepth(703);
       const hostBtn = this.add.text(cx - 120, 470, "HOST", { fontFamily: "Arial", fontSize: "26px", color: "#c1fb3d", backgroundColor: "#123b55", padding: { x: 24, y: 12 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setInteractive();
       const joinBtn = this.add.text(cx + 120, 470, "JOIN", { fontFamily: "Arial", fontSize: "26px", color: "#9de8ff", backgroundColor: "#123b55", padding: { x: 24, y: 12 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setInteractive();
-      const levelChoices = (window.allLevels || []).filter(level => level?.[2] && !["level_22", "level_24", "level_25", "level_3001"].includes(level[2]));
+      const levelChoices = (window.allLevels || []).filter(level => level?.[2] && !level?.[5]?.hidden && !["level_22", "level_24", "level_25", "level_3001"].includes(level[2]));
       const levelChoice = this.add.text(cx, 405, "Choose a level after hosting", { fontFamily: "Arial", fontSize: "22px", color: "#ffffff", backgroundColor: "#123b55", padding: { x: 18, y: 10 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false);
       const previousLevel = this.add.text(cx - 180, 405, "<", { fontFamily: "Arial", fontSize: "32px", color: "#9de8ff", backgroundColor: "#123b55", padding: { x: 18, y: 6 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false).setInteractive();
       const nextLevel = this.add.text(cx + 180, 405, ">", { fontFamily: "Arial", fontSize: "32px", color: "#9de8ff", backgroundColor: "#123b55", padding: { x: 18, y: 6 } }).setOrigin(0.5).setScrollFactor(0).setDepth(703).setVisible(false).setInteractive();
@@ -5185,7 +5165,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       if (this._versusToeStarted) return;
       const choices = (window.allLevels || []).filter(level => {
         const id = String(level?.[2] || "");
-        return id.startsWith("level_") && !["level_22", "level_24", "level_25", "level_3001"].includes(id);
+        return id.startsWith("level_") && !level?.[5]?.hidden && !["level_22", "level_24", "level_25", "level_3001"].includes(id);
       });
       const selected = choices.find(level => String(level?.[2]) === String(requestedLevelId)) || null;
       if (!selected) return;
@@ -5632,6 +5612,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       localStorage.removeItem("wd_challenge_guardian_pending");
       this.time.delayedCall(350, () => this._showChallengeGuardianSpeech());
     }
+    if (localStorage.getItem("wd_rubrub_lore_pending") === "1" &&
+        !this.game.registry.get("autoStartGame")) {
+      localStorage.removeItem("wd_rubrub_lore_pending");
+      this.time.delayedCall(350, () => this._showRubRubLore());
+    }
   }
 
   _parseLevelColors(levelId) {
@@ -5755,6 +5740,7 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       "level_21", // Fingerdash
       "level_22",
       "level_25",
+      "level_29",
       "level_3001"
     ]);
     const visibleLevels = allLevels.filter(level => !(level && hiddenNumberedLevels.has(level[2])));
@@ -11815,6 +11801,10 @@ _applyMirrorEffect() {
         localStorage.setItem("wd_challenge_completed", "1");
         localStorage.setItem("wd_challenge_guardian_pending", "1");
       }
+      if (String(window.currentlevel?.[2] || "") === "level_29" &&
+          localStorage.getItem("wd_rubrub_lore_seen") !== "1") {
+        localStorage.setItem("wd_rubrub_lore_pending", "1");
+      }
       // A clean completion replaces any earlier cheat-assisted verification.
       const verifyingLevelId = String(window.currentlevel?.[2] || "");
       if (verifyingLevelId.startsWith("local_")) {
@@ -11859,6 +11849,7 @@ _applyMirrorEffect() {
       }
       const completedLevelId = String(window.currentlevel?.[2] || "");
       const isChallengeLevel = completedLevelId === "level_3001";
+      const isRubRubLevel = completedLevelId === "level_29";
       const isLocalEditorLevel = completedLevelId.startsWith("local_");
       const challengeStarsClaimed = localStorage.getItem("challenge_30stars_claimed") === "1";
       const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7, level_28: 2 };
@@ -11866,6 +11857,8 @@ _applyMirrorEffect() {
         ? 0
         : isChallengeLevel
         ? (challengeStarsClaimed ? 0 : 30)
+        : isRubRubLevel
+        ? 30
         : (window._selectedLevelData?.star_reward ?? builtInStarRewards[completedLevelId] ?? 0);
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
       if (earnedStars) {
@@ -13719,66 +13712,6 @@ _applyMirrorEffect() {
       }
     });
   }
-  _getDemonKeys() {
-    const stored = parseInt(localStorage.getItem("wd_demon_keys") || "0", 10);
-    return Number.isFinite(stored) && stored > 0 ? stored : 0;
-  }
-  _syncDemonKeysFromOrbs() {
-    const orbMilestones = Math.floor(this._getManaOrbBalance() / 500);
-    if (orbMilestones > this._getDemonKeys()) {
-      localStorage.setItem("wd_demon_keys", String(orbMilestones));
-    }
-    return this._getDemonKeys();
-  }
-  _openTreasureRoom() {
-    if (this._treasureRoomOverlay) return;
-    const sw = screenWidth;
-    const sh = screenHeight;
-    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2050);
-    this._treasureRoomOverlay = root;
-    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x071426, 0.98).setInteractive();
-    const panel = this.add.rectangle(sw / 2, sh / 2 + 12, Math.min(940, sw - 48), Math.min(540, sh - 90), 0x182642, 1)
-      .setStrokeStyle(5, 0x8de8ff, 1);
-    const title = this.add.bitmapText(sw / 2, 55, "goldFont", "TREASURE ROOM", 44).setOrigin(0.5);
-    const subtitle = this.add.bitmapText(sw / 2, 95, "bigFont", "Spend Demon Keys to open treasure chests", 21).setOrigin(0.5).setTint(0xbfeeff);
-    const keyLabel = this.add.bitmapText(sw / 2, 132, "goldFont", `DEMON KEYS: ${this._getDemonKeys()}`, 24).setOrigin(0.5).setTint(0x8de8ff);
-    const close = this.add.image(48, 48, "GJ_GameSheet03", "GJ_arrow_03_001.png").setFlipX(true).setRotation(Math.PI).setInteractive();
-    root.add([shade, panel, title, subtitle, keyLabel, close]);
-    const closeRoom = () => {
-      root.destroy(true);
-      this._treasureRoomOverlay = null;
-      this._openCreatorMenu();
-    };
-    this._makeBouncyButton(close, 1, closeRoom);
-    const tiers = [
-      { cost: 1, x: sw / 2 - 260, label: "SILVER CHEST", diamonds: 2, coins: 8, orbs: 15 },
-      { cost: 5, x: sw / 2, label: "GOLD CHEST", diamonds: 8, coins: 25, orbs: 45 },
-      { cost: 10, x: sw / 2 + 260, label: "LARGE CHEST", diamonds: 18, coins: 60, orbs: 100 }
-    ];
-    tiers.forEach(tier => {
-      const chest = this.add.image(tier.x, sh / 2 - 34, "GJ_GameSheet03", "chestIcon_001.png")
-        .setScale(tier.cost === 1 ? 3.1 : tier.cost === 5 ? 3.7 : 4.3).setInteractive();
-      const label = this.add.bitmapText(tier.x, sh / 2 + 62, "goldFont", tier.label, 22).setOrigin(0.5);
-      const cost = this.add.bitmapText(tier.x, sh / 2 + 96, "bigFont", `${tier.cost} KEY${tier.cost === 1 ? "" : "S"}`, 20).setOrigin(0.5).setTint(0x8de8ff);
-      root.add([chest, label, cost]);
-      this._makeBouncyButton(chest, chest.scaleX, () => {
-        this._openTreasureChest(tier, chest, keyLabel);
-      }, () => this._getDemonKeys() >= tier.cost && !this._dailyChestAnimationOverlay);
-    });
-    const note = this.add.bitmapText(sw / 2, sh - 55, "bigFont", "Keys are earned from mana-orb milestones.", 19).setOrigin(0.5).setTint(0x9aaec8);
-    root.add(note);
-  }
-  _openTreasureChest(tier, chest, keyLabel) {
-    if (this._getDemonKeys() < tier.cost || this._dailyChestAnimationOverlay) return;
-    localStorage.setItem("wd_demon_keys", String(this._getDemonKeys() - tier.cost));
-    keyLabel.setText(`DEMON KEYS: ${this._getDemonKeys()}`);
-    this._playDailyChestOpening(0, chest, {
-      name: tier.label,
-      diamonds: tier.diamonds,
-      coins: tier.coins,
-      orbs: tier.orbs
-    });
-  }
   _openVaultCodeChest(codeId, codeData) {
     const claimed = (() => {
       try { return JSON.parse(localStorage.getItem("wd_vault_chest_codes") || "{}"); } catch (_) { return {}; }
@@ -13944,6 +13877,27 @@ _applyMirrorEffect() {
           lists: () => this._openListsMenu(),
           packs: () => this._openMapPacksMenu()
         };
+        if (code === "rubrub") {
+          close();
+          window._selectedLevelData = {
+            id: "67676767676826", name: "DJ RubRub", author: "Geometry Dash World",
+            songName: "DJRubRub", officialSong: 0, difficulty: 0, stars: 30,
+            star_reward: 30, hidden: true
+          };
+          window.currentlevel = [
+            "dj_rub_rub", "DJ RubRub", "level_29",
+            ["Local", "Geometry Dash World"], "DJRubRub"
+          ];
+          this._closeCreatorMenu(true);
+          this.load.text("level_29", "assets/levels/29.txt");
+          this.load.audio("dj_rub_rub", "assets/music/DJRubRub.mp3");
+          this.load.once("complete", () => {
+            this.game.registry.set("autoStartGame", true);
+            this.scene.restart();
+          });
+          this.load.start();
+          return;
+        }
         const vaultAction = vaultCodeActions[code];
         if (vaultAction) {
           close();
@@ -14005,6 +13959,31 @@ _applyMirrorEffect() {
       this._challengeGuardianOverlay = null;
       root.destroy(true);
       window.location.reload();
+    });
+  }
+
+  _showRubRubLore() {
+    if (this._rubRubLoreOverlay) return;
+    localStorage.setItem("wd_rubrub_lore_seen", "1");
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2100);
+    this._rubRubLoreOverlay = root;
+    const shade = this.add.rectangle(sw / 2, sh / 2, sw, sh, 0x000000, 0.86).setInteractive();
+    const panel = this.add.rectangle(sw / 2, sh / 2, Math.min(740, sw - 48), 340, 0x101b30, 1)
+      .setStrokeStyle(5, 0xffd84d, 1);
+    const title = this.add.bitmapText(sw / 2, sh / 2 - 110, "goldFont", "DJ RUBRUB", 38).setOrigin(0.5);
+    const lore = this.add.bitmapText(
+      sw / 2, sh / 2 - 10, "bigFont",
+      "The song was never missing.\nIt was waiting behind the vault door.\nNow RubRub knows you found it.", 24
+    ).setOrigin(0.5).setCenterAlign().setTint(0xffffff);
+    const close = this.add.image(sw / 2, sh / 2 + 112, "GJ_GameSheet03", "GJ_longBtn07_001.png")
+      .setScale(0.9).setInteractive();
+    const closeLabel = this.add.bitmapText(close.x, close.y, "bigFont", "CLOSE", 21).setOrigin(0.5);
+    root.add([shade, panel, title, lore, close, closeLabel]);
+    this._makeBouncyButton(close, 0.9, () => {
+      root.destroy(true);
+      this._rubRubLoreOverlay = null;
     });
   }
 

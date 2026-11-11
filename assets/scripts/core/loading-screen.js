@@ -175,6 +175,7 @@ class BootScene extends Phaser.Scene {
       "Some vault doors lead to Featured levels, a shop, and quests...",
       "The path, the gauntlet, the list, and the pack each have a door...",
       "The Challenge is waiting for someone who types its name...",
+      "code rubrub in the vault",
       "If the vault remembers too much, four words can undo it all...",
       "Hop the big guy doesn't wakt up...",
       "Shhhh! You're gonna wake the big one!",
