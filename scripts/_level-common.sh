@@ -26,6 +26,26 @@ require_repository() {
     command -v python3 >/dev/null 2>&1 || die "python3 is required"
 }
 
+require_network_tools() {
+    command -v curl >/dev/null 2>&1 || die "curl is required for server imports"
+}
+
+json_field() {
+    local json_file="$1"
+    local field="$2"
+    python3 - "$json_file" "$field" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as source:
+    data = json.load(source)
+value = data.get(sys.argv[2], "")
+if value is None:
+    value = ""
+print(value if isinstance(value, str) else str(value))
+PY
+}
+
 usage() {
     printf 'Usage: %s [--dry-run]\n' "$(basename "$0")"
     printf '\nThe default mode asks questions and writes only after confirmation.\n'
