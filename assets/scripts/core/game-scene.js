@@ -5740,10 +5740,11 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
       "level_21", // Fingerdash
       "level_22",
       "level_25",
-      "level_29",
       "level_3001"
     ]);
-    const visibleLevels = allLevels.filter(level => !(level && hiddenNumberedLevels.has(level[2])));
+    const visibleLevels = allLevels.filter(level => !(
+      level && (hiddenNumberedLevels.has(level[2]) || level?.[5]?.hidden)
+    ));
     const pageCount = visibleLevels.length + 1;
     let currentPageIndex = visibleLevels.findIndex(l => l[2] === window.currentlevel[2]);
     if (currentPageIndex < 0) currentPageIndex = 0;
@@ -11852,17 +11853,28 @@ _applyMirrorEffect() {
       const isRubRubLevel = completedLevelId === "level_29";
       const isLocalEditorLevel = completedLevelId.startsWith("local_");
       const challengeStarsClaimed = localStorage.getItem("challenge_30stars_claimed") === "1";
+      let rubRubAlreadyCompleted = false;
+      try {
+        const completedLevels = JSON.parse(localStorage.getItem("gd_completedSet") || "[]");
+        rubRubAlreadyCompleted = Array.isArray(completedLevels) && completedLevels.includes("level_29");
+      } catch (_) {}
+      const rubRubStarsClaimed = localStorage.getItem("wd_rubrub_30stars_claimed") === "1" || rubRubAlreadyCompleted;
       const builtInStarRewards = { level_23: 8, level_24: 4, level_26: 7, level_28: 2 };
+      const configuredLevel = (window.allLevels || []).find(entry => entry?.[2] === completedLevelId);
+      const configuredStarReward = Number(
+        window._selectedLevelData?.star_reward ?? configuredLevel?.[5]?.starReward ?? builtInStarRewards[completedLevelId] ?? 0
+      );
       const starReward = isLocalEditorLevel
         ? 0
         : isChallengeLevel
         ? (challengeStarsClaimed ? 0 : 30)
         : isRubRubLevel
-        ? 30
-        : (window._selectedLevelData?.star_reward ?? builtInStarRewards[completedLevelId] ?? 0);
+        ? (rubRubStarsClaimed ? 0 : 30)
+        : configuredStarReward;
       const earnedStars = window.WDCoinEconomy?.awardLevelStars?.(window.currentlevel?.[2], starReward, this) || 0;
       if (earnedStars) {
         if (isChallengeLevel) localStorage.setItem("challenge_30stars_claimed", "1");
+        if (isRubRubLevel) localStorage.setItem("wd_rubrub_30stars_claimed", "1");
         this._pendingStarReward = earnedStars;
         this._pendingStarRewardLevelId = String(window.currentlevel?.[2] || "");
         this._pendingStarRewardStartCount = Math.max(0, (window.WDCoinEconomy?.getStars?.() || 0) - earnedStars);
@@ -13877,20 +13889,35 @@ _applyMirrorEffect() {
           lists: () => this._openListsMenu(),
           packs: () => this._openMapPacksMenu()
         };
-        if (code === "rubrub") {
+        const vaultLevel = (window.allLevels || []).find(level => {
+          const metadata = level?.[5];
+          return metadata?.hidden && metadata?.vaultCode &&
+            String(metadata.vaultCode).toLowerCase() === code;
+        });
+        if (vaultLevel) {
+          const levelId = String(vaultLevel[2] || "");
+          const levelNumber = levelId.match(/^level_(\d+)$/)?.[1];
+          const songKey = String(vaultLevel[4] || "").trim();
+          if (!levelNumber || !songKey) {
+            errorLabel.setText("That vault level is not configured correctly.");
+            return;
+          }
           close();
           window._selectedLevelData = {
-            id: "67676767676826", name: "DJ RubRub", author: "Geometry Dash World",
-            songName: "DJRubRub", officialSong: 0, difficulty: 0, stars: 30,
-            star_reward: 30, hidden: true
+            id: levelNumber,
+            name: vaultLevel[1],
+            author: vaultLevel[3]?.[0] || "Unknown",
+            songName: songKey,
+            officialSong: 0,
+            difficulty: 0,
+            stars: Number(vaultLevel[5]?.starReward) || 0,
+            star_reward: Number(vaultLevel[5]?.starReward) || 0,
+            hidden: true
           };
-          window.currentlevel = [
-            "dj_rub_rub", "DJ RubRub", "level_29",
-            ["Local", "Geometry Dash World"], "DJRubRub"
-          ];
+          window.currentlevel = [...vaultLevel];
           this._closeCreatorMenu(true);
-          this.load.text("level_29", "assets/levels/29.txt");
-          this.load.audio("dj_rub_rub", "assets/music/DJRubRub.mp3");
+          this.load.text(levelId, `assets/levels/${levelNumber}.txt`);
+          this.load.audio(vaultLevel[0], `assets/music/${songKey}.mp3`);
           this.load.once("complete", () => {
             this.game.registry.set("autoStartGame", true);
             this.scene.restart();

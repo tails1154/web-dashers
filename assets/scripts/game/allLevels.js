@@ -173,7 +173,7 @@ window.allLevels = [
 	    "level_29",
 	    ["Geometry Dash World", "Geometry Dash World"],
 	    "DJRubRub",
-	    { hidden: true, vaultCode: "rubrub" }
+	    { hidden: true, vaultCode: "rubrub", starReward: 30 }
 	],
 	/*
     [

@@ -8,6 +8,7 @@ Web Dashers is a static Phaser browser game. Entry pages are `index.html` and `t
 - `assets/scripts/game/` — game data and definitions.
 - `assets/scripts/api/` — account and server helpers.
 - `assets/` — spritesheets, fonts, music, sound effects, backgrounds, and level data.
+- `scripts/` — interactive Bash tools for registering visible and vault-only main levels.
 - `db/` — local project data; handle carefully.
 - `wd_branding/` — branding assets.
 
@@ -19,6 +20,8 @@ Web Dashers is a static Phaser browser game. Entry pages are `index.html` and `t
 - `node --check assets/scripts/core/game-scene.js` — check scene syntax.
 - `node --check assets/scripts/core/player.js` — check physics syntax.
 - `node --check assets/scripts/core/level-editor.js` — check editor syntax.
+- `bash -n scripts/add-main-level.sh scripts/add-hidden-main-level.sh` — check level-tool syntax.
+- `bash scripts/add-hidden-main-level.sh --dry-run` — exercise the hidden-level prompts without writing files.
 - `git diff --check` — detect whitespace errors.
 
 There is no configured build pipeline or automated test suite. Run the local server and manually test affected menus, editor flows, saving, and gameplay in a browser. Refresh after script changes.

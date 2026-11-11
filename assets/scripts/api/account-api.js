@@ -902,7 +902,7 @@ window.AccountAPI = {
         'gd_completedLevels', 'created_levels', 'iconMainColor', 'iconSecondaryColor',
         'iconCurrentPlayer', 'iconCurrentShip', 'iconCurrentBall', 'iconCurrentWave',
         'iconCurrentSpider', 'iconCurrentBird', 'userMusicVol', 'userSfxVol',
-        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_mana_orbs', 'wd_mana_orb_progress', 'wd_vault_chest_codes', 'wd_daily_chest_claims', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
+        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_mana_orbs', 'wd_mana_orb_progress', 'wd_vault_chest_codes', 'wd_daily_chest_claims', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_rubrub_30stars_claimed', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
       ];
       for (const key of keys) {
         localStorage.removeItem(key);
@@ -994,7 +994,7 @@ window.AccountAPI = {
       'gd_completedLevels', 'created_levels', 'iconMainColor', 'iconSecondaryColor',
       'iconCurrentPlayer', 'iconCurrentShip', 'iconCurrentBall', 'iconCurrentWave',
       'iconCurrentSpider', 'iconCurrentBird', 'userMusicVol', 'userSfxVol',
-        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_mana_orbs', 'wd_mana_orb_progress', 'wd_vault_chest_codes', 'wd_daily_chest_claims', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
+        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_mana_orbs', 'wd_mana_orb_progress', 'wd_vault_chest_codes', 'wd_daily_chest_claims', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_rubrub_30stars_claimed', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
     ];
     const save = {};
     for (const key of keys) {
@@ -1019,7 +1019,7 @@ window.AccountAPI = {
       'gd_completedLevels', 'created_levels', 'iconMainColor', 'iconSecondaryColor',
       'iconCurrentPlayer', 'iconCurrentShip', 'iconCurrentBall', 'iconCurrentWave',
       'iconCurrentSpider', 'iconCurrentBird', 'userMusicVol', 'userSfxVol',
-        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_mana_orbs', 'wd_mana_orb_progress', 'wd_vault_chest_codes', 'wd_daily_chest_claims', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
+        'menuMusicEnabled', 'playerName', 'wd_coins', 'wd_diamonds', 'wd_mana_orbs', 'wd_mana_orb_progress', 'wd_vault_chest_codes', 'wd_daily_chest_claims', 'wd_daily_claims', 'wd_quest_claims', 'wd_gauntlet_claims', 'wd_coin_items', 'wd_icon_items', 'wd_user_coins', 'wd_stars', 'wd_claimed_level_stars', 'wd_rubrub_30stars_claimed', 'wd_unlocked_levels', 'wd_icon_prices', 'wd_icon_prices_version', 'wd_collected_coins',
     ];
     for (const key of keys) {
       if (save[key] === undefined) continue;
