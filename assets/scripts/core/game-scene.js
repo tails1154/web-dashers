@@ -2154,6 +2154,8 @@ this._menuUpdateLogBtn = this.add.image(screenWidth - 30 - 50, 33, "GJ_WebSheet"
         window._onlineSongKey     = null;
 
         window.currentlevel = [window._onlineLevelName, window._onlineLevelName, window._onlineLevelId, ["Online", "Unknown"]];
+        window._wdBeatTrackedFor = null;
+        window.AccountAPI?.recordLevelEvent?.(lvl.id, "play");
 
         loadingText.setText("Downloading Song...");
         let customSongId = parseInt(lvl.customSongID ?? lvl.songId ?? lvl.song_id ?? "0", 10) || 0;
@@ -11796,6 +11798,12 @@ _applyMirrorEffect() {
       this._pendingStarRewardLevelId = null;
       this._pendingStarRewardStartCount = 0;
       return;
+    }
+    if (!this._practicedMode.practiceMode && window._onlineLevelId
+        && String(window.currentlevel?.[2] || "") === String(window._onlineLevelId)
+        && window._wdBeatTrackedFor !== window._onlineLevelId) {
+      window._wdBeatTrackedFor = window._onlineLevelId;
+      window.AccountAPI?.recordLevelEvent?.(String(window._onlineLevelId).replace(/^online_/, ""), "beat");
     }
     if (!this._practicedMode.practiceMode) {
       if (String(window.currentlevel?.[2] || "") === "level_3001") {

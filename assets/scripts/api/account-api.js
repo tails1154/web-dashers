@@ -434,6 +434,27 @@ window.AccountAPI = {
     return data;
   },
 
+  // Anonymous play/beat counter for server levels. Failures are logged, never shown to the player.
+  async recordLevelEvent(levelId, event) {
+    const id = String(levelId || '');
+    if (!/^\d+$/.test(id) || !['play', 'beat'].includes(event)) return;
+    try {
+      await fetch(`${window._gdProxyUrl}?action=analytics`, {
+        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, event })
+      });
+    } catch (error) {
+      console.warn('Level analytics not recorded:', error);
+    }
+  },
+
+  async fetchAnalyticsTop() {
+    const res = await fetch(`${window._gdProxyUrl}?action=analytics_top`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || `Server returned ${res.status}`);
+    return data;
+  },
+
   async recordLevelDownload(levelId) {
     if (!this.currentUser && !(await this.ensureAuthenticated())) {
       throw new Error('Login required to download levels');
@@ -875,6 +896,26 @@ window.AccountAPI = {
       dialog.addEventListener('submit', event => { event.preventDefault(); const form = new FormData(dialog); const id = String(form.get('id') || '').trim(); if (!/^\d+$/.test(id)) { dialog.querySelector('[data-error]').textContent = 'Enter a numeric level ID.'; return; } const tier = String(form.get('rating_tier') || 'none'); const epic = { none: 0, featured: 0, epic: 1, mythic: 2, legendary: 3 }[tier] ?? 0; finish({ id, difficulty: Number(form.get('difficulty') || 0), stars: Number(form.get('stars') || 0), featured: tier !== 'none', epic, star_reward: Number(form.get('star_reward') || 0), verified: form.get('verified') === 'on', verification_hacks: form.get('verification_hacks') === 'on', verification_start_pos: form.get('verification_start_pos') === 'on' }); });
       dialog.querySelector('[data-cancel]').addEventListener('click', () => finish(null));
       shade.addEventListener('click', event => { if (event.target === shade) finish(null); });
+      const analyticsBtn = document.createElement('button');
+      analyticsBtn.type = 'button';
+      analyticsBtn.textContent = 'View most played / beaten';
+      analyticsBtn.style.cssText = 'margin:12px auto 0;display:block;padding:10px 16px;border:0;border-radius:8px;background:#8de8ff;color:#111;font-weight:bold;cursor:pointer';
+      const analyticsOut = document.createElement('p');
+      analyticsOut.style.cssText = 'margin:10px 0 0;min-height:18px;color:#8de8ff;font-size:13px;white-space:pre-line;text-align:center';
+      dialog.appendChild(analyticsBtn);
+      dialog.appendChild(analyticsOut);
+      const fmtRows = (rows, label) => rows.length
+        ? `${label}:\n` + rows.map((r, i) => `${i + 1}. ${r.name} (ID ${r.id}): ${r.count}`).join('\n')
+        : `${label}: no data yet`;
+      analyticsBtn.addEventListener('click', async () => {
+        analyticsOut.textContent = 'Loading...';
+        try {
+          const d = await this.fetchAnalyticsTop();
+          analyticsOut.textContent = `${fmtRows(d.most_played || [], 'Most played')}\n\n${fmtRows(d.most_beaten || [], 'Most beaten')}`;
+        } catch (error) {
+          analyticsOut.textContent = error.message || 'Could not load analytics.';
+        }
+      });
       dialog.querySelector('[name="id"]').focus();
       const idInput = dialog.querySelector('[name="id"]');
       const suggestionText = dialog.querySelector('[data-suggestions]');
