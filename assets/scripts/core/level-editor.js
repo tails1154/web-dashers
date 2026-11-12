@@ -6180,7 +6180,7 @@ class LevelEditor {
     const saveObj = this._getEditorSaveObjectForObjectId(selectedObjectIds[0]);
     if (!saveObj) return false;
     const objectDef = getObjectFromId(saveObj.id);
-    return !!(objectDef && (objectDef.type === triggerType || this._isEditorCustomImageBlockId(saveObj.id)));
+    return !!(objectDef && (objectDef.type === triggerType || objectDef.type === ringType || this._isEditorCustomImageBlockId(saveObj.id)));
   }
 
 
@@ -7245,6 +7245,63 @@ class LevelEditor {
     });
   }
 
+  _openEditorOrbOptionsPopup(saveObj) {
+    if (!saveObj) return;
+    this._closeEditorObjectOptionsPopup();
+    const sw = screenWidth;
+    const sh = screenHeight;
+    const raw = saveObj._raw || (saveObj._raw = {});
+    let multiClick = String(raw[706] ?? raw["706"] ?? "0") === "1";
+
+    const root = this.add.container(0, 0).setScrollFactor(0).setDepth(2550);
+    this._editorObjectOptionsPopup = root;
+    root.add(this.add.rectangle(0, 0, sw, sh, 0x000000, 0.45).setOrigin(0).setInteractive());
+
+    const inner = this.add.container(sw / 2, sh / 2);
+    root.add(inner);
+    const panelW = 560;
+    const panelH = 260;
+    const corner = this.textures.exists("GJ_square01") ? this.textures.get("GJ_square01").source[0].width * 0.325 : 24;
+    inner.add(this._drawScale9(0, 0, panelW, panelH, "GJ_square01", corner, 0xffffff, 1));
+    inner.add(this.add.bitmapText(0, -95, "bigFont", "Orb Options", 30).setOrigin(0.5));
+
+    const check = this.add.rectangle(-150, -10, 34, 34, multiClick ? 0x47c96b : 0x27384d, 1)
+      .setStrokeStyle(3, 0xffffff, 0.85).setInteractive();
+    const checkMark = this.add.bitmapText(-150, -10, "bigFont", multiClick ? "\u2713" : "", 25).setOrigin(0.5);
+    const checkLabel = this.add.bitmapText(-118, -10, "bigFont", "Multi click", 24).setOrigin(0, 0.5);
+    inner.add([check, checkMark, checkLabel]);
+    check.on("pointerdown", () => {
+      multiClick = !multiClick;
+      check.setFillStyle(multiClick ? 0x47c96b : 0x27384d);
+      checkMark.setText(multiClick ? "\u2713" : "");
+    });
+
+    const close = () => {
+      window.removeEventListener("keydown", keyHandler);
+      this._closeEditorObjectOptionsPopup();
+    };
+    const save = () => {
+      raw[706] = multiClick ? "1" : "0";
+      this._refreshEditorCollisionCaches?.();
+      close();
+    };
+    const makeBtn = (x, label, callback) => {
+      const btn = this.add.bitmapText(x, 85, "bigFont", label, 26).setOrigin(0.5).setInteractive();
+      btn.on("pointerdown", callback);
+      inner.add(btn);
+      return btn;
+    };
+    makeBtn(-80, "OK", save);
+    makeBtn(80, "CANCEL", close);
+
+    const keyHandler = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); close(); }
+      else if (event.key === "Enter") { event.preventDefault(); save(); }
+    };
+    window.addEventListener("keydown", keyHandler);
+    this._editorObjectOptionsKeyHandler = keyHandler;
+  }
+
   _openSelectedEditorObjectOptions() {
     const saveObj = this._getSelectedEditorSaveObject();
     if (!saveObj) return;
@@ -7264,6 +7321,10 @@ class LevelEditor {
         return;
     }
 
+    if (objectDef.type === ringType) {
+        this._openEditorOrbOptionsPopup(saveObj);
+        return;
+    }
     if (objectDef.type !== triggerType) return;
 
     if (this._isEditorColorTriggerId(saveObj.id)) {

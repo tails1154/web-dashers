@@ -3181,6 +3181,8 @@ window.LevelObject = class LevelObject {
       const orbH = objectDef.gridH * a;
       const orbObj = new Collider(jumpRingType, worldX, worldY, orbW, orbH, levelObj.rot || 0);
       orbObj.orbId = levelObj.id;
+      // Raw key 706: "1" = multi click on. Absent or "0" = off (default).
+      orbObj.multiClick = String(levelObj._raw?.[706] ?? levelObj._raw?.["706"] ?? "0") === "1";
       orbObj.orbRotation = levelObj.rot || 0;
       orbObj._dashHoldTicks = 0;
       registerCollider(orbObj);

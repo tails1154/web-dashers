@@ -563,11 +563,14 @@ class PlayerObject {
   }
   _isObjectActivated(gameObj) {
     if (!gameObj) return false;
+    // Multi click orbs never stay used; each new press can activate them again.
+    if (gameObj.multiClick && gameObj.type === jumpRingType) return false;
     if (!this._usesIndependentActivation(gameObj)) return !!gameObj.activated;
     return !!gameObj._activatedByPlayer?.[this._getActivationKey()];
   }
   _setObjectActivated(gameObj, activated = true) {
     if (!gameObj) return;
+    if (activated && gameObj.multiClick && gameObj.type === jumpRingType) return;
     if (!this._usesIndependentActivation(gameObj)) {
       gameObj.activated = !!activated;
       return;
