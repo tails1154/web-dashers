@@ -2,5 +2,6 @@
 /.claude
 /node_modules
 /server.js
-*.env*/dl/
+*.env*
+/dl/
 /gdsubzero.apk
